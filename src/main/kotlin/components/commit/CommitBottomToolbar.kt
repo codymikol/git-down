@@ -39,7 +39,12 @@ fun CommitBottomToolbar(commitMessage: MutableState<String>) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Checkbox(modifier = Modifier, checked = false, onCheckedChange = {})
             Text(modifier = Modifier.padding(12.dp, 0.dp), text = "Amend Head", fontSize = 12.sp, color = Color.White)
-            SlimButton("Commit") { scope.launch { GitDownState.git.value.commitAll(commitMessage.value) } }
+            SlimButton("Commit") {
+                scope.launch {
+                    GitDownState.git.value.commitAll(commitMessage.value)
+                    commitMessage.value = ""
+                }
+            }
         }
     }
 
