@@ -6,7 +6,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.Text
 import androidx.compose.material.TextField
 import androidx.compose.material.TextFieldColors
 import androidx.compose.runtime.Composable
@@ -15,8 +17,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import components.SlimButton
 import components.Subheader
 import components.commit.CommitBottomToolbar
@@ -97,12 +102,21 @@ fun CommitView() {
         }
         Column(Modifier.weight(10f)) {
             Column(modifier = Modifier.fillMaxWidth().background(Colors.LightGrayBackground)) {
-                TextField(
-                    modifier = Modifier.fillMaxSize().padding(top = 8.dp, start = 8.dp, bottom = 0.dp, end = 8.dp)
+                BasicTextField(
+                    cursorBrush = Brush.verticalGradient(0.00f to Color.White,),
+                    value = commitMessage.value,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = 8.dp, start = 8.dp, bottom = 0.dp, end = 8.dp)
                         .background(Colors.DarkGrayBackground),
-                    colors = GitDownTextFieldColors(),
+                    textStyle = TextStyle(color = Color.White, fontSize = 12.sp),
                     onValueChange = { commitMessage.value = it },
-                    value = commitMessage.value
+                    decorationBox = { innerTextField ->
+                        Row(modifier = Modifier.fillMaxWidth().padding(8.dp, 4.dp, 8.dp, 0.dp)) {
+                            // todo(mikol): use this doodad to make the guidelines ;)
+                            innerTextField()
+                        }
+                    }
                 )
             }
         }
