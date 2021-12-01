@@ -1,16 +1,21 @@
 package windows
 
 import androidx.compose.desktop.ui.tooling.preview.Preview
+import androidx.compose.foundation.Image
 import androidx.compose.material.Button
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.window.ApplicationScope
 import androidx.compose.ui.window.AwtWindow
 import androidx.compose.ui.window.Window
 import state.GitDownState
 import java.awt.FileDialog
 import java.awt.Frame
+import java.awt.Image
 
 val isDialogOpen = mutableStateOf(false)
 
@@ -41,7 +46,11 @@ fun handleDirectorySelection(dir: String) {
 @Preview
 @Composable
 fun DirectorySelector(applicationScope: ApplicationScope) =
-    Window(onCloseRequest = applicationScope::exitApplication, title = GitDownState.branchName.value) {
+    Window(
+        onCloseRequest = applicationScope::exitApplication,
+        title = GitDownState.branchName.value,
+        icon = painterResource(resourcePath = "icons/icon.png"),
+    ) {
         if (isDialogOpen.value) FileWindow(parent = null, onCloseRequest = ::handleDirectorySelection)
         Button(onClick = { isDialogOpen.value = true }) { Text("Open a Git Repository...") }
         Text("Welcome to GitDown")

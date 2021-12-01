@@ -14,6 +14,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -53,7 +54,11 @@ fun GitDown() {
         println("Changed @ addRefsChangedListener")
     }
 
-    Window(onCloseRequest = { GitDownState.gitDirectory.value = "" }, title = GitDownState.projectName.value) {
+    Window(
+        onCloseRequest = { GitDownState.gitDirectory.value = "" },
+        title = GitDownState.projectName.value,
+        icon = painterResource(resourcePath = "icons/icon.png"),
+    ) {
 
     this.window.minimumSize = Dimension(800, 500)
 
