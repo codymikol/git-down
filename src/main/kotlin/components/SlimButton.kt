@@ -36,7 +36,7 @@ fun SlimButton(text: String, onClick: () -> Unit = {}) =
         onClick = onClick,
         colors = SlimButtonColors(),
         modifier = Modifier.height(28.dp)
-    ) { Text(text, fontSize = 12.sp) }
+    ) { Text(text, fontSize = 11.sp) }
 
 @Composable
 @Preview
