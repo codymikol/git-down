@@ -2,10 +2,14 @@ package windows
 
 import androidx.compose.desktop.DesktopTheme
 import androidx.compose.desktop.ui.tooling.preview.Preview
+import androidx.compose.foundation.LocalScrollbarStyle
+import androidx.compose.foundation.ScrollbarStyle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,66 +57,75 @@ fun GitDown() {
 
     this.window.minimumSize = Dimension(800, 500)
 
-    DesktopTheme {
-        Column(modifier = Modifier.fillMaxSize().background(color = data.Colors.DarkGrayBackground)) {
-            Row(
-                modifier = Modifier.requiredHeight(48.dp).fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Row(modifier = Modifier.padding(10.dp)) {
-                        tabButton(
-                            currentTab = GitDownState.currentTab,
-                            thisTab = Tab.Map,
-                            resourceLocation = "icons/map.png",
-                            description = "Shows a map of commit history across branches."
-                        )
-                        tabButton(
-                            currentTab = GitDownState.currentTab,
-                            thisTab = Tab.Commit,
-                            resourceLocation = "icons/commit.png",
-                            description = "Allows you to view and commit changes to the repository."
-                        )
-                        tabButton(
-                            currentTab = GitDownState.currentTab,
-                            thisTab = Tab.Stash,
-                            resourceLocation = "icons/stash.png",
-                            description = "Allows you to manage stashes."
-                        )
+        CompositionLocalProvider(
+            LocalScrollbarStyle provides ScrollbarStyle(
+                minimalHeight = 16.dp,
+                thickness = 8.dp,
+                shape = MaterialTheme.shapes.small,
+                hoverDurationMillis = 300,
+                unhoverColor = MaterialTheme.colors.onSurface.copy(alpha = 0.12f),
+                hoverColor = MaterialTheme.colors.onSurface.copy(alpha = 0.50f)
+            )
+        ) {
+            Column(modifier = Modifier.fillMaxSize().background(color = data.Colors.DarkGrayBackground)) {
+                Row(
+                    modifier = Modifier.requiredHeight(48.dp).fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(modifier = Modifier.padding(10.dp)) {
+                            tabButton(
+                                currentTab = GitDownState.currentTab,
+                                thisTab = Tab.Map,
+                                resourceLocation = "icons/map.png",
+                                description = "Shows a map of commit history across branches."
+                            )
+                            tabButton(
+                                currentTab = GitDownState.currentTab,
+                                thisTab = Tab.Commit,
+                                resourceLocation = "icons/commit.png",
+                                description = "Allows you to view and commit changes to the repository."
+                            )
+                            tabButton(
+                                currentTab = GitDownState.currentTab,
+                                thisTab = Tab.Stash,
+                                resourceLocation = "icons/stash.png",
+                                description = "Allows you to manage stashes."
+                            )
+                        }
+                        Column() {
+                            Text(
+                                "${GitDownState.projectName.value} — Commit " + GitDownState.test.value,
+                                color = Color.White,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                "${GitDownState.commitCount.value} commits",
+                                color = Colors.LightGrayText,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Light
+                            )
+                        }
                     }
-                    Column() {
-                        Text(
-                            "${GitDownState.projectName.value} — Commit " + GitDownState.test.value,
-                            color = Color.White,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            "${GitDownState.commitCount.value} commits",
-                            color = Colors.LightGrayText,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Light
-                        )
-                    }
-                }
-                Row {
+                    Row {
 //                    Button(onClick = {}) {
 //                        Image(
 //                            painter = painterResource(resourcePath = "icons/stash.png"),
 //                            contentDescription = "Update the local stuff"
 //                        )
 //                    }
-                }
+                    }
 //                TextField(value = "", onValueChange = {}, placeholder = { "Search Repository..." })
-            }
-            Column {
-                when (GitDownState.currentTab.value) {
-                    Tab.Commit -> CommitView()
-                    Tab.Map -> MapView()
-                    Tab.Stash -> StashView()
+                }
+                Column {
+                    when (GitDownState.currentTab.value) {
+                        Tab.Commit -> CommitView()
+                        Tab.Map -> MapView()
+                        Tab.Stash -> StashView()
+                    }
                 }
             }
         }
     }
-}
 }

@@ -24,8 +24,6 @@ import components.commit.CommitEmptyState
 import components.commit.Dabuggy
 import data.Colors
 import extensions.stageAll
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import state.GitDownState
 
@@ -108,7 +106,7 @@ fun CommitView() {
                 )
             }
         }
-        CommitBottomToolbar()
+        CommitBottomToolbar(commitMessage)
     }
 }
 
@@ -125,7 +123,6 @@ private fun ColumnScope.CommitIndex() {
     }
 }
 
-@DelicateCoroutinesApi
 @Composable
 private fun ColumnScope.CommitWorkingDirectory() {
 

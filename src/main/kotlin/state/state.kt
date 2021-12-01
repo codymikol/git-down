@@ -13,7 +13,7 @@ object GitDownState {
 
     val currentTab: MutableState<Tab> = mutableStateOf(Tab.Commit)
 
-    val gitDirectory = mutableStateOf("/Users/codymikol/dev/src/bolts-api/.git")
+    val gitDirectory = mutableStateOf("/home/cody/dev/git-down/.git")
 
     val projectName = derivedStateOf { gitDirectory.value.removeSuffix("/.git").split("/").last() }
 

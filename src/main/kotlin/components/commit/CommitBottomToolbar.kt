@@ -1,5 +1,3 @@
-@file:OptIn(DelicateCoroutinesApi::class)
-
 package components.commit
 
 import androidx.compose.desktop.ui.tooling.preview.Preview
@@ -7,8 +5,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.Checkbox
 import androidx.compose.material.Text
-import androidx.compose.material.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -17,15 +15,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import components.SlimButton
 import data.Colors
+import extensions.commitAll
 import extensions.unstageAll
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import state.GitDownState
 
 @Composable
 @Preview
-fun CommitBottomToolbar() {
+fun CommitBottomToolbar(commitMessage: MutableState<String>) {
 
     val scope = rememberCoroutineScope()
 
@@ -42,7 +39,7 @@ fun CommitBottomToolbar() {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Checkbox(modifier = Modifier, checked = false, onCheckedChange = {})
             Text(modifier = Modifier.padding(12.dp, 0.dp), text = "Amend Head", fontSize = 12.sp, color = Color.White)
-            SlimButton("Commit")
+            SlimButton("Commit") { scope.launch { GitDownState.git.value.commitAll(commitMessage.value) } }
         }
     }
 
