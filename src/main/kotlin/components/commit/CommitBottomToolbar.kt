@@ -55,7 +55,10 @@ fun CommitBottomToolbar(commitMessage: MutableState<String>) {
                 scope.launch {
 
                     when(amendEnabled.value) {
-                        true -> GitDownState.git.value.amendAll(commitMessage.value)
+                        true -> {
+                            GitDownState.git.value.amendAll(commitMessage.value)
+                            amendEnabled.value = false
+                        }
                         false -> GitDownState.git.value.commitAll(commitMessage.value)
                     }
 
