@@ -107,15 +107,6 @@ fun GitDown() {
                             )
                         }
                     }
-                    Row {
-//                    Button(onClick = {}) {
-//                        Image(
-//                            painter = painterResource(resourcePath = "icons/stash.png"),
-//                            contentDescription = "Update the local stuff"
-//                        )
-//                    }
-                    }
-//                TextField(value = "", onValueChange = {}, placeholder = { "Search Repository..." })
                 }
                 Column {
                     when (GitDownState.currentTab.value) {
