@@ -331,8 +331,175 @@ class GitDownStateSpec : DescribeSpec({
                         .transferIntoGitDownState()
                 }
 
+                afterTest { repo.closeGitDownState() }
+
                 it("should properly reflect the commit count of commits [a,b,c]") {
                     GitDownState.commitCount.value shouldBe 3
+                }
+
+            }
+
+            describe("indexIsEmpty") {
+
+                describe("Happy path - there is nothing in the index at all") {
+
+                    lateinit var repo: TestRepository
+
+                    beforeTest {
+                        repo = createTestRepository()
+                            .transferIntoGitDownState()
+                    }
+
+                    afterTest { repo.closeGitDownState() }
+
+                    it("should be true") {
+                        GitDownState.indexIsEmpty.value shouldBe true
+                    }
+
+                }
+
+                describe("When there is a deleted file in the index") {
+
+                    lateinit var repo: TestRepository
+
+                    beforeTest {
+                        repo = createTestRepository()
+                            .addFile("foo.txt", "Foo")
+                            .stageAll()
+                            .commitAll("test commit")
+                            .deleteFile("foo.txt")
+                            .stageAll()
+                            .transferIntoGitDownState()
+                    }
+
+                    afterTest { repo.closeGitDownState() }
+
+                    it("should be false") {
+                        GitDownState.indexIsEmpty.value shouldBe false
+                    }
+
+                }
+
+                describe("When there is an added file in the index") {
+
+                    lateinit var repo: TestRepository
+
+                    beforeTest {
+                        repo = createTestRepository()
+                            .addFile("foo.txt", "Foo")
+                            .stageAll()
+                            .transferIntoGitDownState()
+                    }
+
+                    afterTest { repo.closeGitDownState() }
+
+                    it("should be false") {
+                        GitDownState.indexIsEmpty.value shouldBe false
+                    }
+
+                }
+
+                describe("When there is a modified file in the index") {
+
+                    lateinit var repo: TestRepository
+
+                    beforeTest {
+                        repo = createTestRepository()
+                            .addFile("foo.txt", "Foo")
+                            .stageAll()
+                            .commitAll("test commit")
+                            .appendToFile("foo.txt", "Bar")
+                            .stageAll()
+                            .transferIntoGitDownState()
+                    }
+
+                    afterTest { repo.closeGitDownState() }
+
+                    it("should be false") {
+                        GitDownState.indexIsEmpty.value shouldBe false
+                    }
+
+                }
+
+            }
+
+            describe("workingDirectoryIsEmpty") {
+
+                describe("Happy path - there is nothing in the working directory") {
+
+                    lateinit var repo: TestRepository
+
+                    beforeTest {
+                        repo = createTestRepository()
+                            .transferIntoGitDownState()
+                    }
+
+                    afterTest { repo.closeGitDownState() }
+
+                    it("should be true") {
+                        GitDownState.workingDirectoryIsEmpty.value shouldBe true
+                    }
+
+                }
+
+                describe("When there is a deleted file in the working directory") {
+
+                    lateinit var repo: TestRepository
+
+                    beforeTest {
+                        repo = createTestRepository()
+                            .addFile("foo.txt", "Foo")
+                            .stageAll()
+                            .commitAll("test commit")
+                            .deleteFile("foo.txt")
+                            .transferIntoGitDownState()
+                    }
+
+                    afterTest { repo.closeGitDownState() }
+
+                    it("should be false") {
+                        GitDownState.workingDirectoryIsEmpty.value shouldBe false
+                    }
+
+                }
+
+                describe("When there is an added file in the working directory") {
+
+                    lateinit var repo: TestRepository
+
+                    beforeTest {
+                        repo = createTestRepository()
+                            .addFile("foo.txt", "Foo")
+                            .transferIntoGitDownState()
+                    }
+
+                    afterTest { repo.closeGitDownState() }
+
+                    it("should be false") {
+                        GitDownState.workingDirectoryIsEmpty.value shouldBe false
+                    }
+
+                }
+
+                describe("When there is a modified file in the working directory") {
+
+                    lateinit var repo: TestRepository
+
+                    beforeTest {
+                        repo = createTestRepository()
+                            .addFile("foo.txt", "Foo")
+                            .stageAll()
+                            .commitAll("test commit")
+                            .appendToFile("foo.txt", "Bar")
+                            .transferIntoGitDownState()
+                    }
+
+                    afterTest { repo.closeGitDownState() }
+
+                    it("should be false") {
+                        GitDownState.workingDirectoryIsEmpty.value shouldBe false
+                    }
+
                 }
 
             }

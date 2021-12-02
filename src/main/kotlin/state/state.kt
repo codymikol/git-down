@@ -100,8 +100,16 @@ object GitDownState {
         status.value.removed
     }
 
-    val indexHasChanges = derivedStateOf {
-        true
+    val indexIsEmpty = derivedStateOf {
+        indexFilesAdded.value.isEmpty()
+                && indexFilesDeleted.value.isEmpty()
+                && indexFilesModified.value.isEmpty()
+    }
+
+    val workingDirectoryIsEmpty = derivedStateOf {
+        workingDirectoryFilesAdded.value.isEmpty()
+                && workingDirectoryFilesDeleted.value.isEmpty()
+                && workingDirectoryFilesModified.value.isEmpty()
     }
 
     val test = mutableStateOf(1)

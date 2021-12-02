@@ -17,6 +17,7 @@ import extensions.amendAll
 import extensions.commitAll
 import extensions.unstageAll
 import kotlinx.coroutines.launch
+import org.eclipse.jgit.api.Git
 import state.GitDownState
 
 @Composable
@@ -50,7 +51,7 @@ fun CommitBottomToolbar(commitMessage: MutableState<String>) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Checkbox(modifier = Modifier, checked = amendEnabled.value, onCheckedChange = { toggleAmendHead() })
             Text(modifier = Modifier.padding(12.dp, 0.dp), text = "Amend Head", fontSize = 12.sp, color = Color.White)
-            SlimButton("Commit") {
+            SlimButton("Commit", disabled = GitDownState.indexIsEmpty.value && !amendEnabled.value) {
                 scope.launch {
 
                     when(amendEnabled.value) {

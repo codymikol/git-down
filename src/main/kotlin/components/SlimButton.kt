@@ -31,9 +31,14 @@ private class SlimButtonColors : ButtonColors {
 }
 
 @Composable
-fun SlimButton(text: String, onClick: () -> Unit = {}) =
+fun SlimButton(
+    text: String,
+    disabled: Boolean = false,
+    onClick: () -> Unit = {},
+) =
     Button(
         onClick = onClick,
+        enabled = !disabled,
         colors = SlimButtonColors(),
         modifier = Modifier.height(28.dp)
     ) { Text(text, fontSize = 11.sp) }
