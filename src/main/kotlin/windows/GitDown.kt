@@ -1,6 +1,5 @@
 package windows
 
-import androidx.compose.desktop.DesktopTheme
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.LocalScrollbarStyle
 import androidx.compose.foundation.ScrollbarStyle
@@ -10,7 +9,6 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -21,17 +19,13 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Window
 import components.tabButton
 import data.Colors
-import kotlinx.coroutines.*
-import org.eclipse.jgit.api.Git
 import state.GitDownState
-import state.GitDownState.test
 import tabs.Tab
 import views.CommitView
 import views.MapView
 import views.StashView
 import java.awt.Dimension
 
-@DelicateCoroutinesApi
 @Preview
 @Composable
 fun GitDown() {
