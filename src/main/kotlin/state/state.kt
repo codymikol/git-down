@@ -4,9 +4,11 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
 import org.eclipse.jgit.api.Git
+import org.eclipse.jgit.revwalk.RevCommit
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder
 import tabs.Tab
 import java.io.File
+
 
 object GitDownState {
 
@@ -36,7 +38,9 @@ object GitDownState {
 
     val branchName = derivedStateOf { repo.value.branch ?: "" }
 
-    val commitCount = derivedStateOf { repo.value.refDatabase.refs.size }
+    val commitCount = derivedStateOf {
+        git.value.log().call().toSet().size
+    }
 
     val committingAsName = derivedStateOf { repo.value.config.getString("user", null, "name") ?: "" }
 

@@ -313,6 +313,29 @@ class GitDownStateSpec : DescribeSpec({
 
             }
 
+            describe("commitCount") {
+
+                lateinit var repo: TestRepository
+
+                beforeTest {
+                    repo = createTestRepository()
+                        .addFile("foo.txt", "Foo")
+                        .stageAll()
+                        .commitAll("a")
+                        .addFile("bar.txt", "Bar")
+                        .stageAll()
+                        .commitAll("b")
+                        .addFile("baz.txt", "Foo")
+                        .stageAll()
+                        .commitAll("c")
+                        .transferIntoGitDownState()
+                }
+
+                it("should properly reflect the commit count of commits [a,b,c]") {
+                    GitDownState.commitCount.value shouldBe 3
+                }
+
+            }
         }
 
 
