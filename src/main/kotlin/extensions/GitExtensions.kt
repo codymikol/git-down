@@ -1,6 +1,7 @@
 package extensions
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.lib.PersonIdent
@@ -12,12 +13,24 @@ class GitExtensions
 private val logger = LoggerFactory.getLogger(GitExtensions::class.java)
 
 suspend fun Git.stageAll(): Unit = withContext(Dispatchers.IO) {
+
+    // setUpdate allows us to remove deleted files, but disallows adding new files. So we have to do this twice...
+
+    this@stageAll
+        .add()
+        .addFilepattern(".")
+        .setUpdate(true)
+        .call()
+        .also { logger.info("Staging all files") }
+        .unit()
+
     this@stageAll
         .add()
         .addFilepattern(".")
         .call()
         .also { logger.info("Staging all files") }
         .unit()
+
 }
 
 suspend fun Git.unstageAll() = withContext(Dispatchers.IO) {

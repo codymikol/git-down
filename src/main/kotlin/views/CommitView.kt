@@ -92,7 +92,7 @@ fun CommitView() {
                 Dabuggy(GitDownState.removed, "R", Color.Green, "Removed")
                 Dabuggy(GitDownState.added, "A", Color.Blue, "Added")
                 Dabuggy(GitDownState.changed, "C", Color.Black, "Changed")
-//                Dabuggy(GitDownState.ignoredNotInIndex, "I", Color.Yellow, "IgnoredNotInIndex")
+                Dabuggy(GitDownState.ignoredNotInIndex, "I", Color.Yellow, "IgnoredNotInIndex")
                 Dabuggy(GitDownState.missing, "M", Color.Transparent, "Missing")
                 Dabuggy(GitDownState.conflicting, "X", Color.White, "Conflicting")
                 Dabuggy(GitDownState.uncommittedChanged, "U", Color.Cyan, "Uncomitted Changes")
@@ -127,14 +127,9 @@ fun CommitView() {
 @Composable
 private fun ColumnScope.CommitIndex() {
     Subheader("Index")
-    if (GitDownState.indexHasChanges.value) {
-        Dabuggy(GitDownState.indexFilesAdded, "A", Color.Green)
-        Dabuggy(GitDownState.removed, "D", Color.Red)
-        Dabuggy(GitDownState.conflicting, "C", Color.Cyan)
-        Dabuggy(GitDownState.indexFilesModified, "M", Color.Blue)
-    } else {
-        Column { CommitEmptyState("No changes in index") }
-    }
+    Dabuggy(GitDownState.indexFilesAdded, "A", Color.Green)
+    Dabuggy(GitDownState.indexFilesDeleted, "D", Color.Red)
+    Dabuggy(GitDownState.indexFilesModified, "M", Color.Blue)
 }
 
 @Composable
@@ -143,13 +138,10 @@ private fun ColumnScope.CommitWorkingDirectory() {
     val scope = rememberCoroutineScope()
 
     Subheader("Working Directory")
-    Box {
-        if (GitDownState.workingDirectoryHasChanges.value) {
-            Dabuggy(GitDownState.workingDirectoryFilesModified, "M", Color.Blue)
-        } else {
-            Column { CommitEmptyState("No changes in working directory") }
-        }
-    }
+    Dabuggy(GitDownState.workingDirectoryFilesDeleted, "D", Color.Red)
+    Dabuggy(GitDownState.workingDirectoryFilesAdded, "A", Color.Green)
+    Dabuggy(GitDownState.workingDirectoryFilesModified, "M", Color.Blue)
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,

@@ -3,13 +3,12 @@ package state
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
+import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder
-import services.GitFactory
 import tabs.Tab
+import java.io.File
 
 object GitDownState {
-
-    val builder = FileRepositoryBuilder()
 
     val currentTab: MutableState<Tab> = mutableStateOf(Tab.Commit)
 
@@ -17,16 +16,20 @@ object GitDownState {
 
     val projectName = derivedStateOf { gitDirectory.value.removeSuffix("/.git").split("/").last() }
 
-    val repo = derivedStateOf { GitFactory.makeRepository(gitDirectory.value) }
+    val repo = derivedStateOf {
+        FileRepositoryBuilder()
+            .setGitDir(File(gitDirectory.value))
+            .readEnvironment()
+            .findGitDir()
+            .build()
+    }
 
     val config = derivedStateOf { repo.value.config }
-
-    val refDatabase = derivedStateOf { repo.value.refDatabase }
 
     val git = derivedStateOf {
         println("Computing git")
         println(test.value)
-        GitFactory.makeGit(repo.value)
+        Git(repo.value)
     }
 
     val isValidGitDirectory = derivedStateOf { repo.value.branch != null }
@@ -39,15 +42,9 @@ object GitDownState {
 
     val comittingAsEmail = derivedStateOf { repo.value.config.getString("user", null, "email") ?: "" }
 
-    val remote = derivedStateOf { repo.value.config.getString("remote", "origin", "url") ?: "" }
-
-    val isRebasing = derivedStateOf { repo.value.repositoryState.isRebasing }
-
     val isDetached = derivedStateOf {
         (git.value.repository?.refDatabase?.refs?.getOrNull(0)?.isSymbolic?.not()) ?: false
     }
-
-
 
     val status = derivedStateOf { git.value.status().call() }
 
@@ -57,47 +54,49 @@ object GitDownState {
 
     val changed = derivedStateOf { status.value.changed }
 
-//    val ignoredNotInIndex = derivedStateOf { status.value.ignoredNotInIndex }
-
     val missing = derivedStateOf { status.value.missing }
 
     val conflicting = derivedStateOf { status.value.conflicting }
-
-    val uncomittedChanges = derivedStateOf { status.value.uncommittedChanges }
 
     val modified = derivedStateOf { status.value.modified }
 
     val untracked = derivedStateOf { status.value.untracked }
 
-    // Correct!
-    val indexFilesAdded = derivedStateOf {
-        status.value.added
-    }
+    val ignoredNotInIndex = derivedStateOf { status.value.ignoredNotInIndex }
 
-    // ???
     val uncommittedChanged = derivedStateOf {
         status.value.uncommittedChanges
     }
 
-    val uncommittedChanges = derivedStateOf { status.value.uncommittedChanges }
+    private val uncommittedChanges = derivedStateOf { status.value.uncommittedChanges }
 
     val workingDirectoryFilesModified = derivedStateOf {
         modified.value.filter { uncommittedChanges.value.contains(it) }.toSet()
     }
 
-    val workingDirectoryFilesDeleted = derivedStateOf {
+    val workingDirectoryFilesAdded = derivedStateOf {
+        untracked.value.toSet()
+    }
 
+    val workingDirectoryFilesDeleted = derivedStateOf {
+        missing.value.filter { uncommittedChanges.value.contains(it) }.toSet()
     }
 
     val indexFilesModified = derivedStateOf {
-        uncommittedChanges.value.filter { !modified.value.contains(it) }.toSet()
+        uncommittedChanges.value.filter {
+            !modified.value.contains(it) && !added.value.contains(it) && !missing.value.contains(it) && !removed.value.contains(it)
+        }.toSet()
+    }
+
+    val indexFilesAdded = derivedStateOf {
+        status.value.added
+    }
+
+    val indexFilesDeleted = derivedStateOf {
+        status.value.removed
     }
 
     val indexHasChanges = derivedStateOf {
-        true
-    }
-
-    val workingDirectoryHasChanges = derivedStateOf {
         true
     }
 

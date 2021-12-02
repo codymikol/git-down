@@ -7,12 +7,4 @@ import java.io.File
 
 object GitFactory {
 
-    fun makeGit(repo: Repository): Git {
-        return Git(repo)
-    }
-
-    fun makeRepository(dir: String): Repository = GitDownState.builder.setGitDir(File(dir))
-        .readEnvironment()
-        .findGitDir()
-        .build()
 }
