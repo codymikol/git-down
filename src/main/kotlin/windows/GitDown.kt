@@ -94,7 +94,7 @@ fun GitDown() {
                         }
                         Column() {
                             Text(
-                                "${GitDownState.projectName.value} — Commit " + GitDownState.test.value,
+                                "${GitDownState.projectName.value} — Commit",
                                 color = Color.White,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold
