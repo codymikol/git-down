@@ -49,3 +49,13 @@ suspend fun Git.commitAll(message: String) = withContext(Dispatchers.IO) {
         .also { logger.info("Committing index")}
         .unit()
 }
+
+suspend fun Git.amendAll(message: String) = withContext(Dispatchers.IO) {
+    this@amendAll
+        .commit()
+        .setAmend(true)
+        .apply { this.message = message }
+        .call()
+        .also { logger.info("Amending index")}
+        .unit()
+}

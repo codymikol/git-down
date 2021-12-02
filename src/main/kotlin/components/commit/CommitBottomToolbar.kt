@@ -5,9 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.Checkbox
 import androidx.compose.material.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -15,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import components.SlimButton
 import data.Colors
+import extensions.amendAll
 import extensions.commitAll
 import extensions.unstageAll
 import kotlinx.coroutines.launch
@@ -24,7 +23,19 @@ import state.GitDownState
 @Preview
 fun CommitBottomToolbar(commitMessage: MutableState<String>) {
 
+    val amendEnabled = remember { mutableStateOf(false) }
+
     val scope = rememberCoroutineScope()
+
+    fun toggleAmendHead() {
+        if(amendEnabled.value) {
+           amendEnabled.value = false
+        } else {
+            val latestCommit = GitDownState.git.value.log().setMaxCount(1).call().iterator().next()
+            commitMessage.value = latestCommit.fullMessage
+            amendEnabled.value = true
+        }
+    }
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -37,12 +48,18 @@ fun CommitBottomToolbar(commitMessage: MutableState<String>) {
         }
         BottomStatusMessage()
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(modifier = Modifier, checked = false, onCheckedChange = {})
+            Checkbox(modifier = Modifier, checked = amendEnabled.value, onCheckedChange = { toggleAmendHead() })
             Text(modifier = Modifier.padding(12.dp, 0.dp), text = "Amend Head", fontSize = 12.sp, color = Color.White)
             SlimButton("Commit") {
                 scope.launch {
-                    GitDownState.git.value.commitAll(commitMessage.value)
+
+                    when(amendEnabled.value) {
+                        true -> GitDownState.git.value.amendAll(commitMessage.value)
+                        false -> GitDownState.git.value.commitAll(commitMessage.value)
+                    }
+
                     commitMessage.value = ""
+
                 }
             }
         }
