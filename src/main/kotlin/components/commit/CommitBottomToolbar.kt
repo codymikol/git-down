@@ -17,7 +17,6 @@ import extensions.amendAll
 import extensions.commitAll
 import extensions.unstageAll
 import kotlinx.coroutines.launch
-import org.eclipse.jgit.api.Git
 import state.GitDownState
 
 @Composable

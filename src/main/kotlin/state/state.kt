@@ -18,7 +18,7 @@ object GitDownState {
 
     val gitDirectory = mutableStateOf("/home/cody/dev/git-down/.git")
 
-    val selectedFiles = mutableStateListOf<String>()
+    val selectedFiles = mutableStateListOf<FileDelta>()
 
     val projectName = derivedStateOf { gitDirectory.value.removeSuffix("/.git").split("/").last() }
 

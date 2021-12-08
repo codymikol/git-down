@@ -7,6 +7,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
@@ -46,10 +47,14 @@ fun CommitView() {
                 Column(modifier = Modifier.weight(50f)) { CommitIndex() }
             }
             Column(
-                modifier = Modifier.weight(60f).fillMaxHeight().background(Colors.DarkGrayBackground)
-                    .border(width = 1.dp, color = Color.Black).verticalScroll(ScrollState(0))
+                modifier = Modifier
+                    .weight(60f)
+                    .fillMaxHeight()
+                    .background(Colors.DarkGrayBackground)
+                    .border(width = 1.dp, color = Color.Black)
+                    .verticalScroll(ScrollState(0))
             ) {
-                // todo(mikol): diff viewer
+                DiffPanel()
             }
         }
         Column(Modifier.weight(10f)) {
@@ -74,6 +79,11 @@ fun CommitView() {
         }
         CommitBottomToolbar(commitMessage)
     }
+}
+
+@Composable
+private fun DiffPanel() {
+    Text(GitDownState.selectedFiles.map { it.getDiff() }.joinToString("\n"), color = Color.White)
 }
 
 @Composable
