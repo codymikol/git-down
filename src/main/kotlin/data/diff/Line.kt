@@ -15,7 +15,7 @@ class Line(
                 else -> LineType.Unknown
             }
 
-            return Line(type, line)
+            return Line(type, line.drop(1))
 
         }
     }
