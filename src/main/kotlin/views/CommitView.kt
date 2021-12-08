@@ -40,12 +40,8 @@ fun CommitView() {
                     .weight(40f).fillMaxHeight()
                     .border(width = 1.dp, color = Color.Black)
             ) {
-                Column(modifier = Modifier.weight(50f)) {
-                    CommitWorkingDirectory()
-                }
-                Column(modifier = Modifier.weight(50f).verticalScroll(state = ScrollState(initial = 0))) {
-                    CommitIndex()
-                }
+                Column(modifier = Modifier.weight(50f)) { CommitWorkingDirectory() }
+                Column(modifier = Modifier.weight(50f)) { CommitIndex() }
             }
             Column(
                 modifier = Modifier.weight(60f).fillMaxHeight().background(Colors.DarkGrayBackground)
@@ -119,8 +115,10 @@ private fun CommitWorkingDirectory() {
 @Preview
 @Composable
 private fun CommitIndex() {
-    Subheader("Index")
-    ChangedFiles(GitDownState.indexFilesAdded, "A", Color.Green)
-    ChangedFiles(GitDownState.indexFilesDeleted, "D", Color.Red)
-    ChangedFiles(GitDownState.indexFilesModified, "M", Color.Blue)
+    Column(modifier = Modifier.fillMaxHeight().fillMaxWidth().verticalScroll(state = ScrollState(initial = 0))) {
+        Subheader("Index")
+        if(GitDownState.indexFilesAdded.value.isNotEmpty()) ChangedFiles(GitDownState.indexFilesAdded, "A", Color.Green)
+        if(GitDownState.indexFilesDeleted.value.isNotEmpty()) ChangedFiles(GitDownState.indexFilesDeleted, "D", Color.Red)
+        if(GitDownState.indexFilesModified.value.isNotEmpty()) ChangedFiles(GitDownState.indexFilesModified, "M", Color.Blue)
+    }
 }
