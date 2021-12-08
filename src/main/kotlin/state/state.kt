@@ -1,9 +1,7 @@
 package state
 
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.*
+import data.file.FileDelta
 import data.file.Index
 import data.file.WorkingDirectory
 import org.eclipse.jgit.api.Git
@@ -116,6 +114,14 @@ object GitDownState {
         status.value.removed
             .map { Index.FileDeleted(Path.of(it)) }
             .toSet()
+    }
+
+    val index: State<Set<FileDelta>> = derivedStateOf {
+        indexFilesAdded.value + indexFilesModified.value + indexFilesDeleted.value
+    }
+
+    val workingDirectory: State<Set<FileDelta>> = derivedStateOf {
+        workingDirectoryFilesAdded.value + workingDirectoryFilesModified.value + workingDirectoryFilesDeleted.value
     }
 
     val indexIsEmpty = derivedStateOf {

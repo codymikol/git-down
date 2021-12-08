@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -19,9 +20,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import components.SlimButton
 import components.Subheader
+import components.commit.ChangedFile
 import components.commit.CommitBottomToolbar
-import components.commit.ChangedFiles
 import data.Colors
+import data.file.FileDelta
 import extensions.stageAll
 import kotlinx.coroutines.launch
 import state.GitDownState
@@ -75,6 +77,23 @@ fun CommitView() {
 }
 
 @Composable
+private fun FileDeltaPanel(title: String, deltas: State<Set<FileDelta>>) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Subheader(title)
+        Column(modifier = Modifier
+            .weight(1f)
+            .fillMaxWidth()
+            .padding(6.dp, 0.dp, 0.dp, 0.dp)
+            .verticalScroll(state = ScrollState(initial = 0))
+        ) {
+            Spacer(Modifier.height(6.dp))
+            deltas.value.forEach { ChangedFile(it) }
+            Spacer(Modifier.height(6.dp))
+        }
+    }
+}
+
+@Composable
 private fun CommitWorkingDirectory() {
 
     val scope = rememberCoroutineScope()
@@ -82,16 +101,7 @@ private fun CommitWorkingDirectory() {
     Column(modifier = Modifier.fillMaxHeight()) {
 
         Column(modifier = Modifier.weight(1f).fillMaxWidth()) {
-            Subheader("Working Directory")
-            Column(modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-                .verticalScroll(state = ScrollState(initial = 0))
-            ) {
-                if(GitDownState.workingDirectoryFilesDeleted.value.isNotEmpty()) ChangedFiles(GitDownState.workingDirectoryFilesDeleted, "D", Color.Red)
-                if(GitDownState.workingDirectoryFilesAdded.value.isNotEmpty()) ChangedFiles(GitDownState.workingDirectoryFilesAdded, "A", Color.Green)
-                if(GitDownState.workingDirectoryFilesModified.value.isNotEmpty()) ChangedFiles(GitDownState.workingDirectoryFilesModified, "M", Color.Blue)
-            }
+            FileDeltaPanel("Working Directory", GitDownState.workingDirectory)
         }
 
         Row(
@@ -115,10 +125,5 @@ private fun CommitWorkingDirectory() {
 @Preview
 @Composable
 private fun CommitIndex() {
-    Column(modifier = Modifier.fillMaxHeight().fillMaxWidth().verticalScroll(state = ScrollState(initial = 0))) {
-        Subheader("Index")
-        if(GitDownState.indexFilesAdded.value.isNotEmpty()) ChangedFiles(GitDownState.indexFilesAdded, "A", Color.Green)
-        if(GitDownState.indexFilesDeleted.value.isNotEmpty()) ChangedFiles(GitDownState.indexFilesDeleted, "D", Color.Red)
-        if(GitDownState.indexFilesModified.value.isNotEmpty()) ChangedFiles(GitDownState.indexFilesModified, "M", Color.Blue)
-    }
+    FileDeltaPanel("Index", GitDownState.index)
 }
