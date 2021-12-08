@@ -83,8 +83,10 @@ fun CommitView() {
 
 @Composable
 private fun DiffPanel() {
-    Text(GitDownState.selectedFiles.map { it.getDiff() }.joinToString("\n"), color = Color.White)
+    Text(GitDownState.selectedFiles.joinToString("\n") { it.getDiff() }, color = Color.White)
 }
+
+
 
 @Composable
 private fun FileDeltaPanel(title: String, deltas: State<Set<FileDelta>>) {

@@ -16,8 +16,9 @@ class GitDownStateSpec : DescribeSpec({
         val git: Git,
     ) {
 
+
         fun addFile(filename: String, content: String) = this.also {
-            val path = this.dir.toString() + "/" + filename
+            val path = this.dir.toString() + "/" +  filename
             File(path).also { file -> file.parentFile.mkdirs() }.writeText("Foo")
         }
 
@@ -51,7 +52,6 @@ class GitDownStateSpec : DescribeSpec({
         fun closeGitDownState() = this.also {
             GitDownState.git.value.close()
         }
-
     }
 
     fun createTestRepository() =
