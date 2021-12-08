@@ -2,12 +2,16 @@ package state
 
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import data.file.Index
+import data.file.WorkingDirectory
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.revwalk.RevCommit
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder
 import tabs.Tab
 import java.io.File
+import java.nio.file.Path
 
 
 object GitDownState {
@@ -15,6 +19,8 @@ object GitDownState {
     val currentTab: MutableState<Tab> = mutableStateOf(Tab.Commit)
 
     val gitDirectory = mutableStateOf("/home/cody/dev/git-down/.git")
+
+    val selectedFiles = mutableStateListOf<String>()
 
     val projectName = derivedStateOf { gitDirectory.value.removeSuffix("/.git").split("/").last() }
 
@@ -75,29 +81,41 @@ object GitDownState {
     private val uncommittedChanges = derivedStateOf { status.value.uncommittedChanges }
 
     val workingDirectoryFilesModified = derivedStateOf {
-        modified.value.filter { uncommittedChanges.value.contains(it) }.toSet()
+        modified.value.filter { uncommittedChanges.value.contains(it) }
+            .map { WorkingDirectory.FileModified(Path.of(it)) }
+            .toSet()
     }
 
     val workingDirectoryFilesAdded = derivedStateOf {
-        untracked.value.toSet()
+        untracked.value
+            .map { WorkingDirectory.FileAdded(Path.of(it)) }
+            .toSet()
     }
 
     val workingDirectoryFilesDeleted = derivedStateOf {
-        missing.value.filter { uncommittedChanges.value.contains(it) }.toSet()
+        missing.value.filter { uncommittedChanges.value.contains(it) }
+            .map { WorkingDirectory.FileDeleted(Path.of(it)) }
+            .toSet()
     }
 
     val indexFilesModified = derivedStateOf {
         uncommittedChanges.value.filter {
             !modified.value.contains(it) && !added.value.contains(it) && !missing.value.contains(it) && !removed.value.contains(it)
-        }.toSet()
+        }
+            .map { Index.FileModified(Path.of(it)) }
+            .toSet()
     }
 
     val indexFilesAdded = derivedStateOf {
         status.value.added
+            .map { Index.FileAdded(Path.of(it)) }
+            .toSet()
     }
 
     val indexFilesDeleted = derivedStateOf {
         status.value.removed
+            .map { Index.FileDeleted(Path.of(it)) }
+            .toSet()
     }
 
     val indexIsEmpty = derivedStateOf {

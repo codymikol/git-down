@@ -20,7 +20,7 @@ import androidx.compose.ui.unit.sp
 import components.SlimButton
 import components.Subheader
 import components.commit.CommitBottomToolbar
-import components.commit.Dabuggy
+import components.commit.ChangedFiles
 import data.Colors
 import extensions.stageAll
 import kotlinx.coroutines.launch
@@ -92,9 +92,9 @@ private fun CommitWorkingDirectory() {
                 .fillMaxWidth()
                 .verticalScroll(state = ScrollState(initial = 0))
             ) {
-                if(GitDownState.workingDirectoryFilesDeleted.value.isNotEmpty()) Dabuggy(GitDownState.workingDirectoryFilesDeleted, "D", Color.Red)
-                if(GitDownState.workingDirectoryFilesAdded.value.isNotEmpty()) Dabuggy(GitDownState.workingDirectoryFilesAdded, "A", Color.Green)
-                if(GitDownState.workingDirectoryFilesModified.value.isNotEmpty()) Dabuggy(GitDownState.workingDirectoryFilesModified, "M", Color.Blue)
+                if(GitDownState.workingDirectoryFilesDeleted.value.isNotEmpty()) ChangedFiles(GitDownState.workingDirectoryFilesDeleted, "D", Color.Red)
+                if(GitDownState.workingDirectoryFilesAdded.value.isNotEmpty()) ChangedFiles(GitDownState.workingDirectoryFilesAdded, "A", Color.Green)
+                if(GitDownState.workingDirectoryFilesModified.value.isNotEmpty()) ChangedFiles(GitDownState.workingDirectoryFilesModified, "M", Color.Blue)
             }
         }
 
@@ -120,7 +120,7 @@ private fun CommitWorkingDirectory() {
 @Composable
 private fun CommitIndex() {
     Subheader("Index")
-    Dabuggy(GitDownState.indexFilesAdded, "A", Color.Green)
-    Dabuggy(GitDownState.indexFilesDeleted, "D", Color.Red)
-    Dabuggy(GitDownState.indexFilesModified, "M", Color.Blue)
+    ChangedFiles(GitDownState.indexFilesAdded, "A", Color.Green)
+    ChangedFiles(GitDownState.indexFilesDeleted, "D", Color.Red)
+    ChangedFiles(GitDownState.indexFilesModified, "M", Color.Blue)
 }
