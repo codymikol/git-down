@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import components.SlimButton
@@ -24,9 +25,11 @@ import components.Subheader
 import components.commit.ChangedFile
 import components.commit.CommitBottomToolbar
 import data.Colors
+import data.diff.LineType
 import data.file.FileDelta
 import extensions.stageAll
 import kotlinx.coroutines.launch
+import org.eclipse.jgit.api.Git
 import state.GitDownState
 
 val commitMessage = mutableStateOf("")
@@ -83,7 +86,31 @@ fun CommitView() {
 
 @Composable
 private fun DiffPanel() {
-    Text(GitDownState.selectedFiles.joinToString("\n") { it.getDiff() }, color = Color.White)
+    GitDownState.selectedFiles.forEach {
+
+        it.getDiff().chunks.forEach { chunk ->
+
+            Box(modifier = Modifier.background(Color.Black)) {
+                Text(chunk.delimiter, color = Color.White)
+            }
+
+            chunk.lines.forEach { line ->
+
+                val color = when(line.type) {
+                    LineType.Added -> Color(40,88,41)
+                    LineType.Removed -> Color(88,39,39)
+                    LineType.Unchanged -> Color.Transparent
+                    else -> Color.Yellow // todo(mikol): Bake these colors into the Line
+                }
+
+                Box(modifier = Modifier.background(color)) {
+                    Text(line.value, color = Color.White, fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+                }
+            }
+
+        }
+
+    }
 }
 
 

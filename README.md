@@ -43,7 +43,7 @@ Things that are working so far ( so you don't waste much time debating on whethe
 - [x] amend head functionality
 - [x] stage all functionality
 - [x] unstage all functionality 
-- [ ] diff viewer ( in general )
+- [x] diff viewer ( in general )
 - [ ] multi file diff
 - [ ] stage diff lines
 - [ ] unstage diff lines

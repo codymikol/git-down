@@ -1,6 +1,7 @@
 package data.file
 
 import androidx.compose.ui.graphics.Color
+import data.diff.Diff
 import org.eclipse.jgit.treewalk.filter.PathFilter
 import state.GitDownState
 import java.io.ByteArrayOutputStream
@@ -33,7 +34,7 @@ interface FileDelta {
         .call()
         .also { println("Loading diff from the current index...") }
 
-    fun getDiff(): String {
+    fun getDiff(): Diff {
 
         val stream = ByteArrayOutputStream()
 
@@ -42,7 +43,7 @@ interface FileDelta {
             Status.WORKING_DIRECTORY -> loadWorkingDirectoryDiff(stream)
         }
 
-        return stream.toString()
+        return Diff.make(stream.toString())
 
     }
 
