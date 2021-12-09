@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import components.SlimButton
@@ -90,8 +91,8 @@ private fun DiffPanel() {
 
         it.getDiff().chunks.forEach { chunk ->
 
-            Box(modifier = Modifier.background(Color.Black)) {
-                Text(chunk.delimiter, color = Color.White)
+            Box(modifier = Modifier.background(Color(8,8,8)).fillMaxWidth()) {
+                Text(chunk.delimiter, color = Color(69,69,69), fontSize = 10.sp, fontWeight = FontWeight.Bold)
             }
 
             chunk.lines.forEach { line ->
@@ -103,7 +104,7 @@ private fun DiffPanel() {
                     else -> Color.Yellow // todo(mikol): Bake these colors into the Line
                 }
 
-                Box(modifier = Modifier.background(color)) {
+                Box(modifier = Modifier.background(color).fillMaxWidth()) {
                     Text(line.value, color = Color.White, fontFamily = FontFamily.Monospace, fontSize = 12.sp)
                 }
             }
