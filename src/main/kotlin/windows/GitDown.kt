@@ -112,8 +112,9 @@ fun GitDown() {
                             Text(
                                 "${GitDownState.commitCount.value} commits",
                                 color = Colors.LightGrayText,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Light
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.padding(0.dp, 3.dp, 0.dp, 0.dp)
                             )
                         }
                     }
