@@ -1,22 +1,25 @@
 package windows
 
 import androidx.compose.desktop.ui.tooling.preview.Preview
-import androidx.compose.foundation.LocalScrollbarStyle
-import androidx.compose.foundation.ScrollbarStyle
-import androidx.compose.foundation.background
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.Button
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Window
+import components.TabButtonColors
+import components.TabButtonLocation
 import components.tabButton
 import data.Colors
 import state.GitDownState
@@ -73,24 +76,31 @@ fun GitDown() {
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Row(modifier = Modifier.padding(10.dp)) {
+
                             tabButton(
-                                currentTab = GitDownState.currentTab,
-                                thisTab = Tab.Map,
-                                resourceLocation = "icons/map.png",
-                                description = "Shows a map of commit history across branches."
+                                TabButtonLocation.Left,
+                                Tab.Map,
+                                "icons/map.png",
+                                "icons/map_white.png",
+                                "Shows a map of commit history across branches."
                             )
+
                             tabButton(
-                                currentTab = GitDownState.currentTab,
-                                thisTab = Tab.Commit,
-                                resourceLocation = "icons/commit.png",
-                                description = "Allows you to view and commit changes to the repository."
+                                TabButtonLocation.Middle,
+                                Tab.Commit,
+                                "icons/commit.png",
+                                "icons/commit_white.png",
+                                "Allows you to view and commit changes to the repository."
                             )
+
                             tabButton(
-                                currentTab = GitDownState.currentTab,
-                                thisTab = Tab.Stash,
-                                resourceLocation = "icons/stash.png",
-                                description = "Allows you to manage stashes."
+                                TabButtonLocation.Right,
+                                Tab.Stash,
+                                "icons/stash.png",
+                                "icons/stash_white.png",
+                                "Allows you to manage stashes.",
                             )
+
                         }
                         Column() {
                             Text(
