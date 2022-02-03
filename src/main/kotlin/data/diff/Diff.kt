@@ -1,7 +1,7 @@
 package data.diff
 
 class Diff(
-    val chunks: List<Chunk>
+    val hunks: List<Hunk>
 ) {
 
     companion object {
@@ -15,17 +15,17 @@ class Diff(
                 if (line.getOrNull(0) == '@') lineNumberDelimiterIndices.add(index)
             }
 
-            val chunks = mutableListOf<Chunk>()
+            val chunks = mutableListOf<Hunk>()
 
             lineNumberDelimiterIndices.forEachIndexed{ index, thisIndex ->
 
                 val isLast = lineNumberDelimiterIndices.getOrNull(index + 1) == null
 
                 if(isLast) {
-                    chunks.add(Chunk.make(lines.subList(thisIndex, lines.size - 1)))
+                    chunks.add(Hunk.make(lines.subList(thisIndex, lines.size - 1)))
                 } else {
                     val nextIndex = lineNumberDelimiterIndices[index + 1]
-                    chunks.add(Chunk.make(lines.subList(thisIndex, nextIndex)))
+                    chunks.add(Hunk.make(lines.subList(thisIndex, nextIndex)))
                 }
 
             }

@@ -35,12 +35,12 @@ index 39d9a33..960dae4 100644
         val diff = Diff.make(subject)
 
         it("should have the correct number of chunks based on the number of delimiters in the diff") {
-            diff.chunks.size shouldBe 2
+            diff.hunks.size shouldBe 2
         }
 
         describe("Hunk") {
 
-            val hunk = diff.chunks.getOrNull(0)
+            val hunk = diff.hunks.getOrNull(0)
 
             it("should have the proper delimiter for the first hunk") {
                 hunk?.delimiter shouldBe "@@ -16,8 +16,9 @@"
@@ -54,7 +54,7 @@ index 39d9a33..960dae4 100644
 
         describe("Line") {
 
-            val hunk = diff.chunks.getOrNull(0)
+            val hunk = diff.hunks.getOrNull(0)
 
             describe("Added Line") {
 

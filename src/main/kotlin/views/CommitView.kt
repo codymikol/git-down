@@ -30,7 +30,6 @@ import data.diff.LineType
 import data.file.FileDelta
 import extensions.stageAll
 import kotlinx.coroutines.launch
-import org.eclipse.jgit.api.Git
 import state.GitDownState
 
 val commitMessage = mutableStateOf("")
@@ -89,7 +88,7 @@ fun CommitView() {
 private fun DiffPanel() {
     GitDownState.selectedFiles.forEach {
 
-        it.getDiff().chunks.forEach { chunk ->
+        it.getDiff().hunks.forEach { chunk ->
 
             Box(modifier = Modifier.background(Color(8,8,8)).fillMaxWidth()) {
                 Text(chunk.delimiter, color = Color(69,69,69), fontSize = 10.sp, fontWeight = FontWeight.Bold)
