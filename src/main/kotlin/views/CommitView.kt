@@ -103,7 +103,7 @@ private fun DiffPanel() {
                     else -> Color.Yellow // todo(mikol): Bake these colors into the Line
                 }
 
-                Box(modifier = Modifier.background(color).fillMaxWidth()) {
+                Box(modifier = Modifier.background(color).fillMaxWidth().padding(12.dp, 4.dp))  {
                     Text(line.value, color = Color.White, fontFamily = FontFamily.Monospace, fontSize = 12.sp)
                 }
             }
