@@ -2,7 +2,8 @@ package data.diff
 
 class Hunk(
     val delimiter: String,
-    val lines: List<Line>
+    val lines: List<Line>,
+    val header: HunkHeader,
 ) {
 
     companion object {
@@ -11,9 +12,34 @@ class Hunk(
 
             val delimiter = hunkLines[0]
 
-            val lines = hunkLines.drop(1).map { Line.make(it) }
+            val header = HunkHeader.make(delimiter)
 
-            return Hunk(delimiter, lines)
+            var originalLineNumberIncrementer = header.deletedLineStart
+            var newLineNumberIncrementer = header.deletedLineStart
+
+            val lines = hunkLines.drop(1).map {
+
+                val line = Line.make(it)
+
+                line.originalLineNumber = when(line.type) {
+                    LineType.Removed -> originalLineNumberIncrementer++
+                    LineType.Unknown -> null
+                    LineType.Unchanged -> originalLineNumberIncrementer++
+                    LineType.Added -> null
+                }
+
+                line.newLineNumber = when(line.type) {
+                    LineType.Removed -> null
+                    LineType.Unknown -> null
+                    LineType.Unchanged -> newLineNumberIncrementer++
+                    LineType.Added -> newLineNumberIncrementer++
+                }
+
+                line
+
+            }
+
+            return Hunk(delimiter, lines, header)
 
         }
 

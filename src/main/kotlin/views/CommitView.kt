@@ -14,11 +14,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import components.SlimButton
@@ -26,11 +26,14 @@ import components.Subheader
 import components.commit.ChangedFile
 import components.commit.CommitBottomToolbar
 import data.Colors
+import data.diff.Hunk
+import data.diff.Line
 import data.diff.LineType
 import data.file.FileDelta
 import extensions.stageAll
 import kotlinx.coroutines.launch
 import state.GitDownState
+import typography.GitDownTypography
 
 val commitMessage = mutableStateOf("")
 
@@ -85,16 +88,29 @@ fun CommitView() {
 }
 
 @Composable
+private fun LineNumberGutter(lineNumber: Int?) {
+    Row(modifier = Modifier
+        .width(36.dp)
+        .fillMaxHeight()
+    ) {
+        GitDownTypography.LineNumber(lineNumber?.toString() ?: "")
+    } // todo(mikol): line numbers...
+}
+
+@Composable
+private fun ModificationTypeGutter(line: Line) {
+    Box(modifier = Modifier.width(24.dp).fillMaxSize()) { GitDownTypography.DiffType(line.symbol) }
+}
+
+@Composable
 private fun DiffPanel() {
     GitDownState.selectedFiles.forEach {
 
-        it.getDiff().hunks.forEach { chunk ->
+        it.getDiff().hunks.forEach { hunk ->
 
-            Box(modifier = Modifier.background(Color(8,8,8)).fillMaxWidth()) {
-                Text(chunk.delimiter, color = Color(69,69,69), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-            }
+            HunkHeader(hunk)
 
-            chunk.lines.forEach { line ->
+            hunk.lines.forEach { line ->
 
                 val color = when(line.type) {
                     LineType.Added -> Color(40,88,41)
@@ -103,8 +119,13 @@ private fun DiffPanel() {
                     else -> Color.Yellow // todo(mikol): Bake these colors into the Line
                 }
 
-                Box(modifier = Modifier.background(color).fillMaxWidth().padding(12.dp, 4.dp))  {
-                    Text(line.value, color = Color.White, fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+                Box(modifier = Modifier.background(color).fillMaxWidth().wrapContentHeight()) {
+                    Row(modifier = Modifier.fillMaxSize()) {
+                        LineNumberGutter(line.originalLineNumber)
+                        LineNumberGutter(line.newLineNumber)
+                        ModificationTypeGutter(line)
+                        GitDownTypography.DiffContent(line.value)
+                    }
                 }
             }
 
@@ -113,6 +134,13 @@ private fun DiffPanel() {
     }
 }
 
+@Composable
+private fun HunkHeader(hunk: Hunk) {
+    Row(modifier = Modifier.background(Color(8, 8, 8)).fillMaxWidth()) {
+        Spacer(modifier = Modifier.width(86.dp))
+        GitDownTypography.DiffHunkHeader(hunk.delimiter)
+    }
+}
 
 
 @Composable
