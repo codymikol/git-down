@@ -1,20 +1,144 @@
 package windows
 
-import androidx.compose.desktop.ui.tooling.preview.Preview
-import androidx.compose.material.Button
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.window.WindowDraggableArea
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.window.ApplicationScope
-import androidx.compose.ui.window.AwtWindow
-import androidx.compose.ui.window.Window
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.*
+import data.Colors
 import state.GitDownState
+import java.awt.Desktop
+import java.awt.Dimension
 import java.awt.FileDialog
 import java.awt.Frame
+import java.net.URI
 import javax.swing.JFileChooser
 
+
 val isAppleDialogOpen = mutableStateOf(false)
+
+private val BackgroundColor = Color(44, 44, 44)
+private val ExitButtonColor = Color(157, 157, 157)
+private val ButtonBackgroundColor = Color(53, 53, 53)
+private val ButtonBorderColor = Color(60, 60, 60)
+
+@Composable
+fun DirectorySelector(applicationScope: ApplicationScope) =
+    Window(
+        onCloseRequest = applicationScope::exitApplication,
+        title = GitDownState.branchName.value,
+        icon = painterResource(resourcePath = "icons/icon.png"),
+        undecorated = true,
+        transparent = true,
+        state = rememberWindowState(
+            width = windowWidth.dp,
+            height = windowHeight.dp,
+            placement = WindowPlacement.Floating,
+            position = WindowPosition(alignment = Alignment.Center)
+        )
+    ) {
+
+        this.window.isResizable = false
+        this.window.minimumSize = Dimension(windowWidth, windowHeight)
+        this.window.size = Dimension(windowWidth, windowHeight)
+
+        if (isAppleDialogOpen.value) AppleFileWindow(
+            parent = null,
+            onCloseRequest = ::handleDirectorySelection
+        )
+
+        val borderSize = 12.dp
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .border(width = 1.dp, color = Color.Black, shape = RoundedCornerShape(borderSize))
+                .clip(RoundedCornerShape(borderSize)),
+        ) {
+
+            Column(
+                modifier = Modifier.fillMaxSize()
+                    .background(BackgroundColor),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Toolbar(applicationScope)
+                Spacer(modifier = Modifier.height(10.dp))
+                GitDownImage()
+                Spacer(modifier = Modifier.height(10.dp))
+                Text("Welcome to GitDown", color = Color.White)
+                Spacer(modifier = Modifier.height(4.dp))
+                InspirationText()
+                Spacer(modifier = Modifier.height(14.dp))
+                SelectRepositoryButton()
+                RecentlyOpenedButton()
+                SocialFooter()
+            }
+
+        }
+    }
+
+@Composable
+private fun SocialFooter() {
+    Row(
+        horizontalArrangement = Arrangement.Center,
+        modifier = Modifier.fillMaxSize()
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.SpaceAround,
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.width(200.dp)
+                .fillMaxHeight()
+        ) {
+            DiscordButton()
+            EmailButton()
+        }
+    }
+}
+
+@Composable
+private fun SocialButton(
+    iconSrc: String,
+    text: String,
+    onClick: () -> Any
+) = Box(modifier = Modifier
+    .wrapContentWidth()
+    .height(24.dp)
+    .clickable { onClick() }, contentAlignment = Alignment.Center
+) {
+    Row {
+        Image(
+            painter = painterResource(resourcePath = iconSrc),
+            contentDescription = "",
+            modifier = Modifier.height(12.dp)
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(text, color = Color.White, fontSize = 12.sp)
+    }
+}
+
+@Composable
+private fun DiscordButton() =
+    SocialButton("icons/discord.svg", "Discord") { openLink("https://discord.gg/aPqQzDFn7N") }
+
+@Composable
+private fun EmailButton() =
+    SocialButton("icons/email.svg", "Email") { openLink("mailto:hi@codymikol.com") }
 
 @Composable
 private fun AppleFileWindow(
@@ -40,28 +164,124 @@ fun handleDirectorySelection(dir: String) {
     isAppleDialogOpen.value = false
 }
 
-@Preview
 @Composable
-fun DirectorySelector(applicationScope: ApplicationScope) =
-    Window(
-        onCloseRequest = applicationScope::exitApplication,
-        title = GitDownState.branchName.value,
-        icon = painterResource(resourcePath = "icons/icon.png"),
+fun ExitButton(applicationScope: ApplicationScope) {
+
+    val exitButtonSize = 64.dp
+
+    Box(
+        modifier = Modifier
+            .size(32.dp)
+            .padding(8.dp)
+            .border(
+                width = 1.dp,
+                color = Colors.DarkGrayBackground,
+                shape = RoundedCornerShape(exitButtonSize)
+            )
+            .clip(RoundedCornerShape(exitButtonSize))
     ) {
-        if (isAppleDialogOpen.value) AppleFileWindow(parent = null, onCloseRequest = ::handleDirectorySelection)
-        Button(onClick = {
-
-            val OS = System.getProperty("os.name")
-
-            if(OS == "Apple") {
-                isAppleDialogOpen.value = true
-            } else {
-                val fileChooser = JFileChooser()
-                fileChooser.fileSelectionMode = JFileChooser.DIRECTORIES_ONLY
-                fileChooser.showOpenDialog(null)
-                handleDirectorySelection(fileChooser.selectedFile.absolutePath + "/.git")
+        Box(modifier = Modifier.fillMaxSize()
+            .clickable {
+                applicationScope.exitApplication()
             }
-
-        }) { Text("Open a Git Repository...") }
-        Text("Welcome to GitDown")
+            .align(Alignment.Center)
+            .background(ExitButtonColor)
+        ) {
+            Box(modifier = Modifier.wrapContentSize().align(Alignment.Center)) {
+                Text(
+                    "⨯",
+                    modifier = Modifier.size(14.dp),
+                    textAlign = TextAlign.Center,
+                    fontSize = 12.sp
+                )
+            }
+        }
     }
+}
+
+const val windowHeight = 385
+
+const val windowWidth = 310
+
+@Composable
+private fun InspirationText() {
+    Row {
+        Text("Inspired by ", color = Color.White, fontSize = 10.sp)
+        Text(
+            "Gitup",
+            modifier = Modifier
+                .clickable { openLink("https://gitup.co/") },
+            color = Color.White,
+            textDecoration = TextDecoration.Underline,
+            fontSize = 10.sp
+        )
+        Text(" ❤️", color = Color.White, fontSize = 10.sp)
+    }
+}
+
+fun openLink(url: String) {
+    val desktop = Desktop.getDesktop()
+    desktop.browse(URI.create(url))
+}
+
+@Composable
+private fun FrameWindowScope.Toolbar(applicationScope: ApplicationScope) {
+    WindowDraggableArea {
+        Column(
+            modifier = Modifier.fillMaxWidth().height(36.dp),
+            horizontalAlignment = Alignment.Start
+        ) {
+            ExitButton(applicationScope)
+        }
+    }
+}
+
+fun launchSelectRepositoryDialog() {
+
+    val OS = System.getProperty("os.name")
+
+    if (OS == "Apple") {
+        isAppleDialogOpen.value = true
+    } else {
+        val fileChooser = JFileChooser()
+        fileChooser.fileSelectionMode = JFileChooser.DIRECTORIES_ONLY
+        fileChooser.showOpenDialog(null)
+        val selectedDirectory = fileChooser.selectedFile?.absolutePath?.plus("/.git")
+        if (null != selectedDirectory) {
+            handleDirectorySelection(selectedDirectory)
+        }
+    }
+
+}
+
+@Composable
+fun LaunchScreenButton(text: String, onClick: () -> Any) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(40.dp)
+            .background(ButtonBackgroundColor)
+            .border(1.dp, ButtonBorderColor)
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Text(text, color = Color.White)
+    }
+}
+
+@Composable
+private fun SelectRepositoryButton() =
+    LaunchScreenButton("Open a Git Repository...") { launchSelectRepositoryDialog() }
+
+@Composable
+private fun RecentlyOpenedButton() =
+    LaunchScreenButton("Recently Opened...  ↴") { print("lmao gottem") }
+
+@Composable
+private fun GitDownImage() {
+    Image(
+        modifier = Modifier.size(148.dp),
+        painter = painterResource(resourcePath = "icons/icon_256x256.png"),
+        contentDescription = "Git down icon",
+    )
+}

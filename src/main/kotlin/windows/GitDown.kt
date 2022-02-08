@@ -18,6 +18,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Window
+import androidx.compose.ui.window.WindowPlacement
+import androidx.compose.ui.window.WindowPosition
+import androidx.compose.ui.window.rememberWindowState
 import components.TabButtonColors
 import components.TabButtonLocation
 import components.tabButton
@@ -55,6 +58,12 @@ fun GitDown() {
         onCloseRequest = { GitDownState.gitDirectory.value = "" },
         title = GitDownState.projectName.value,
         icon = painterResource(resourcePath = "icons/icon.png"),
+        state = rememberWindowState(
+            width = windowWidth.dp,
+            height = windowHeight.dp,
+            placement = WindowPlacement.Floating,
+            position = WindowPosition(alignment = Alignment.Center)
+        )
     ) {
 
     this.window.minimumSize = Dimension(800, 500)

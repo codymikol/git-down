@@ -16,7 +16,7 @@ object GitDownState {
 
     val currentTab: MutableState<Tab> = mutableStateOf(Tab.Commit)
 
-    val gitDirectory = mutableStateOf("/home/cody/dev/src/git-down/.git")
+    val gitDirectory = mutableStateOf("")
 
     val selectedFiles = mutableStateListOf<FileDelta>()
 
