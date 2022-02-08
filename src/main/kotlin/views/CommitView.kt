@@ -94,7 +94,7 @@ private fun LineNumberGutter(lineNumber: Int?) {
         .fillMaxHeight()
     ) {
         GitDownTypography.LineNumber(lineNumber?.toString() ?: "")
-    } // todo(mikol): line numbers...
+    }
 }
 
 @Composable

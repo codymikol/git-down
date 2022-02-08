@@ -1,5 +1,6 @@
 ## GitDown
 
+![your-pic-caption-name](./docs/splash_demo.png)
 
 This is a rewrite from the ground up of the popular GitUp
 library available on Mac. It is built using Kotlin and 
@@ -25,12 +26,13 @@ As you can see this is still in early development and
 only a few bits and bops here and there are functional
 
 
-![your-pic-caption-name](./docs/example.png)
 
 
 Things that are working so far ( so you don't waste much time debating on whether you should use this atm )
 
 #### Commit View
+
+![Commit View Example](./docs/example.png)
 
 - [x] Working Directory shows modified files
 - [x] Working Directory shows deleted files
