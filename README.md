@@ -22,12 +22,6 @@ will gnaw away at me until I fix them, not to mention
 complete lack of features at this point.
 
 
-As you can see this is still in early development and
-only a few bits and bops here and there are functional
-
-
-
-
 Things that are working so far ( so you don't waste much time debating on whether you should use this atm )
 
 #### Commit View
@@ -52,12 +46,12 @@ Things that are working so far ( so you don't waste much time debating on whethe
 - [ ] view in diff tool
 - [ ] view in file browser
 - [ ] open file
-- [ ] stage file
-- [ ] unstage file
+- [x] stage file
+- [x] unstage file
 - [ ] discard line changes
 - [ ] working directory empty state
 - [ ] index empty state
-- [ ] commit area guidelines
+- [x] commit area guidelines
 
 #### Stash View
 
