@@ -13,16 +13,21 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import data.file.FileDelta
+import java.io.FileInputStream
 
 @Composable
-fun FileIcon(letter: String, color: Color) = Column(
+fun FileIcon(modifier: Modifier = Modifier, letter: String, color: Color) = Column(
     modifier = Modifier.wrapContentSize(Alignment.Center),
 ) {
-    Box(modifier = Modifier.size(14.dp).clip(RoundedCornerShape(2.dp)).background(color)) {
+    Box(modifier = Modifier.size(14.dp).clip(RoundedCornerShape(2.dp)).background(color).then(modifier)) {
         Text(letter, textAlign = TextAlign.Center, color = Color.White, fontSize = 10.sp, modifier = Modifier.fillMaxSize().padding(2.dp))
     }
 }
 
+@Composable
+fun FileIcon(modifier: Modifier = Modifier, fileDelta: FileDelta) = FileIcon(modifier, fileDelta.letter, fileDelta.color)
+
 @Preview
 @Composable
-fun TestIcon() = FileIcon("IT", Color.Magenta)
+fun TestIcon() = FileIcon(letter = "IT", color = Color.Magenta)

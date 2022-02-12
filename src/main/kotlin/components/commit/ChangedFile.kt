@@ -27,7 +27,7 @@ fun ChangedFile(fileDelta: FileDelta) {
     }
         .fillMaxWidth()
         .padding(2.dp)) {
-        FileIcon(fileDelta.letter, fileDelta.color)
+        FileIcon(letter = fileDelta.letter, color = fileDelta.color)
         Text(fileDelta.location.toString().split("/").last(), modifier = Modifier.padding(6.dp, 0.dp, 0.dp, 0.dp), softWrap = false, overflow = TextOverflow.Ellipsis, color = Color.White, fontSize = 12.sp)
     }
 }
