@@ -17,10 +17,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
@@ -288,7 +285,6 @@ private fun FileDeltaPanel(title: String, deltas: State<Set<FileDelta>>) {
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .padding(6.dp, 0.dp, 0.dp, 0.dp)
                 .verticalScroll(state = ScrollState(initial = 0))
         ) {
             Spacer(Modifier.height(6.dp))
