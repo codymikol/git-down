@@ -7,7 +7,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
@@ -18,6 +17,8 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -34,6 +35,7 @@ import extensions.stageAll
 import kotlinx.coroutines.launch
 import state.GitDownState
 import typography.GitDownTypography
+
 
 val commitMessage = mutableStateOf("")
 
@@ -65,26 +67,51 @@ fun CommitView() {
         }
         Column(Modifier.weight(10f)) {
             Column(modifier = Modifier.fillMaxWidth().background(Colors.LightGrayBackground)) {
-                BasicTextField(
-                    cursorBrush = Brush.verticalGradient(0.00f to Color.White),
-                    value = commitMessage.value,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(top = 8.dp, start = 8.dp, bottom = 0.dp, end = 8.dp)
-                        .background(Colors.DarkGrayBackground),
-                    textStyle = TextStyle(color = Color.White, fontSize = 12.sp),
-                    onValueChange = { commitMessage.value = it },
-                    decorationBox = { innerTextField ->
-                        Row(modifier = Modifier.fillMaxWidth().padding(8.dp, 4.dp, 8.dp, 0.dp)) {
-                            // todo(mikol): use this doodad to make the guidelines ;)
-                            innerTextField()
-                        }
-                    }
-                )
+                CommitMessageInput()
             }
         }
         CommitBottomToolbar(commitMessage)
     }
+}
+
+fun DrawScope.drawCommitGuideline(xOffset: Float, lineHeight: Float, spaceHeight: Float) {
+
+    val pathEffect =
+        PathEffect.dashPathEffect(floatArrayOf(lineHeight, spaceHeight), 0f)
+
+    drawLine(
+        color = Color.White,
+        start = Offset(xOffset, 0f),
+        end = Offset(xOffset, size.height),
+        pathEffect = pathEffect,
+        strokeWidth = 0.2f,
+    )
+
+}
+
+@Composable
+private fun CommitMessageInput() {
+    BasicTextField(
+        cursorBrush = Brush.verticalGradient(0.00f to Color.White),
+        value = commitMessage.value,
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(top = 8.dp, start = 8.dp, bottom = 0.dp, end = 8.dp)
+            .background(Colors.DarkGrayBackground),
+        textStyle = TextStyle(color = Color.White, fontSize = 12.sp),
+        onValueChange = { commitMessage.value = it },
+        decorationBox = { innerTextField ->
+            Row(modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp, 4.dp, 8.dp, 0.dp)
+                .drawBehind {
+                    drawCommitGuideline(330f, 2f, 4f)
+                    drawCommitGuideline(475f, 4f, 2f)
+                }) {
+                innerTextField()
+            }
+        }
+    )
 }
 
 @Composable

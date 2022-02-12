@@ -8,4 +8,5 @@ object Colors {
     val DarkGrayBackground = Color(30, 30, 30)
     val LightGrayText = Color(153, 153, 153)
     val DisabledGray = Color(67, 67, 67)
+    val CommitGuidelines = Color(86,86,86)
 }
