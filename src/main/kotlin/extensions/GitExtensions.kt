@@ -33,6 +33,26 @@ suspend fun Git.stageAll(): Unit = withContext(Dispatchers.IO) {
 
 }
 
+suspend fun Git.stageFile(location: String): Unit = withContext(Dispatchers.IO) {
+
+    this@stageFile
+        .add()
+        .addFilepattern(location)
+        .call()
+        .also { logger.info("Staging file $location") }
+
+}
+
+suspend fun Git.unstageFile(location: String) = withContext(Dispatchers.IO) {
+
+    this@unstageFile
+        .reset()
+        .addPath(location)
+        .call()
+        .also { logger.info("unstaging file $location") }
+
+}
+
 suspend fun Git.unstageAll() = withContext(Dispatchers.IO) {
     this@unstageAll
         .reset()

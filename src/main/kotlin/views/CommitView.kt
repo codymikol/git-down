@@ -39,7 +39,10 @@ import data.diff.Line
 import data.diff.LineType
 import data.file.FileDelta
 import data.file.Index
+import data.file.Status
 import extensions.stageAll
+import extensions.stageFile
+import extensions.unstageFile
 import kotlinx.coroutines.launch
 import state.GitDownState
 import typography.GitDownTypography
@@ -142,12 +145,6 @@ private fun ModificationTypeGutter(line: Line) {
     Box(modifier = Modifier.width(24.dp).fillMaxSize()) { GitDownTypography.DiffType(line.symbol) }
 }
 
-@Preview
-@Composable
-fun TestFileHeader() {
-    ChangedFileHeader(Index.FileModified(Path.of("/home/cody/dev/src/git-down/src/main/kotlin/components/commit/ChangedFile.kt")))
-}
-
 private class HeaderButtonColors : ButtonColors {
     @Composable
     override fun backgroundColor(enabled: Boolean): State<Color> {
@@ -163,6 +160,8 @@ private class HeaderButtonColors : ButtonColors {
 
 @Composable
 fun ChangedFileHeader(fileDelta: FileDelta) {
+
+    val scope = rememberCoroutineScope()
 
     Row(
         modifier = Modifier.height(32.dp)
@@ -203,12 +202,31 @@ fun ChangedFileHeader(fileDelta: FileDelta) {
             ) {
 
                 OutlinedButton(
-                    onClick = { print(fileDelta.location) },
+                    onClick = {
+                        scope.launch {
+
+                            val path = fileDelta.location.toString()
+
+                            when (fileDelta.type) {
+                                Status.INDEX -> GitDownState.git.value.unstageFile(path)
+                                Status.WORKING_DIRECTORY -> GitDownState.git.value.stageFile(path)
+                            }
+
+                            GitDownState.selectedFiles.remove(fileDelta)
+
+                        }
+                    },
                     modifier = Modifier.height(24.dp).padding(0.dp),
                     colors = HeaderButtonColors(),
                     contentPadding = PaddingValues(12.dp, 0.dp)
                 ) {
-                    Text("Stage File", fontSize = 9.sp)
+
+                    val actionText = when (fileDelta.type) {
+                        Status.INDEX -> "Unstage File"
+                        Status.WORKING_DIRECTORY -> "Stage File"
+                    }
+
+                    Text(actionText, fontSize = 9.sp)
                 }
 
                 Spacer(modifier = Modifier.width(6.dp))
@@ -220,6 +238,7 @@ fun ChangedFileHeader(fileDelta: FileDelta) {
 
 @Composable
 private fun DiffPanel() {
+
     GitDownState.selectedFiles.forEach {
 
         ChangedFileHeader(it)
