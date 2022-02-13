@@ -1,7 +1,7 @@
 ## GitDown
 
 <div style="width:100%; display:flex; justify-content:center;">
-![your-pic-caption-name](./docs/splash_demo.png)
+    <img src="https://github.com/codymikol/git-down/blob/main/docs/splash_demo.png?raw=true"/>
 </div>
 
 This is a rewrite from the ground up of the popular GitUp
