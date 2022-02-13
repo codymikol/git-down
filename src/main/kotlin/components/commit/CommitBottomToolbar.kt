@@ -44,7 +44,10 @@ fun CommitBottomToolbar(commitMessage: MutableState<String>) {
             .padding(10.dp)
     ) {
         SlimButton("Unstage All") {
-            scope.launch { GitDownState.git.value.unstageAll() }
+            scope.launch {
+                GitDownState.git.value.unstageAll()
+                GitDownState.selectedFiles.clear()
+            }
         }
         BottomStatusMessage()
         Row(verticalAlignment = Alignment.CenterVertically) {

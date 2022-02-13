@@ -316,7 +316,10 @@ private fun CommitWorkingDirectory() {
         ) {
             SlimButton("Discard All...")
             SlimButton("Stage All") {
-                scope.launch { GitDownState.git.value.stageAll() }
+                scope.launch {
+                    GitDownState.git.value.stageAll()
+                    GitDownState.selectedFiles.clear()
+                }
             }
         }
     }
