@@ -1,10 +1,9 @@
 package extensions
 
+import androidx.compose.runtime.MutableState
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.eclipse.jgit.api.Git
-import org.eclipse.jgit.lib.PersonIdent
 import org.slf4j.LoggerFactory
 import state.GitDownState
 
@@ -78,4 +77,36 @@ suspend fun Git.amendAll(message: String) = withContext(Dispatchers.IO) {
         .call()
         .also { logger.info("Amending index")}
         .unit()
+}
+
+private fun <C> MutableState<Set<C>>.assignWhenDifferent(new: Set<C>) {
+    if(!this.value.equals(new)) this.value = new
+}
+
+fun Git.scanForChanges() {
+
+    println("SCANNING!!!")
+
+    try {
+        val newStatus = this.status().call()
+
+        GitDownState.removed.assignWhenDifferent(newStatus.removed)
+        GitDownState.added.assignWhenDifferent(newStatus.added)
+        GitDownState.missing.assignWhenDifferent(newStatus.missing)
+        GitDownState.conflicting.assignWhenDifferent(newStatus.conflicting)
+        GitDownState.modified.assignWhenDifferent(newStatus.modified)
+        GitDownState.untracked.assignWhenDifferent(newStatus.untracked)
+        GitDownState.ignoredNotInIndex.assignWhenDifferent(newStatus.ignoredNotInIndex)
+        GitDownState.uncommittedChanges.assignWhenDifferent(newStatus.uncommittedChanges)
+
+        GitDownState.selectedFiles.forEach { fileDelta ->
+
+//            print(fileDelta.location)
+            //todo(mikol): see if selectedFiles DIFFs are different than the current Diffs, if so replace them.
+
+        }
+    } catch (e: Exception) {
+        logger.error("Ehh")
+    }
+
 }

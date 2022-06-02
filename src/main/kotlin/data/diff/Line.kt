@@ -4,8 +4,8 @@ class Line(
     val type: LineType,
     val value: String,
     val symbol: String,
-    var originalLineNumber: Int?,
-    var newLineNumber: Int?,
+    var originalLineNumber: UInt?,
+    var newLineNumber: UInt?,
 ) {
 
     companion object {

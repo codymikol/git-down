@@ -61,7 +61,7 @@ index 39d9a33..960dae4 100644
                 val example = hunk?.lines?.getOrNull(6)
 
                 it("should be the line I expect to be testing") {
-                    example?.value shouldBe "+            val path = this.dir.toString() + \"/\" +  filename"
+                    example?.value shouldBe "            val path = this.dir.toString() + \"/\" +  filename"
                 }
 
                 it("should have the correct type") {
@@ -75,7 +75,7 @@ index 39d9a33..960dae4 100644
                 val example = hunk?.lines?.getOrNull(5)
 
                 it("should be the line I expect to be testing") {
-                    example?.value shouldBe "-            val path = this.dir.toString() + \"/\" + filename"
+                    example?.value shouldBe "            val path = this.dir.toString() + \"/\" + filename"
                 }
 
                 it("should have the correct type") {
@@ -89,7 +89,7 @@ index 39d9a33..960dae4 100644
                 val example = hunk?.lines?.getOrNull(7)
 
                 it("should be the line I expect to be testing") {
-                    example?.value shouldBe "             File(path).also { file -> file.parentFile.mkdirs() }.writeText(\"Foo\")"
+                    example?.value shouldBe "            File(path).also { file -> file.parentFile.mkdirs() }.writeText(\"Foo\")"
                 }
 
                 it("should have the correct type") {

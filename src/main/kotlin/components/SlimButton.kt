@@ -1,13 +1,10 @@
 package components
 
 import androidx.compose.desktop.ui.tooling.preview.Preview
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonColors
 import androidx.compose.material.Text
-import androidx.compose.material.darkColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
@@ -45,4 +42,5 @@ fun SlimButton(
 
 @Composable
 @Preview
-fun PreviewSlimButton() = SlimButton("Hello") { /** noop **/ }
+fun PreviewSlimButton() = /** noop **/
+    SlimButton("Hello") { /** noop **/ }

@@ -5,7 +5,6 @@ import data.file.FileDelta
 import data.file.Index
 import data.file.WorkingDirectory
 import org.eclipse.jgit.api.Git
-import org.eclipse.jgit.revwalk.RevCommit
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder
 import tabs.Tab
 import java.io.File
@@ -54,29 +53,27 @@ object GitDownState {
         (git.value.repository?.refDatabase?.refs?.getOrNull(0)?.isSymbolic?.not()) ?: false
     }
 
-    val status = derivedStateOf { git.value.status().call() }
-
-    val removed = derivedStateOf { status.value.removed }
-
-    val added = derivedStateOf { status.value.added }
-
-    val changed = derivedStateOf { status.value.changed }
-
-    val missing = derivedStateOf { status.value.missing }
-
-    val conflicting = derivedStateOf { status.value.conflicting }
-
-    val modified = derivedStateOf { status.value.modified }
-
-    val untracked = derivedStateOf { status.value.untracked }
-
-    val ignoredNotInIndex = derivedStateOf { status.value.ignoredNotInIndex }
-
-    val uncommittedChanged = derivedStateOf {
-        status.value.uncommittedChanges
+    val status = derivedStateOf {
+        git.value.status().call()
     }
 
-    private val uncommittedChanges = derivedStateOf { status.value.uncommittedChanges }
+    val removed = mutableStateOf(emptySet<String>())
+
+    val added = mutableStateOf(emptySet<String>())
+
+    val changed = mutableStateOf(emptySet<String>())
+
+    val missing = mutableStateOf(emptySet<String>())
+
+    val conflicting = mutableStateOf(emptySet<String>())
+
+    val modified = mutableStateOf(emptySet<String>())
+
+    val untracked = mutableStateOf(emptySet<String>())
+
+    val ignoredNotInIndex = mutableStateOf(emptySet<String>())
+
+    val uncommittedChanges = mutableStateOf(emptySet<String>())
 
     val workingDirectoryFilesModified = derivedStateOf {
         modified.value.filter { uncommittedChanges.value.contains(it) }

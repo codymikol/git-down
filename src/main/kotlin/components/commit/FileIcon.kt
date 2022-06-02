@@ -14,7 +14,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import data.file.FileDelta
-import java.io.FileInputStream
 
 @Composable
 fun FileIcon(modifier: Modifier = Modifier, letter: String, color: Color) = Column(

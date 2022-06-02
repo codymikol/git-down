@@ -1,9 +1,9 @@
 package state
 
 import extensions.commitAll
+import extensions.scanForChanges
 import extensions.stageAll
 import io.kotest.core.spec.style.DescribeSpec
-import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.shouldBe
 import org.eclipse.jgit.api.Git
 import java.io.File
@@ -47,6 +47,7 @@ class GitDownStateSpec : DescribeSpec({
         fun transferIntoGitDownState() = this.also {
             this.close()
             GitDownState.gitDirectory.value = this.dir.toString() + "/.git"
+            GitDownState.git.value.scanForChanges()
         }
 
         fun closeGitDownState() = this.also {
@@ -504,7 +505,6 @@ class GitDownStateSpec : DescribeSpec({
 
             }
         }
-
 
     }
 })

@@ -3,38 +3,44 @@ package windows
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.Button
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.rememberWindowState
-import components.TabButtonColors
 import components.TabButtonLocation
 import components.tabButton
 import data.Colors
+import extensions.scanForChanges
 import state.GitDownState
+import state.Keys
 import tabs.Tab
 import views.CommitView
 import views.MapView
 import views.StashView
 import java.awt.Dimension
+import kotlin.concurrent.fixedRateTimer
 
 @Preview
 @Composable
 fun GitDown() {
+
+    val timer = fixedRateTimer(
+        "Scan For Changes",
+        daemon = true,
+        period = 1000L,
+        action = { GitDownState.git.value.scanForChanges() })
 
     org.eclipse.jgit.lib.Repository.getGlobalListenerList().addIndexChangedListener {
         GitDownState.test.value += 1
@@ -55,7 +61,14 @@ fun GitDown() {
     }
 
     Window(
-        onCloseRequest = { GitDownState.gitDirectory.value = "" },
+        onKeyEvent = {
+            Keys.isShiftPressed.value = it.isShiftPressed
+            false
+        },
+        onCloseRequest = {
+            timer.cancel()
+            GitDownState.gitDirectory.value = ""
+        },
         title = GitDownState.projectName.value,
         icon = painterResource(resourcePath = "icons/icon.png"),
         state = rememberWindowState(
@@ -66,7 +79,7 @@ fun GitDown() {
         )
     ) {
 
-    this.window.minimumSize = Dimension(800, 500)
+        this.window.minimumSize = Dimension(800, 500)
 
         CompositionLocalProvider(
             LocalScrollbarStyle provides ScrollbarStyle(
@@ -78,7 +91,7 @@ fun GitDown() {
                 hoverColor = MaterialTheme.colors.onSurface.copy(alpha = 0.50f)
             )
         ) {
-            Column(modifier = Modifier.fillMaxSize().background(color = data.Colors.DarkGrayBackground)) {
+            Column(modifier = Modifier.fillMaxSize().background(color = Colors.DarkGrayBackground)) {
                 Row(
                     modifier = Modifier.requiredHeight(48.dp).fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween

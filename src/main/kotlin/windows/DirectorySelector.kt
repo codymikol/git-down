@@ -7,28 +7,35 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.window.WindowDraggableArea
+import androidx.compose.material.DropdownMenu
+import androidx.compose.material.DropdownMenuItem
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.awt.ComposeWindow
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.*
 import data.Colors
+import data.recent.RecentProject
+import data.recent.RecentProjects
+import repositories.RecentProjectRepository
 import state.GitDownState
-import java.awt.Desktop
-import java.awt.Dimension
-import java.awt.FileDialog
-import java.awt.Frame
+import kotlinx.coroutines.DelicateCoroutinesApi
+import org.koin.java.KoinJavaComponent.inject
+import java.awt.*
+import java.io.File
 import java.net.URI
 import javax.swing.JFileChooser
+import javax.swing.JFrame
 
 
 val isAppleDialogOpen = mutableStateOf(false)
@@ -38,6 +45,44 @@ private val ExitButtonColor = Color(157, 157, 157)
 private val ButtonBackgroundColor = Color(53, 53, 53)
 private val ButtonBorderColor = Color(60, 60, 60)
 
+private val recentProjectsRepository: RecentProjectRepository by inject(RecentProjectRepository::class.java)
+
+@Composable
+fun RecentProjectSelector(x: Int, y: Int, closeHandler: () -> Unit, recent: RecentProjects) {
+    AwtWindow(create = {
+        ComposeWindow().apply {
+            //todo(mikol): really big hack here for this menu, might just redo into something more manageable...
+            setBounds(x + 5, y + 330, 290, 48 * recent.projects.size.coerceAtMost(5) + 16)
+            focusableWindowState = false
+            defaultCloseOperation = JFrame.DISPOSE_ON_CLOSE
+            type = java.awt.Window.Type.POPUP
+            isAlwaysOnTop = true
+            isUndecorated = true
+            background = java.awt.Color(0, 0,0,0)
+            isResizable = false
+            isVisible = true
+            setContent {
+                DropdownMenu(
+                    modifier = Modifier.background(Color.Transparent).fillMaxWidth(),
+                    expanded = true,
+                    onDismissRequest = {}) {
+                    recent.projects.forEach {
+                        DropdownMenuItem(modifier = Modifier.fillMaxWidth(), onClick = {
+                            handleDirectorySelection(it.location)
+                            closeHandler()
+                        }) {
+                            Text(it.name)
+                        }
+                    }
+                }
+            }
+        }
+    },
+        dispose = {})
+
+}
+
+@DelicateCoroutinesApi
 @Composable
 fun DirectorySelector(applicationScope: ApplicationScope) =
     Window(
@@ -53,7 +98,6 @@ fun DirectorySelector(applicationScope: ApplicationScope) =
             position = WindowPosition(alignment = Alignment.Center)
         )
     ) {
-
         this.window.isResizable = false
         this.window.minimumSize = Dimension(windowWidth, windowHeight)
         this.window.size = Dimension(windowWidth, windowHeight)
@@ -64,6 +108,13 @@ fun DirectorySelector(applicationScope: ApplicationScope) =
         )
 
         val borderSize = 12.dp
+
+        val showRecentProjectDropdown = remember { mutableStateOf(false) }
+        val recentProjects = remember { recentProjectsRepository.getRecentProjects() }
+
+        if (showRecentProjectDropdown.value) {
+            RecentProjectSelector(window.x, window.y, { showRecentProjectDropdown.value = false }, recentProjects)
+        }
 
         Box(
             modifier = Modifier
@@ -86,7 +137,9 @@ fun DirectorySelector(applicationScope: ApplicationScope) =
                 InspirationText()
                 Spacer(modifier = Modifier.height(14.dp))
                 SelectRepositoryButton()
-                RecentlyOpenedButton()
+                RecentlyOpenedButton {
+                    showRecentProjectDropdown.value = !showRecentProjectDropdown.value
+                }
                 SocialFooter()
             }
 
@@ -116,10 +169,11 @@ private fun SocialButton(
     iconSrc: String,
     text: String,
     onClick: () -> Any
-) = Box(modifier = Modifier
-    .wrapContentWidth()
-    .height(24.dp)
-    .clickable { onClick() }, contentAlignment = Alignment.Center
+) = Box(
+    modifier = Modifier
+        .wrapContentWidth()
+        .height(24.dp)
+        .clickable { onClick() }, contentAlignment = Alignment.Center
 ) {
     Row {
         Image(
@@ -160,6 +214,10 @@ private fun AppleFileWindow(
 )
 
 fun handleDirectorySelection(dir: String) {
+    val dirFile = File(dir)
+    recentProjectsRepository.addRecentProject(
+        RecentProject(name = dirFile.parentFile.name, location = dir)
+    )
     GitDownState.gitDirectory.value = dir
     isAppleDialogOpen.value = false
 }
@@ -274,8 +332,8 @@ private fun SelectRepositoryButton() =
     LaunchScreenButton("Open a Git Repository...") { launchSelectRepositoryDialog() }
 
 @Composable
-private fun RecentlyOpenedButton() =
-    LaunchScreenButton("Recently Opened...  ↴") { print("lmao gottem") }
+private fun RecentlyOpenedButton(onClick: () -> Unit = {}) =
+    LaunchScreenButton("Recently Opened...  ↴") { onClick() }
 
 @Composable
 private fun GitDownImage() {

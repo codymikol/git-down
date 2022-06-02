@@ -14,8 +14,8 @@ class Hunk(
 
             val header = HunkHeader.make(delimiter)
 
-            var originalLineNumberIncrementer = header.deletedLineStart
-            var newLineNumberIncrementer = header.deletedLineStart
+            var originalLineNumberIncrementer = header.fromFileLineNumbersStart
+            var newLineNumberIncrementer = header.fromFileLineNumbersStart
 
             val lines = hunkLines.drop(1).map {
 
