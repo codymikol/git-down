@@ -30,6 +30,8 @@ suspend fun Git.stageAll(): Unit = withContext(Dispatchers.IO) {
         .also { logger.info("Staging all files") }
         .unit()
 
+    scanForChanges()
+
 }
 
 suspend fun Git.stageFile(location: String): Unit = withContext(Dispatchers.IO) {
@@ -39,6 +41,8 @@ suspend fun Git.stageFile(location: String): Unit = withContext(Dispatchers.IO) 
         .addFilepattern(location)
         .call()
         .also { logger.info("Staging file $location") }
+
+    scanForChanges()
 
 }
 
@@ -50,6 +54,8 @@ suspend fun Git.unstageFile(location: String) = withContext(Dispatchers.IO) {
         .call()
         .also { logger.info("unstaging file $location") }
 
+    scanForChanges()
+
 }
 
 suspend fun Git.unstageAll() = withContext(Dispatchers.IO) {
@@ -58,6 +64,9 @@ suspend fun Git.unstageAll() = withContext(Dispatchers.IO) {
         .call()
         .also { logger.info("Unstaging all files") }
         .unit()
+
+    scanForChanges()
+
 }
 
 suspend fun Git.commitAll(message: String) = withContext(Dispatchers.IO) {
@@ -67,6 +76,9 @@ suspend fun Git.commitAll(message: String) = withContext(Dispatchers.IO) {
         .call()
         .also { logger.info("Committing index")}
         .unit()
+
+    scanForChanges()
+
 }
 
 suspend fun Git.amendAll(message: String) = withContext(Dispatchers.IO) {
@@ -77,6 +89,9 @@ suspend fun Git.amendAll(message: String) = withContext(Dispatchers.IO) {
         .call()
         .also { logger.info("Amending index")}
         .unit()
+
+    scanForChanges()
+
 }
 
 private fun <C> MutableState<Set<C>>.assignWhenDifferent(new: Set<C>) {
