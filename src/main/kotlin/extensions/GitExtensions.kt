@@ -102,6 +102,7 @@ fun Git.scanForChanges() {
 
     println("SCANNING!!!")
 
+
     try {
         val newStatus = this.status().call()
 

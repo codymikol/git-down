@@ -4,5 +4,6 @@ enum class LineType {
     Added,
     Removed,
     Unchanged,
+    NoNewline,
     Unknown
 }

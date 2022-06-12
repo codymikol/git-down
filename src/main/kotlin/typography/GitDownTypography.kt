@@ -44,7 +44,7 @@ object GitDownTypography {
     }
 
     @Composable
-    fun DiffContent(value: String) {
+    fun DiffContent(value: String, color: Color) {
         Text(
             value,
             modifier = Modifier.drawBehind {
@@ -52,6 +52,8 @@ object GitDownTypography {
                 // todo(mikol): horrible hack to get gutter lines working on wrapped text...
                 // Been working on this all day and just want to get the feature in, please fix this
                 // future Cody, I know you can do it!
+
+                // future cody here... What is this? future future cody, please figure it out, thanks!...
 
                 listOf(-20f,-56f).forEach {
                     drawLine(
@@ -62,7 +64,7 @@ object GitDownTypography {
                     )
                 }
             },
-            color = Color.White,
+            color = color,
             fontFamily = FontFamily.Monospace,
             fontSize = 12.sp
         )

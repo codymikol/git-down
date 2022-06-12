@@ -1,5 +1,7 @@
 package data.diff
 
+import data.diff.LineType.*
+
 class Line(
     val type: LineType,
     val value: String,
@@ -11,25 +13,25 @@ class Line(
     companion object {
         fun make(line: String): Line {
 
-            val typeChar = line[0]
-
-            val type = when(typeChar) {
-                '+' -> LineType.Added
-                '-' -> LineType.Removed
-                ' ' -> LineType.Unchanged
-                else -> LineType.Unknown
+            val type = when (line[0]) {
+                '+' -> Added
+                '-' -> Removed
+                ' ' -> Unchanged
+                '\\' -> NoNewline
+                else -> Unknown
             }
 
-            val symbol = when(type) {
-               LineType.Added, LineType.Unchanged -> typeChar
-                LineType.Removed -> "—"
-               LineType.Unknown -> "?"
+            val symbol = when (type) {
+                Added -> "+"
+                Removed -> "—"
+                Unknown -> "?"
+                NoNewline, Unchanged -> " "
             }
 
             return Line(
                 type,
                 line.drop(1),
-                symbol.toString(),
+                symbol,
                 null,
                 null
             )

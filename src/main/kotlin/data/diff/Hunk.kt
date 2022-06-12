@@ -1,5 +1,7 @@
 package data.diff
 
+import data.diff.LineType.*
+
 class Hunk(
     val delimiter: String,
     val lines: List<Line>,
@@ -22,17 +24,13 @@ class Hunk(
                 val line = Line.make(it)
 
                 line.originalLineNumber = when(line.type) {
-                    LineType.Removed -> originalLineNumberIncrementer++
-                    LineType.Unknown -> null
-                    LineType.Unchanged -> originalLineNumberIncrementer++
-                    LineType.Added -> null
+                    Removed, Unchanged -> originalLineNumberIncrementer++
+                    Unknown, Added, NoNewline -> null
                 }
 
                 line.newLineNumber = when(line.type) {
-                    LineType.Removed -> null
-                    LineType.Unknown -> null
-                    LineType.Unchanged -> newLineNumberIncrementer++
-                    LineType.Added -> newLineNumberIncrementer++
+                    Unchanged, Added -> newLineNumberIncrementer++
+                    Removed, Unknown, NoNewline -> null
                 }
 
                 line

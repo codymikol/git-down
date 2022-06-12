@@ -31,6 +31,7 @@ import data.Colors
 import data.diff.Hunk
 import data.diff.Line
 import data.diff.LineType
+import data.diff.LineType.*
 import data.file.FileDelta
 import data.file.Status
 import extensions.*
@@ -256,10 +257,16 @@ private fun DiffPanel() {
             hunk.lines.forEach { line ->
 
                 val color = when (line.type) {
-                    LineType.Added -> Color(40, 88, 41)
-                    LineType.Removed -> Color(88, 39, 39)
-                    LineType.Unchanged -> Color.Transparent
+                    Added -> Color(40, 88, 41)
+                    Removed -> Color(88, 39, 39)
+                    Unchanged -> Color.Transparent
+                    NoNewline -> Color.DarkGray
                     else -> Color.Yellow // todo(mikol): Bake these colors into the Line
+                }
+
+                val textColor = when (line.type) {
+                    Added, Removed, Unchanged, Unknown -> Color.White
+                    NoNewline -> Color.Gray
                 }
 
                 Box(modifier = Modifier.background(color).fillMaxWidth().wrapContentHeight()) {
@@ -267,7 +274,7 @@ private fun DiffPanel() {
                         LineNumberGutter(line.originalLineNumber)
                         LineNumberGutter(line.newLineNumber)
                         ModificationTypeGutter(line)
-                        GitDownTypography.DiffContent(line.value)
+                        GitDownTypography.DiffContent(line.value, textColor)
                     }
                 }
             }
