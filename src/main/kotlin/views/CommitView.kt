@@ -21,6 +21,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.codymikol.components.commit.ConfirmDialog
 import components.SlimButton
 import components.Subheader
 import components.commit.ChangedFile
@@ -32,19 +33,33 @@ import data.diff.Line
 import data.diff.LineType
 import data.file.FileDelta
 import data.file.Status
-import extensions.stageAll
-import extensions.stageFile
-import extensions.unstageFile
+import extensions.*
 import kotlinx.coroutines.launch
 import state.GitDownState
 import typography.GitDownTypography
 
 
 val commitMessage = mutableStateOf("")
+val isConfirmingDiscardAll = mutableStateOf(false)
 
 @Composable
 @Preview
 fun CommitView() {
+
+    val scope = rememberCoroutineScope()
+
+    if (isConfirmingDiscardAll.value) {
+        ConfirmDialog(title = "Discard Changes?",
+            content = "This will discard all changes in the working directory, are you sure?",
+            { isConfirmingDiscardAll.value = false },
+            {
+                scope.launch {
+                    GitDownState.git.value.discardAllWorkingDirectory()
+                    isConfirmingDiscardAll.value = false
+               }
+            }
+        )
+    }
 
     Column(
         modifier = Modifier.fillMaxWidth().fillMaxHeight(),
@@ -308,7 +323,9 @@ private fun CommitWorkingDirectory() {
                 .background(Colors.MediumGrayBackground)
                 .padding(horizontal = 8.dp)
         ) {
-            SlimButton("Discard All...")
+            SlimButton("Discard All...") {
+                isConfirmingDiscardAll.value = true
+            }
             SlimButton("Stage All") {
                 scope.launch {
                     GitDownState.git.value.stageAll()

@@ -81,8 +81,6 @@ fun RecentProjectSelector(x: Int, y: Int, closeHandler: () -> Unit, recent: Rece
         dispose = {})
 
 }
-
-@DelicateCoroutinesApi
 @Composable
 fun DirectorySelector(applicationScope: ApplicationScope) =
     Window(

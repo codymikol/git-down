@@ -11,10 +11,18 @@ class GitExtensions
 
 private val logger = LoggerFactory.getLogger(GitExtensions::class.java)
 
-suspend fun Git.stageAll(): Unit = withContext(Dispatchers.IO) {
+/**
+ *   This will wrap an issued git command in a suspended IO coroutine
+ *   and subsequently scan for changes so the UI can be updated
+ */
+private suspend fun Git.command(fn: () -> Unit) = withContext(Dispatchers.IO) {
+    fn()
+    scanForChanges()
+}
+
+suspend fun Git.stageAll(): Unit = command {
 
     // setUpdate allows us to remove deleted files, but disallows adding new files. So we have to do this twice...
-
     this@stageAll
         .add()
         .addFilepattern(".")
@@ -30,58 +38,53 @@ suspend fun Git.stageAll(): Unit = withContext(Dispatchers.IO) {
         .also { logger.info("Staging all files") }
         .unit()
 
-    scanForChanges()
-
 }
 
-suspend fun Git.stageFile(location: String): Unit = withContext(Dispatchers.IO) {
+suspend fun Git.discardFile(location: String): Unit = command {
+    TODO()
+}
 
+suspend fun Git.discardAllWorkingDirectory(): Unit = command {
+    this@discardAllWorkingDirectory
+        .clean()
+        .setCleanDirectories(true)
+        .call()
+        .also { logger.info("Discarding working directory") }
+}
+
+suspend fun Git.stageFile(location: String): Unit = command {
     this@stageFile
         .add()
         .addFilepattern(location)
         .call()
         .also { logger.info("Staging file $location") }
-
-    scanForChanges()
-
 }
 
-suspend fun Git.unstageFile(location: String) = withContext(Dispatchers.IO) {
-
+suspend fun Git.unstageFile(location: String) = command {
     this@unstageFile
         .reset()
         .addPath(location)
         .call()
         .also { logger.info("unstaging file $location") }
-
-    scanForChanges()
-
 }
-
-suspend fun Git.unstageAll() = withContext(Dispatchers.IO) {
+suspend fun Git.unstageAll() = command {
     this@unstageAll
         .reset()
         .call()
         .also { logger.info("Unstaging all files") }
         .unit()
-
-    scanForChanges()
-
 }
 
-suspend fun Git.commitAll(message: String) = withContext(Dispatchers.IO) {
+suspend fun Git.commitAll(message: String) = command {
     this@commitAll
         .commit()
         .apply { this.message = message }
         .call()
         .also { logger.info("Committing index")}
         .unit()
-
-    scanForChanges()
-
 }
 
-suspend fun Git.amendAll(message: String) = withContext(Dispatchers.IO) {
+suspend fun Git.amendAll(message: String) = command {
     this@amendAll
         .commit()
         .setAmend(true)
@@ -89,9 +92,6 @@ suspend fun Git.amendAll(message: String) = withContext(Dispatchers.IO) {
         .call()
         .also { logger.info("Amending index")}
         .unit()
-
-    scanForChanges()
-
 }
 
 private fun <C> MutableState<Set<C>>.assignWhenDifferent(new: Set<C>) {
@@ -121,7 +121,7 @@ fun Git.scanForChanges() {
 
         }
     } catch (e: Exception) {
-        logger.error("Ehh")
+        logger.error("An exception was thrown while updating git state: ${e.message}")
     }
 
 }
