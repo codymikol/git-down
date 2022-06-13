@@ -45,11 +45,18 @@ suspend fun Git.discardFile(location: String): Unit = command {
 }
 
 suspend fun Git.discardAllWorkingDirectory(): Unit = command {
+
+    this@discardAllWorkingDirectory
+        .checkout()
+        .setAllPaths(true)
+        .call()
+
     this@discardAllWorkingDirectory
         .clean()
         .setCleanDirectories(true)
         .call()
         .also { logger.info("Discarding working directory") }
+
 }
 
 suspend fun Git.stageFile(location: String): Unit = command {
