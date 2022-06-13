@@ -61,9 +61,12 @@ fun CommitBottomToolbar(commitMessage: MutableState<String>) {
                             GitDownState.git.value.amendAll(commitMessage.value)
                             amendEnabled.value = false
                         }
-                        false -> GitDownState.git.value.commitAll(commitMessage.value)
+                        false -> {
+                            GitDownState.git.value.commitAll(commitMessage.value)
+                        }
                     }
 
+                    GitDownState.selectedFiles.clear()
                     commitMessage.value = ""
 
                 }

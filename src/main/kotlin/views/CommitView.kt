@@ -56,6 +56,7 @@ fun CommitView() {
             {
                 scope.launch {
                     GitDownState.git.value.discardAllWorkingDirectory()
+                    GitDownState.selectedFiles.clear()
                     isConfirmingDiscardAll.value = false
                }
             }
