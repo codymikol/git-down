@@ -74,6 +74,7 @@ suspend fun Git.unstageFile(location: String) = command {
         .call()
         .also { logger.info("unstaging file $location") }
 }
+
 suspend fun Git.unstageAll() = command {
     this@unstageAll
         .reset()
@@ -87,7 +88,7 @@ suspend fun Git.commitAll(message: String) = command {
         .commit()
         .apply { this.message = message }
         .call()
-        .also { logger.info("Committing index")}
+        .also { logger.info("Committing index") }
         .unit()
 }
 
@@ -97,39 +98,32 @@ suspend fun Git.amendAll(message: String) = command {
         .setAmend(true)
         .apply { this.message = message }
         .call()
-        .also { logger.info("Amending index")}
+        .also { logger.info("Amending index") }
         .unit()
 }
 
 private fun <C> MutableState<Set<C>>.assignWhenDifferent(new: Set<C>) {
-    if(!this.value.equals(new)) this.value = new
+    if (!this.value.equals(new)) this.value = new
 }
 
-fun Git.scanForChanges() {
+fun Git.scanForChanges() = try {
+    val newStatus = this.status().call()
 
-    println("SCANNING!!!")
+    GitDownState.removed.assignWhenDifferent(newStatus.removed)
+    GitDownState.added.assignWhenDifferent(newStatus.added)
+    GitDownState.missing.assignWhenDifferent(newStatus.missing)
+    GitDownState.conflicting.assignWhenDifferent(newStatus.conflicting)
+    GitDownState.modified.assignWhenDifferent(newStatus.modified)
+    GitDownState.untracked.assignWhenDifferent(newStatus.untracked)
+    GitDownState.ignoredNotInIndex.assignWhenDifferent(newStatus.ignoredNotInIndex)
+    GitDownState.uncommittedChanges.assignWhenDifferent(newStatus.uncommittedChanges)
 
-
-    try {
-        val newStatus = this.status().call()
-
-        GitDownState.removed.assignWhenDifferent(newStatus.removed)
-        GitDownState.added.assignWhenDifferent(newStatus.added)
-        GitDownState.missing.assignWhenDifferent(newStatus.missing)
-        GitDownState.conflicting.assignWhenDifferent(newStatus.conflicting)
-        GitDownState.modified.assignWhenDifferent(newStatus.modified)
-        GitDownState.untracked.assignWhenDifferent(newStatus.untracked)
-        GitDownState.ignoredNotInIndex.assignWhenDifferent(newStatus.ignoredNotInIndex)
-        GitDownState.uncommittedChanges.assignWhenDifferent(newStatus.uncommittedChanges)
-
-        GitDownState.selectedFiles.forEach { fileDelta ->
+    GitDownState.selectedFiles.forEach { fileDelta ->
 
 //            print(fileDelta.location)
-            //todo(mikol): see if selectedFiles DIFFs are different than the current Diffs, if so replace them.
+        //todo(mikol): see if selectedFiles DIFFs are different than the current Diffs, if so replace them.
 
-        }
-    } catch (e: Exception) {
-        logger.error("An exception was thrown while updating git state: ${e.message}")
     }
-
+} catch (e: Exception) {
+    logger.error("An exception was thrown while updating git state: ${e.message}")
 }
