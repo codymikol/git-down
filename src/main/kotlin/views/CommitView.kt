@@ -20,6 +20,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.codymikol.components.commit.ConfirmDialog
+import com.codymikol.extensions.indexOfFirstOrNull
+import com.codymikol.extensions.indexOfLastOrNull
 import components.SlimButton
 import components.Subheader
 import components.commit.ChangedFile
@@ -28,13 +30,12 @@ import components.commit.FileIcon
 import data.Colors
 import data.diff.Hunk
 import data.diff.Line
-import data.diff.LineType.*
 import data.file.FileDelta
 import data.file.Status
 import extensions.*
 import kotlinx.coroutines.launch
-import org.koin.core.time.measureDuration
 import state.GitDownState
+import state.Keys
 import typography.GitDownTypography
 
 
@@ -243,15 +244,16 @@ fun ChangedFileHeader(fileDelta: FileDelta) {
 
 data class HunkNode(
     val hunk: Hunk,
-    val lines: List<Line>
+    val lines: List<Line>,
 )
 
 data class FileDeltaNode(
     val fileDelta: FileDelta,
-    val hunks: List<HunkNode>
+    val hunks: List<HunkNode>,
 )
+
 data class ProjectDiff(
-    val files: List<FileDeltaNode>
+    val files: List<FileDeltaNode>,
 ) {
     companion object {
         fun make(fileDeltas: List<FileDelta>): ProjectDiff = ProjectDiff(
@@ -271,6 +273,7 @@ data class ProjectDiff(
 @Composable
 private fun DiffPanel() {
 
+    //TODO(mikol): experiment with Paging API as a means of loading in diffs as necessary...
     //TODO(mikol): Parallelize building each diff.
     //TODO(mikol): optimize Diff creation
 
@@ -280,7 +283,7 @@ private fun DiffPanel() {
 
     LazyColumn {
 
-        projectDiff.files.forEach { fileDeltaNode->
+        projectDiff.files.forEach { fileDeltaNode ->
 
             stickyHeader { ChangedFileHeader(fileDeltaNode.fileDelta) }
 
@@ -288,36 +291,61 @@ private fun DiffPanel() {
 
                 item { HunkHeader(hunkNode.hunk) }
 
-                hunkNode.lines.forEach { line -> item { DiffLine(line) } }
+                hunkNode.lines.forEach { line -> item { DiffLine(line, fileDeltaNode) } }
 
             }
         }
     }
 }
+
 @Composable
-private fun DiffLine(line: Line) {
-    
-    val color = when (line.type) {
-        Added -> Color(40, 88, 41)
-        Removed -> Color(88, 39, 39)
-        Unchanged -> Color.Transparent
-        NoNewline -> Color.DarkGray
-        else -> Color.Yellow
-    }
+private fun DiffLine(line: Line, parentFileNode: FileDeltaNode) {
 
-    val textColor = when (line.type) {
-        Added, Removed, Unchanged, Unknown -> Color.White
-        NoNewline -> Color.Gray
-    }
+    val fileLines = parentFileNode.hunks.map { it.lines }.flatten()
 
-    Box(modifier = Modifier.background(color).fillMaxWidth().wrapContentHeight()) {
-        Row(modifier = Modifier.fillMaxSize()) {
+    //todo(mikol): figure out drag selection :')
+    //todo(mikol): limit click hitbox to around the gutter area
+
+    Box(modifier = Modifier
+        .background(line.getBackgroundColor())
+        .fillMaxWidth()
+        .wrapContentHeight()) {
+        Row(modifier = Modifier
+            .clickable {
+                when {
+                    Keys.isShiftPressed.value -> shiftSelectLine(fileLines, line)
+                    Keys.isCtrlPressed.value -> ctrlSelectLine(line)
+                    else -> unmodifiedLineSelect(fileLines, line)
+                }
+            }
+            .fillMaxSize()) {
             LineNumberGutter(line.originalLineNumber)
             LineNumberGutter(line.newLineNumber)
             ModificationTypeGutter(line)
-            GitDownTypography.DiffContent(line.value, textColor)
+            GitDownTypography.DiffContent(line.value, line.getTextColor())
         }
     }
+}
+
+private fun shiftSelectLine(fileLines: List<Line>, line: Line) {
+    val current = fileLines.indexOf(line)
+    val low = fileLines.indexOfFirstOrNull { it.selected.value }
+    val high = fileLines.indexOfLastOrNull { it.selected.value }
+    if (null == high || null == low) {
+        unmodifiedLineSelect(fileLines, line)
+    } else {
+        if (current > high) (high until current + 1).forEach { fileLines[it].selected.value = true }
+        if (current < low) (current until low).forEach { fileLines[it].selected.value = true }
+    }
+}
+
+private fun unmodifiedLineSelect(fileLines: List<Line>, line: Line) {
+    fileLines.forEach { if (line != it) it.selected.value = false }
+    line.toggleSelected()
+}
+
+private fun ctrlSelectLine(line: Line) {
+    line.toggleSelected()
 }
 
 @Composable

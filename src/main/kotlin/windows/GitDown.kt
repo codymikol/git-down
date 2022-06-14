@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.ComposeWindow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -65,6 +66,7 @@ fun GitDown() {
     Window(
         onKeyEvent = {
             Keys.isShiftPressed.value = it.isShiftPressed
+            Keys.isCtrlPressed.value = it.isCtrlPressed
             false
         },
         onCloseRequest = {
