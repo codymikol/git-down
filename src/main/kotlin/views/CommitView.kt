@@ -1,13 +1,11 @@
 package views
 
 import androidx.compose.desktop.ui.tooling.preview.Preview
-import androidx.compose.foundation.ScrollState
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,12 +28,12 @@ import components.commit.FileIcon
 import data.Colors
 import data.diff.Hunk
 import data.diff.Line
-import data.diff.LineType
 import data.diff.LineType.*
 import data.file.FileDelta
 import data.file.Status
 import extensions.*
 import kotlinx.coroutines.launch
+import org.koin.core.time.measureDuration
 import state.GitDownState
 import typography.GitDownTypography
 
@@ -58,7 +56,7 @@ fun CommitView() {
                     GitDownState.git.value.discardAllWorkingDirectory()
                     GitDownState.selectedFiles.clear()
                     isConfirmingDiscardAll.value = false
-               }
+                }
             }
         )
     }
@@ -83,7 +81,6 @@ fun CommitView() {
                     .fillMaxHeight()
                     .background(Colors.DarkGrayBackground)
                     .border(width = 1.dp, color = Color.Black)
-                    .verticalScroll(ScrollState(0))
             ) {
                 DiffPanel()
             }
@@ -244,44 +241,82 @@ fun ChangedFileHeader(fileDelta: FileDelta) {
     }
 }
 
+data class HunkNode(
+    val hunk: Hunk,
+    val lines: List<Line>
+)
+
+data class FileDeltaNode(
+    val fileDelta: FileDelta,
+    val hunks: List<HunkNode>
+)
+data class ProjectDiff(
+    val files: List<FileDeltaNode>
+) {
+    companion object {
+        fun make(fileDeltas: List<FileDelta>): ProjectDiff = ProjectDiff(
+            files = fileDeltas.map { fileDelta ->
+                FileDeltaNode(
+                    fileDelta,
+                    fileDelta.getDiff().hunks.map { hunk ->
+                        HunkNode(hunk, hunk.lines)
+                    }
+                )
+            }
+        )
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun DiffPanel() {
 
-    GitDownState.selectedFiles.forEach {
+    //TODO(mikol): Parallelize building each diff.
+    //TODO(mikol): optimize Diff creation
 
-        ChangedFileHeader(it)
+    // We eagerly create this outside of LazyColumn so that we only read from disk when
+    // the selected files are modified.
+    val projectDiff = ProjectDiff.make(GitDownState.selectedFiles)
 
-        it.getDiff().hunks.forEach { hunk ->
+    LazyColumn {
 
-            HunkHeader(hunk)
+        projectDiff.files.forEach { fileDeltaNode->
 
-            hunk.lines.forEach { line ->
+            stickyHeader { ChangedFileHeader(fileDeltaNode.fileDelta) }
 
-                val color = when (line.type) {
-                    Added -> Color(40, 88, 41)
-                    Removed -> Color(88, 39, 39)
-                    Unchanged -> Color.Transparent
-                    NoNewline -> Color.DarkGray
-                    else -> Color.Yellow // todo(mikol): Bake these colors into the Line
-                }
+            fileDeltaNode.hunks.forEach { hunkNode ->
 
-                val textColor = when (line.type) {
-                    Added, Removed, Unchanged, Unknown -> Color.White
-                    NoNewline -> Color.Gray
-                }
+                item { HunkHeader(hunkNode.hunk) }
 
-                Box(modifier = Modifier.background(color).fillMaxWidth().wrapContentHeight()) {
-                    Row(modifier = Modifier.fillMaxSize()) {
-                        LineNumberGutter(line.originalLineNumber)
-                        LineNumberGutter(line.newLineNumber)
-                        ModificationTypeGutter(line)
-                        GitDownTypography.DiffContent(line.value, textColor)
-                    }
-                }
+                hunkNode.lines.forEach { line -> item { DiffLine(line) } }
+
             }
-
         }
+    }
+}
+@Composable
+private fun DiffLine(line: Line) {
+    
+    val color = when (line.type) {
+        Added -> Color(40, 88, 41)
+        Removed -> Color(88, 39, 39)
+        Unchanged -> Color.Transparent
+        NoNewline -> Color.DarkGray
+        else -> Color.Yellow
+    }
 
+    val textColor = when (line.type) {
+        Added, Removed, Unchanged, Unknown -> Color.White
+        NoNewline -> Color.Gray
+    }
+
+    Box(modifier = Modifier.background(color).fillMaxWidth().wrapContentHeight()) {
+        Row(modifier = Modifier.fillMaxSize()) {
+            LineNumberGutter(line.originalLineNumber)
+            LineNumberGutter(line.newLineNumber)
+            ModificationTypeGutter(line)
+            GitDownTypography.DiffContent(line.value, textColor)
+        }
     }
 }
 
