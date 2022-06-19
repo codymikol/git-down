@@ -1,6 +1,7 @@
 package state
 
 import androidx.compose.runtime.*
+import com.codymikol.data.diff.DiffTree
 import data.file.FileDelta
 import data.file.Index
 import data.file.WorkingDirectory
@@ -18,6 +19,8 @@ object GitDownState {
     val gitDirectory = mutableStateOf("")
 
     val selectedFiles = mutableStateListOf<FileDelta>()
+
+    val diffTree = derivedStateOf { DiffTree.make(selectedFiles) }
 
     val projectName = derivedStateOf { gitDirectory.value.removeSuffix("/.git").split("/").last() }
 

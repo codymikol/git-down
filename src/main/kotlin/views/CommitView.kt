@@ -20,6 +20,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.codymikol.components.commit.ConfirmDialog
+import com.codymikol.data.diff.FileDeltaNode
+import com.codymikol.data.diff.DiffTree
 import com.codymikol.extensions.indexOfFirstOrNull
 import com.codymikol.extensions.indexOfLastOrNull
 import components.SlimButton
@@ -242,58 +244,20 @@ fun ChangedFileHeader(fileDelta: FileDelta) {
     }
 }
 
-data class HunkNode(
-    val hunk: Hunk,
-    val lines: List<Line>,
-)
-
-data class FileDeltaNode(
-    val fileDelta: FileDelta,
-    val hunks: List<HunkNode>,
-)
-
-data class ProjectDiff(
-    val files: List<FileDeltaNode>,
-) {
-    companion object {
-        fun make(fileDeltas: List<FileDelta>): ProjectDiff = ProjectDiff(
-            files = fileDeltas.map { fileDelta ->
-                FileDeltaNode(
-                    fileDelta,
-                    fileDelta.getDiff().hunks.map { hunk ->
-                        HunkNode(hunk, hunk.lines)
-                    }
-                )
-            }
-        )
-    }
-}
-
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun DiffPanel() {
+private fun DiffPanel() = LazyColumn {
 
-    //TODO(mikol): experiment with Paging API as a means of loading in diffs as necessary...
-    //TODO(mikol): Parallelize building each diff.
-    //TODO(mikol): optimize Diff creation
+    GitDownState.diffTree.value.files.forEach { fileDeltaNode ->
 
-    // We eagerly create this outside of LazyColumn so that we only read from disk when
-    // the selected files are modified.
-    val projectDiff = ProjectDiff.make(GitDownState.selectedFiles)
+        stickyHeader { ChangedFileHeader(fileDeltaNode.fileDelta) }
 
-    LazyColumn {
+        fileDeltaNode.hunks.forEach { hunkNode ->
 
-        projectDiff.files.forEach { fileDeltaNode ->
+            item { HunkHeader(hunkNode.hunk) }
 
-            stickyHeader { ChangedFileHeader(fileDeltaNode.fileDelta) }
+            hunkNode.lines.forEach { line -> item { DiffLine(line, fileDeltaNode) } }
 
-            fileDeltaNode.hunks.forEach { hunkNode ->
-
-                item { HunkHeader(hunkNode.hunk) }
-
-                hunkNode.lines.forEach { line -> item { DiffLine(line, fileDeltaNode) } }
-
-            }
         }
     }
 }
