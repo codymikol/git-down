@@ -3,13 +3,13 @@ import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm") version "1.6.10"
-    id("org.jetbrains.compose") version "1.1.1"
-    id("com.google.devtools.ksp") version "1.6.10-1.0.2"
+    kotlin("jvm") version "1.7.20"
+    id("org.jetbrains.compose") version "1.2.0"
+    id("com.google.devtools.ksp") version "1.7.20-1.0.6"
 }
 
 val koinVersion = "3.2.0"
-val koinKspVersion= "1.0.0-beta-2"
+val koinKspVersion= "1.0.0"
 val kspVersion = "1.6.10-1.0.2"
 
 group = "com.codymikol"
@@ -37,11 +37,11 @@ dependencies {
     implementation("net.harawata:appdirs:1.2.1")
     implementation("com.fasterxml.jackson.core:jackson-annotations:2.13.3")
     implementation("com.fasterxml.jackson.core:jackson-core:2.13.3")
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.13.3")
-    implementation("org.eclipse.jgit:org.eclipse.jgit:6.1.0.202203080745-r")
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.14.0-rc1")
+    implementation("org.eclipse.jgit:org.eclipse.jgit:6.2.0.202206071550-r")
     testImplementation("io.insert-koin:koin-test:$koinVersion")
-    testImplementation("io.kotest:kotest-runner-junit5:5.3.0")
-    testImplementation("io.kotest:kotest-assertions-core:5.3.0")
+    testImplementation("io.kotest:kotest-runner-junit5:5.3.1")
+    testImplementation("io.kotest:kotest-assertions-core:5.3.1")
 }
 
 tasks.withType<Test> {
