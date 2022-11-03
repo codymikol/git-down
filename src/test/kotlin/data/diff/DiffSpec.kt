@@ -1,5 +1,7 @@
 package data.diff
 
+import com.codymikol.data.diff.Diff
+import com.codymikol.data.diff.LineType
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
 

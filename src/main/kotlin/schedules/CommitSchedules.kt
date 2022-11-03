@@ -1,5 +1,0 @@
-package schedules
-
-class RefreshCommitContextSchedule {
-
-}
