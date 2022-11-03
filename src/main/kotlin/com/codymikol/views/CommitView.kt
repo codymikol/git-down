@@ -33,7 +33,6 @@ import com.codymikol.data.diff.Line
 import com.codymikol.data.file.FileDelta
 import com.codymikol.data.file.Status
 import com.codymikol.extensions.*
-import extensions.*
 import kotlinx.coroutines.launch
 import com.codymikol.state.GitDownState
 import com.codymikol.state.Keys
