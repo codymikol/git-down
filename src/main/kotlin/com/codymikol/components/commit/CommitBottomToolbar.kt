@@ -1,6 +1,5 @@
 package com.codymikol.components.commit
 
-import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.Checkbox
@@ -16,11 +15,10 @@ import com.codymikol.data.Colors
 import com.codymikol.extensions.amendAll
 import com.codymikol.extensions.commitAll
 import com.codymikol.extensions.unstageAll
-import kotlinx.coroutines.launch
 import com.codymikol.state.GitDownState
+import kotlinx.coroutines.launch
 
 @Composable
-@Preview
 fun CommitBottomToolbar(commitMessage: MutableState<String>) {
 
     val amendEnabled = remember { mutableStateOf(false) }
