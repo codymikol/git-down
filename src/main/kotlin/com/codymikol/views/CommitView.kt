@@ -4,39 +4,34 @@ import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.codymikol.components.commit.ConfirmDialog
-import com.codymikol.data.diff.FileDeltaNode
-import com.codymikol.data.diff.DiffTree
 import com.codymikol.components.SlimButton
 import com.codymikol.components.Subheader
 import com.codymikol.components.commit.ChangedFile
 import com.codymikol.components.commit.CommitBottomToolbar
-import com.codymikol.components.commit.FileIcon
+import com.codymikol.components.commit.ConfirmDialog
+import com.codymikol.components.commit.diff.file.header.FileHeader
 import com.codymikol.data.Colors
+import com.codymikol.data.diff.FileDeltaNode
 import com.codymikol.data.diff.Hunk
 import com.codymikol.data.diff.Line
 import com.codymikol.data.file.FileDelta
-import com.codymikol.data.file.Status
 import com.codymikol.extensions.*
-import kotlinx.coroutines.launch
 import com.codymikol.state.GitDownState
 import com.codymikol.state.Keys
 import com.codymikol.typography.GitDownTypography
+import kotlinx.coroutines.launch
 
 
 val commitMessage = mutableStateOf("")
@@ -151,104 +146,13 @@ private fun ModificationTypeGutter(line: Line) {
     Box(modifier = Modifier.width(24.dp).fillMaxSize()) { GitDownTypography.DiffType(line.symbol) }
 }
 
-private class HeaderButtonColors : ButtonColors {
-    @Composable
-    override fun backgroundColor(enabled: Boolean): State<Color> {
-        return mutableStateOf(Color.Transparent)
-    }
-
-    @Composable
-    override fun contentColor(enabled: Boolean): State<Color> {
-        return mutableStateOf(Color.White)
-    }
-
-}
-
-@Composable
-fun ChangedFileHeader(fileDelta: FileDelta) {
-
-    val scope = rememberCoroutineScope()
-
-    Row(
-        modifier = Modifier.height(32.dp)
-            .background(fileDelta.color)
-            .fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-
-        Row(modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.SpaceBetween) {
-
-            Row(
-                modifier = Modifier.fillMaxHeight().wrapContentWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-
-                Spacer(modifier = Modifier.width(6.dp))
-
-                FileIcon(
-                    modifier = Modifier.shadow(elevation = 3.dp, shape = RoundedCornerShape(14.dp)),
-                    fileDelta = fileDelta
-                )
-
-                Spacer(modifier = Modifier.width(6.dp))
-
-                Text(
-                    fileDelta.location.toString(),
-                    color = Color.White,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium
-                )
-
-            }
-
-
-            Row(
-                modifier = Modifier.fillMaxHeight().wrapContentWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-
-                OutlinedButton(
-                    onClick = {
-                        scope.launch {
-
-                            val path = fileDelta.location.toString()
-
-                            when (fileDelta.type) {
-                                Status.INDEX -> GitDownState.git.value.unstageFile(path)
-                                Status.WORKING_DIRECTORY -> GitDownState.git.value.stageFile(path)
-                            }
-
-                            GitDownState.selectedFiles.remove(fileDelta)
-
-                        }
-                    },
-                    modifier = Modifier.height(24.dp).padding(0.dp),
-                    colors = HeaderButtonColors(),
-                    contentPadding = PaddingValues(12.dp, 0.dp)
-                ) {
-
-                    val actionText = when (fileDelta.type) {
-                        Status.INDEX -> "Unstage File"
-                        Status.WORKING_DIRECTORY -> "Stage File"
-                    }
-
-                    Text(actionText, fontSize = 9.sp)
-                }
-
-                Spacer(modifier = Modifier.width(6.dp))
-            }
-        }
-
-    }
-}
-
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun DiffPanel() = LazyColumn {
 
     GitDownState.diffTree.value.files.forEach { fileDeltaNode ->
 
-        stickyHeader { ChangedFileHeader(fileDeltaNode.fileDelta) }
+        stickyHeader { FileHeader(fileDeltaNode.fileDelta) }
 
         fileDeltaNode.hunks.forEach { hunkNode ->
 
