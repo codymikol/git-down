@@ -14,6 +14,7 @@ interface FileDelta {
     val location: Path
     val type: Status
 
+    fun getPath() = location.toString()
     private fun loadWorkingDirectoryDiff(stream: ByteArrayOutputStream) = GitDownState
         .git
         .value
