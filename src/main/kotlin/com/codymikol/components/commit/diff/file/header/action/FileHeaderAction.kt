@@ -9,16 +9,10 @@ import com.codymikol.data.diff.FileDeltaNode
 import com.codymikol.data.file.Status
 
 @Composable
-fun FileHeaderActions(fileDeltaNode: FileDeltaNode) = when (isCurrentlySelectingLines(fileDeltaNode)) {
+fun FileHeaderActions(fileDeltaNode: FileDeltaNode) = when (fileDeltaNode.isSelectingLines()) {
     true -> LineActions(fileDeltaNode)
     false -> FileActions(fileDeltaNode)
 }
-
-private fun isCurrentlySelectingLines(fileDeltaNode: FileDeltaNode): Boolean {
-    fileDeltaNode.hunks.any { hunk -> hunk.lines.any { it.selected.value } }
-    return false
-}
-
 
 @Composable
 private fun LineActions(fileDeltaNode: FileDeltaNode) = when (fileDeltaNode.fileDelta.type) {
