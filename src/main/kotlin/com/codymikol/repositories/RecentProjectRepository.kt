@@ -41,9 +41,9 @@ class RecentProjectRepository(
         }
     }
 
-    fun addRecentProject(newProject: RecentProject) : Unit {
+    fun addRecentProject(newProject: RecentProject) {
         val currentRecentProjects = getRecentProjects()
-        val newProjects = (currentRecentProjects.projects + newProject).distinctBy { it.location }
+        val newProjects = listOf(newProject) + (currentRecentProjects.projects.filterNot { it.location == newProject.location })
         val newRecentProjects = RecentProjects(newProjects)
         setRecentProjects(newRecentProjects)
     }
