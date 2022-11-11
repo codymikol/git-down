@@ -5,11 +5,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
-import com.codymikol.data.file.FileDelta
+import com.codymikol.data.diff.FileDeltaNode
 
 @Composable
-fun FileHeaderText(fileDelta: FileDelta) = Text(
-    fileDelta.location.toString(),
+fun FileHeaderText(fileDeltaNode: FileDeltaNode) = Text(
+    fileDeltaNode.fileDelta.getPath(),
     color = Color.White,
     fontSize = 12.sp,
     fontWeight = FontWeight.Medium

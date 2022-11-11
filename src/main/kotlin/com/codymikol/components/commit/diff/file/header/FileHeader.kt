@@ -9,12 +9,12 @@ import androidx.compose.ui.unit.dp
 import com.codymikol.components.commit.diff.file.header.action.FileHeaderActions
 import com.codymikol.components.commit.diff.file.header.icons.FileHeaderIcon
 import com.codymikol.components.commit.diff.file.header.text.FileHeaderText
-import com.codymikol.data.file.FileDelta
+import com.codymikol.data.diff.FileDeltaNode
 
 @Composable
-fun FileHeader(fileDelta: FileDelta) = Row(
+fun FileHeader(fileDeltaNode: FileDeltaNode) = Row(
     modifier = Modifier.height(32.dp)
-        .background(fileDelta.color)
+        .background(fileDeltaNode.fileDelta.color)
         .fillMaxWidth(),
     verticalAlignment = Alignment.CenterVertically
 ) {
@@ -28,11 +28,11 @@ fun FileHeader(fileDelta: FileDelta) = Row(
 
             Spacer(modifier = Modifier.width(6.dp))
 
-            FileHeaderIcon(fileDelta)
+            FileHeaderIcon(fileDeltaNode)
 
             Spacer(modifier = Modifier.width(6.dp))
 
-            FileHeaderText(fileDelta)
+            FileHeaderText(fileDeltaNode)
 
         }
 
@@ -41,7 +41,7 @@ fun FileHeader(fileDelta: FileDelta) = Row(
             verticalAlignment = Alignment.CenterVertically
         ) {
 
-            FileHeaderActions(fileDelta)
+            FileHeaderActions(fileDeltaNode)
 
             Spacer(modifier = Modifier.width(6.dp))
         }

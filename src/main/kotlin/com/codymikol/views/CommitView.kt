@@ -152,7 +152,7 @@ private fun DiffPanel() = LazyColumn {
 
     GitDownState.diffTree.value.files.forEach { fileDeltaNode ->
 
-        stickyHeader { FileHeader(fileDeltaNode.fileDelta) }
+        stickyHeader { FileHeader(fileDeltaNode) }
 
         fileDeltaNode.hunks.forEach { hunkNode ->
 
