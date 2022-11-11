@@ -21,6 +21,11 @@ import com.codymikol.state.GitDownState
 
 @Composable
 @Preview
+fun CommitBottomToolbarDemo() {
+    CommitBottomToolbar(mutableStateOf("Hello!"))
+}
+
+@Composable
 fun CommitBottomToolbar(commitMessage: MutableState<String>) {
 
     val amendEnabled = remember { mutableStateOf(false) }
