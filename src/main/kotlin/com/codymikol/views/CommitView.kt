@@ -23,9 +23,7 @@ import com.codymikol.components.commit.CommitBottomToolbar
 import com.codymikol.components.commit.ConfirmDialog
 import com.codymikol.components.commit.diff.file.header.FileHeader
 import com.codymikol.data.Colors
-import com.codymikol.data.diff.FileDeltaNode
-import com.codymikol.data.diff.Hunk
-import com.codymikol.data.diff.Line
+import com.codymikol.data.diff.*
 import com.codymikol.data.file.FileDelta
 import com.codymikol.extensions.*
 import com.codymikol.state.GitDownState
@@ -142,15 +140,15 @@ private fun LineNumberGutter(lineNumber: UInt?) {
 }
 
 @Composable
-private fun ModificationTypeGutter(line: Line) {
-    Box(modifier = Modifier.width(24.dp).fillMaxSize()) { GitDownTypography.DiffType(line.symbol) }
+private fun ModificationTypeGutter(lineNode: LineNode) {
+    Box(modifier = Modifier.width(24.dp).fillMaxSize()) { GitDownTypography.DiffType(lineNode.line.symbol) }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun DiffPanel() = LazyColumn {
 
-    GitDownState.diffTree.value.files.forEach { fileDeltaNode ->
+    GitDownState.diffTree.value.fileDeltaNodes.forEach { fileDeltaNode ->
 
         stickyHeader { FileHeader(fileDeltaNode) }
 
@@ -158,14 +156,14 @@ private fun DiffPanel() = LazyColumn {
 
             item { HunkHeader(hunkNode.hunk) }
 
-            hunkNode.lines.forEach { line -> item { DiffLine(line, fileDeltaNode) } }
+            hunkNode.lines.forEach { lineNode -> item { DiffLine(lineNode, fileDeltaNode) } }
 
         }
     }
 }
 
 @Composable
-private fun DiffLine(line: Line, parentFileNode: FileDeltaNode) {
+private fun DiffLine(lineNode: LineNode, parentFileNode: FileDeltaNode) {
 
     val fileLines = parentFileNode.hunks.map { it.lines }.flatten()
 
@@ -173,45 +171,45 @@ private fun DiffLine(line: Line, parentFileNode: FileDeltaNode) {
     //todo(mikol): limit click hitbox to around the gutter area
 
     Box(modifier = Modifier
-        .background(line.getBackgroundColor())
+        .background(lineNode.line.getBackgroundColor())
         .fillMaxWidth()
         .wrapContentHeight()) {
         Row(modifier = Modifier
             .clickable {
                 when {
-                    Keys.isShiftPressed.value -> shiftSelectLine(fileLines, line)
-                    Keys.isCtrlPressed.value -> ctrlSelectLine(line)
-                    else -> unmodifiedLineSelect(fileLines, line)
+                    Keys.isShiftPressed.value -> shiftSelectLine(fileLines, lineNode)
+                    Keys.isCtrlPressed.value -> ctrlSelectLine(lineNode)
+                    else -> unmodifiedLineSelect(fileLines, lineNode)
                 }
             }
             .fillMaxSize()) {
-            LineNumberGutter(line.originalLineNumber)
-            LineNumberGutter(line.newLineNumber)
-            ModificationTypeGutter(line)
-            GitDownTypography.DiffContent(line.value, line.getTextColor())
+            LineNumberGutter(lineNode.line.originalLineNumber)
+            LineNumberGutter(lineNode.line.newLineNumber)
+            ModificationTypeGutter(lineNode)
+            GitDownTypography.DiffContent(lineNode.line.value, lineNode.line.getTextColor())
         }
     }
 }
 
-private fun shiftSelectLine(fileLines: List<Line>, line: Line) {
-    val current = fileLines.indexOf(line)
-    val low = fileLines.indexOfFirstOrNull { it.selected.value }
-    val high = fileLines.indexOfLastOrNull { it.selected.value }
+private fun shiftSelectLine(fileLines: List<LineNode>, lineNode: LineNode) {
+    val current = fileLines.indexOf(lineNode)
+    val low = fileLines.indexOfFirstOrNull { it.line.selected.value }
+    val high = fileLines.indexOfLastOrNull { it.line.selected.value }
     if (null == high || null == low) {
-        unmodifiedLineSelect(fileLines, line)
+        unmodifiedLineSelect(fileLines, lineNode)
     } else {
-        if (current > high) (high until current + 1).forEach { fileLines[it].selected.value = true }
-        if (current < low) (current until low).forEach { fileLines[it].selected.value = true }
+        if (current > high) (high until current + 1).forEach { fileLines[it].line.selected.value = true }
+        if (current < low) (current until low).forEach { fileLines[it].line.selected.value = true }
     }
 }
 
-private fun unmodifiedLineSelect(fileLines: List<Line>, line: Line) {
-    fileLines.forEach { if (line != it) it.selected.value = false }
-    line.toggleSelected()
+private fun unmodifiedLineSelect(fileLines: List<LineNode>, lineNode: LineNode) {
+    fileLines.forEach { if (lineNode != it) it.line.selected.value = false }
+    lineNode.line.toggleSelected()
 }
 
-private fun ctrlSelectLine(line: Line) {
-    line.toggleSelected()
+private fun ctrlSelectLine(lineNode: LineNode) {
+    lineNode.line.toggleSelected()
 }
 
 @Composable
