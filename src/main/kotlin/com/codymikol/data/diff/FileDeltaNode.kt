@@ -2,10 +2,46 @@ package com.codymikol.data.diff
 
 import com.codymikol.data.file.FileDelta
 
-data class FileDeltaNode(
+class FileDeltaNode(
     val fileDelta: FileDelta,
-    val hunks: List<HunkNode>,
+    val hunks: List<HunkNode>
 ) {
+
+    lateinit var parent: DiffTree
+
     fun isSelectingLines(): Boolean = hunks.any { hunk -> hunk.isSelectingLines() }
+
+    companion object {
+        fun make(fileDelta: FileDelta): FileDeltaNode {
+
+            val gitDiff = fileDelta.getDiff()
+
+            val lines = gitDiff.split("\n")
+
+            val lineNumberDelimiterIndices = mutableListOf<Int>()
+
+            lines.forEachIndexed { index, line ->
+                if (line.getOrNull(0) == '@') lineNumberDelimiterIndices.add(index)
+            }
+
+            val hunks = mutableListOf<Hunk>()
+
+            lineNumberDelimiterIndices.forEachIndexed{ index, thisIndex ->
+
+                val isLast = lineNumberDelimiterIndices.getOrNull(index + 1) == null
+
+                if(isLast) {
+                    hunks.add(Hunk.make(lines.subList(thisIndex, lines.size - 1)))
+                } else {
+                    val nextIndex = lineNumberDelimiterIndices[index + 1]
+                    hunks.add(Hunk.make(lines.subList(thisIndex, nextIndex)))
+                }
+
+            }
+
+            return FileDeltaNode(fileDelta, hunks.map(HunkNode.Companion::make))
+
+        }
+    }
 
 }

@@ -1,9 +1,8 @@
 package com.codymikol.data.file
 
 import androidx.compose.ui.graphics.Color
-import com.codymikol.data.diff.Diff
-import org.eclipse.jgit.treewalk.filter.PathFilter
 import com.codymikol.state.GitDownState
+import org.eclipse.jgit.treewalk.filter.PathFilter
 import java.io.ByteArrayOutputStream
 import java.nio.file.Path
 
@@ -35,7 +34,7 @@ interface FileDelta {
         .call()
         .also { println("Loading diff from the current index...") }
 
-    fun getDiff(): Diff {
+    fun getDiff(): String {
 
         val stream = ByteArrayOutputStream()
 
@@ -44,7 +43,7 @@ interface FileDelta {
             Status.WORKING_DIRECTORY -> loadWorkingDirectoryDiff(stream)
         }
 
-        return Diff.make(stream.toString())
+        return stream.toString()
 
     }
 

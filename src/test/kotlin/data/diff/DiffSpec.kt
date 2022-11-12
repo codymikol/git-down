@@ -1,6 +1,6 @@
 package data.diff
 
-import com.codymikol.data.diff.Diff
+import com.codymikol.data.diff.FileDeltaNode
 import com.codymikol.data.diff.LineType
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
@@ -34,15 +34,15 @@ index 39d9a33..960dae4 100644
 
     describe("make") {
 
-        val diff = Diff.make(subject)
+        val fileDeltaNode = FileDeltaNode.make(subject)
 
         it("should have the correct number of chunks based on the number of delimiters in the diff") {
-            diff.hunks.size shouldBe 2
+            fileDeltaNode.hunks.size shouldBe 2
         }
 
         describe("Hunk") {
 
-            val hunk = diff.hunks.getOrNull(0)
+            val hunk = fileDeltaNode.hunks.getOrNull(0)
 
             it("should have the proper delimiter for the first hunk") {
                 hunk?.delimiter shouldBe "@@ -16,8 +16,9 @@"
@@ -56,7 +56,7 @@ index 39d9a33..960dae4 100644
 
         describe("Line") {
 
-            val hunk = diff.hunks.getOrNull(0)
+            val hunk = fileDeltaNode.hunks.getOrNull(0)
 
             describe("Added Line") {
 
