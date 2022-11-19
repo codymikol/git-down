@@ -1,17 +1,12 @@
 package com.codymikol.extensions
 
 import androidx.compose.runtime.MutableState
+import com.codymikol.state.GitDownState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.api.ResetCommand
-import org.eclipse.jgit.api.errors.JGitInternalException
-import org.eclipse.jgit.internal.JGitText
-import org.eclipse.jgit.treewalk.TreeWalk
 import org.slf4j.LoggerFactory
-import com.codymikol.state.GitDownState
-import java.io.IOException
-import java.text.MessageFormat
 
 class GitExtensions
 
@@ -23,6 +18,7 @@ private val logger = LoggerFactory.getLogger(GitExtensions::class.java)
  */
 private suspend fun Git.command(fn: () -> Unit) = withContext(Dispatchers.IO) {
     fn()
+    GitDownState.lastRequestedUpdateTimestamp.value = System.currentTimeMillis()
     scanForChanges()
 }.let { this }
 

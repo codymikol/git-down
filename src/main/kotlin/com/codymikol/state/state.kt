@@ -136,6 +136,6 @@ object GitDownState {
     }
 
     //todo(mikol): this is not ideal, work out a better way to manage this...
-    private val lastRequestedUpdateTimestamp = mutableStateOf(System.currentTimeMillis())
+    val lastRequestedUpdateTimestamp = mutableStateOf(System.currentTimeMillis())
 
 }
