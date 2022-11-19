@@ -8,7 +8,7 @@ class FileDeltaNode(
 ) {
 
     lateinit var parent: DiffTree
-
+    fun getPath() = fileDelta.getPath()
     fun isSelectingLines(): Boolean = hunks.any { hunk -> hunk.isSelectingLines() }
 
     companion object {
