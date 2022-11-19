@@ -34,10 +34,6 @@ import com.codymikol.tabs.Tab
 import com.codymikol.views.CommitView
 import com.codymikol.views.MapView
 import com.codymikol.views.StashView
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withContext
 import java.awt.Dimension
 import java.awt.event.WindowEvent
 import java.awt.event.WindowFocusListener
@@ -70,17 +66,13 @@ fun GitDown() {
             window.addWindowFocusListener(object : WindowFocusListener {
 
                 override fun windowGainedFocus(p0: WindowEvent?) {
-                    runBlocking {
-                        withContext(Dispatchers.IO) {
-                            // We do a short block because sometimes editors will save temporary files
-                            // for a few ms after losing window focus and these can show up in git-down
-                            delay(100L)
-                            GitDownState.git.value.scanForChanges()
-                        }
-                    }
+                    GitDownState.lastRequestedUpdateTimestamp.value = System.currentTimeMillis()
+                    GitDownState.git.value.scanForChanges()
                 }
 
-                override fun windowLostFocus(p0: WindowEvent?) { /** noop **/ }
+                override fun windowLostFocus(p0: WindowEvent?) {
+                    /** noop **/
+                }
 
             })
             onDispose {}
