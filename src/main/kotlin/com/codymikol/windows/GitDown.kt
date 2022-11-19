@@ -1,18 +1,18 @@
 package com.codymikol.windows
 
 import androidx.compose.desktop.ui.tooling.preview.Preview
-import androidx.compose.foundation.*
+import androidx.compose.foundation.LocalScrollbarStyle
+import androidx.compose.foundation.ScrollbarStyle
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.window.WindowDraggableArea
-import androidx.compose.material.DropdownMenu
-import androidx.compose.material.DropdownMenuItem
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.awt.ComposeWindow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.isShiftPressed
@@ -20,7 +20,10 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.*
+import androidx.compose.ui.window.Window
+import androidx.compose.ui.window.WindowPlacement
+import androidx.compose.ui.window.WindowPosition
+import androidx.compose.ui.window.rememberWindowState
 import com.codymikol.components.TabButtonLocation
 import com.codymikol.components.tabButton
 import com.codymikol.data.Colors
@@ -31,37 +34,17 @@ import com.codymikol.tabs.Tab
 import com.codymikol.views.CommitView
 import com.codymikol.views.MapView
 import com.codymikol.views.StashView
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import java.awt.Dimension
-import javax.swing.JFrame
-import kotlin.concurrent.fixedRateTimer
+import java.awt.event.WindowEvent
+import java.awt.event.WindowFocusListener
 
 @Preview
 @Composable
 fun GitDown() {
-
-    val timer = fixedRateTimer(
-        "Scan For Changes",
-        daemon = true,
-        period = 1000L,
-        action = { GitDownState.git.value.scanForChanges() })
-
-    org.eclipse.jgit.lib.Repository.getGlobalListenerList().addIndexChangedListener {
-        GitDownState.test.value += 1
-        println("Changed @ addIndexChangedListener")
-    }
-    org.eclipse.jgit.lib.Repository.getGlobalListenerList().addConfigChangedListener {
-        GitDownState.test.value += 1
-        println("Changed @ addConfigChangedListener")
-    }
-    org.eclipse.jgit.lib.Repository.getGlobalListenerList().addRefsChangedListener {
-        GitDownState.test.value += 1
-        println("Changed @ addRefsChangedListener")
-    }
-
-    GitDownState.config.value.addChangeListener {
-        GitDownState.test.value += 1
-        println("Changed @ addRefsChangedListener")
-    }
 
     Window(
         onKeyEvent = {
@@ -70,7 +53,6 @@ fun GitDown() {
             false
         },
         onCloseRequest = {
-            timer.cancel()
             GitDownState.gitDirectory.value = ""
         },
         title = GitDownState.projectName.value,
@@ -82,6 +64,29 @@ fun GitDown() {
             position = WindowPosition(alignment = Alignment.Center)
         )
     ) {
+
+        DisposableEffect(Unit) {
+
+            window.addWindowFocusListener(object : WindowFocusListener {
+
+                override fun windowGainedFocus(p0: WindowEvent?) {
+                    runBlocking {
+                        withContext(Dispatchers.IO) {
+                            // We do a short block because sometimes editors will save temporary files
+                            // for a few ms after losing window focus and these can show up in git-down
+                            delay(100L)
+                            GitDownState.git.value.scanForChanges()
+                        }
+                    }
+                }
+
+                override fun windowLostFocus(p0: WindowEvent?) { /** noop **/ }
+
+            })
+            onDispose {}
+        }
+
+        this.window.focusListeners
 
         this.window.minimumSize = Dimension(800, 500)
 
