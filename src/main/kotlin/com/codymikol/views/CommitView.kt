@@ -25,6 +25,7 @@ import com.codymikol.components.commit.diff.file.header.FileHeader
 import com.codymikol.data.Colors
 import com.codymikol.data.diff.*
 import com.codymikol.data.file.FileDelta
+import com.codymikol.data.file.Status
 import com.codymikol.extensions.*
 import com.codymikol.state.GitDownState
 import com.codymikol.state.Keys
@@ -220,20 +221,49 @@ private fun HunkHeader(hunk: Hunk) {
     }
 }
 
+private fun getDeltaEmptyStateMessage(status: Status) = when(status) {
+    Status.INDEX -> "No changes in index"
+    Status.WORKING_DIRECTORY -> "No changes in working directory"
+}
 
 @Composable
-private fun FileDeltaPanel(title: String, deltas: State<Set<FileDelta>>) {
+private fun FileDeltaPanel(title: String, deltas: State<Set<FileDelta>>, status: Status) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Subheader(title)
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-                .verticalScroll(state = ScrollState(initial = 0))
+        when(deltas.value.isNotEmpty()) {
+            true -> {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .verticalScroll(state = ScrollState(initial = 0))
+                ) {
+                    Spacer(Modifier.height(6.dp))
+                    deltas.value.forEach { ChangedFile(it) }
+                    Spacer(Modifier.height(6.dp))
+                }
+            }
+            false -> EmptyState(getDeltaEmptyStateMessage(status))
+        }
+
+    }
+}
+
+@Composable
+private fun ColumnScope.EmptyState(message: String) {
+    Column(
+        modifier = Modifier
+            .weight(1f)
+            .fillMaxWidth()
+            .fillMaxHeight(),
+        verticalArrangement = Arrangement.Center
+    ) {
+        Row(modifier = Modifier
+            .fillMaxWidth()
+            .align(Alignment.CenterHorizontally),
+            horizontalArrangement = Arrangement.Center
         ) {
-            Spacer(Modifier.height(6.dp))
-            deltas.value.forEach { ChangedFile(it) }
-            Spacer(Modifier.height(6.dp))
+            Text(message, color = Color.Gray)
         }
     }
 }
@@ -246,7 +276,7 @@ private fun CommitWorkingDirectory() {
     Column(modifier = Modifier.fillMaxHeight()) {
 
         Column(modifier = Modifier.weight(1f).fillMaxWidth()) {
-            FileDeltaPanel("Working Directory", GitDownState.workingDirectory)
+            FileDeltaPanel("Working Directory", GitDownState.workingDirectory, Status.WORKING_DIRECTORY)
         }
 
         Row(
@@ -273,8 +303,7 @@ private fun CommitWorkingDirectory() {
 }
 
 
-@Preview
 @Composable
 private fun CommitIndex() {
-    FileDeltaPanel("Index", GitDownState.index)
+    FileDeltaPanel("Index", GitDownState.index, Status.INDEX)
 }
