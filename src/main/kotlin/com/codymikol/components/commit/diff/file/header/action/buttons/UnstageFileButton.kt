@@ -7,6 +7,6 @@ import com.codymikol.state.GitDownState
 
 @Composable
 fun UnstageFileButton(fileDeltaNode: FileDeltaNode) = FileHeaderButton("Unstage File") {
-    GitDownState.git.value.unstageFile(fileDeltaNode.fileDelta.getPath())
+    GitDownState.git.value.unstageFile(fileDeltaNode)
     GitDownState.selectedFiles.remove(fileDeltaNode.fileDelta)
 }

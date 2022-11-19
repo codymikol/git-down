@@ -1,6 +1,8 @@
 package com.codymikol.extensions
 
 import androidx.compose.runtime.MutableState
+import com.codymikol.data.diff.FileDeltaNode
+import com.codymikol.data.file.WorkingDirectory
 import com.codymikol.state.GitDownState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -24,7 +26,7 @@ private suspend fun Git.command(fn: () -> Unit) = withContext(Dispatchers.IO) {
 
 suspend fun Git.stageAll(): Git = command {
 
-    // setUpdate allows us to remove deleted files, but disallows adding new files. So we have to do this twice...
+    // setUpdate allows us to add deleted files, but disallows adding new files. So we have to do this twice...
     this@stageAll
         .add()
         .addFilepattern(".")
@@ -82,20 +84,24 @@ suspend fun Git.discardAllWorkingDirectory(): Git = command {
 
 }
 
-suspend fun Git.stageFile(location: String): Git = command {
+suspend fun Git.stageFile(fileDeltaNode: FileDeltaNode): Git = command {
+
+    val shouldSetUpdate = fileDeltaNode.fileDelta is WorkingDirectory.FileDeleted
+
     this@stageFile
         .add()
-        .addFilepattern(location)
+        .addFilepattern(fileDeltaNode.getPath())
+        .setUpdate(shouldSetUpdate)
         .call()
-        .also { logger.info("Staging file $location") }
+        .also { logger.info("Staging file ${fileDeltaNode.getPath()}") }
 }
 
-suspend fun Git.unstageFile(location: String) = command {
+suspend fun Git.unstageFile(fileDeltaNode: FileDeltaNode) = command {
     this@unstageFile
         .reset()
-        .addPath(location)
+        .addPath(fileDeltaNode.getPath())
         .call()
-        .also { logger.info("unstaging file $location") }
+        .also { logger.info("unstaging file ${fileDeltaNode.getPath()}") }
 }
 
 suspend fun Git.unstageAll() = command {
