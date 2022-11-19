@@ -5,9 +5,9 @@ import com.codymikol.data.diff.DiffTree
 import com.codymikol.data.file.FileDelta
 import com.codymikol.data.file.Index
 import com.codymikol.data.file.WorkingDirectory
+import com.codymikol.tabs.Tab
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder
-import com.codymikol.tabs.Tab
 import java.io.File
 import java.nio.file.Path
 
@@ -35,8 +35,7 @@ object GitDownState {
     val config = derivedStateOf { repo.value.config }
 
     val git = derivedStateOf {
-        println("Computing git")
-        println(test.value)
+        println(lastRequestedUpdateTimestamp.value)
         Git(repo.value)
     }
 
@@ -136,5 +135,7 @@ object GitDownState {
                 && workingDirectoryFilesModified.value.isEmpty()
     }
 
-    val test = mutableStateOf(1)
+    //todo(mikol): this is not ideal, work out a better way to manage this...
+    private val lastRequestedUpdateTimestamp = mutableStateOf(System.currentTimeMillis())
+
 }
