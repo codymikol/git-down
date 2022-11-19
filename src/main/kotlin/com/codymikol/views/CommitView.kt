@@ -145,20 +145,22 @@ private fun ModificationTypeGutter(lineNode: LineNode) {
     Box(modifier = Modifier.width(24.dp).fillMaxSize()) { GitDownTypography.DiffType(lineNode.line.symbol) }
 }
 
+@Composable
+private fun DiffPanel() = when(GitDownState.diffTree.value.fileDeltaNodes.size > 0) {
+    true -> Diff()
+    false -> Column { EmptyState("No file selected") }
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun DiffPanel() = LazyColumn {
-
-    GitDownState.diffTree.value.fileDeltaNodes.forEach { fileDeltaNode ->
-
-        stickyHeader { FileHeader(fileDeltaNode) }
-
-        fileDeltaNode.hunks.forEach { hunkNode ->
-
-            item { HunkHeader(hunkNode.hunk) }
-
-            hunkNode.lines.forEach { lineNode -> item { DiffLine(lineNode, fileDeltaNode) } }
-
+private fun Diff() {
+    LazyColumn {
+        GitDownState.diffTree.value.fileDeltaNodes.forEach { fileDeltaNode ->
+            stickyHeader { FileHeader(fileDeltaNode) }
+            fileDeltaNode.hunks.forEach { hunkNode ->
+                item { HunkHeader(hunkNode.hunk) }
+                hunkNode.lines.forEach { lineNode -> item { DiffLine(lineNode, fileDeltaNode) } }
+            }
         }
     }
 }
