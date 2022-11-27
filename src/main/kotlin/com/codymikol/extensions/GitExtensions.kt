@@ -9,6 +9,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.api.ResetCommand
+import org.eclipse.jgit.api.errors.NoHeadException
 import org.slf4j.LoggerFactory
 
 class GitExtensions
@@ -24,6 +25,12 @@ private suspend fun Git.command(fn: () -> Unit) = withContext(Dispatchers.IO) {
     GitDownState.lastRequestedUpdateTimestamp.value = System.currentTimeMillis()
     scanForChanges()
 }.let { this }
+
+fun Git.getCurrentRefCommitCount() = try {
+    this.log().call().toSet().size
+} catch (e: NoHeadException) {
+    0
+}
 
 suspend fun Git.stageAll(): Git = command {
 
