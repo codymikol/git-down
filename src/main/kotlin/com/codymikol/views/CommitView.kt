@@ -157,9 +157,9 @@ private fun Diff() {
     LazyColumn {
         GitDownState.diffTree.value.fileDeltaNodes.forEach { fileDeltaNode ->
             stickyHeader { FileHeader(fileDeltaNode) }
-            fileDeltaNode.hunks.forEach { hunkNode ->
+            fileDeltaNode.hunkNodes.forEach { hunkNode ->
                 item { HunkHeader(hunkNode.hunk) }
-                hunkNode.lines.forEach { lineNode -> item { DiffLine(lineNode, fileDeltaNode) } }
+                hunkNode.lineNodes.forEach { lineNode -> item { DiffLine(lineNode, fileDeltaNode) } }
             }
         }
     }
@@ -168,7 +168,7 @@ private fun Diff() {
 @Composable
 private fun DiffLine(lineNode: LineNode, parentFileNode: FileDeltaNode) {
 
-    val fileLines = parentFileNode.hunks.map { it.lines }.flatten()
+    val fileLines = parentFileNode.hunkNodes.map { it.lineNodes }.flatten()
 
     //todo(mikol): figure out drag selection :')
     //todo(mikol): limit click hitbox to around the gutter area

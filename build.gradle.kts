@@ -28,6 +28,7 @@ repositories {
 
 dependencies {
     ksp("io.insert-koin:koin-ksp-compiler:$koinKspVersion")
+    implementation("com.github.git24j:git24j:1.0.0")
     implementation("io.insert-koin:koin-core:$koinVersion")
     implementation("io.insert-koin:koin-annotations:$koinKspVersion")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.14.0")

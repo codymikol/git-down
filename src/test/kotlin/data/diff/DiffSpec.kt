@@ -37,30 +37,30 @@ index 39d9a33..960dae4 100644
         val fileDeltaNode = FileDeltaNode.make(subject)
 
         it("should have the correct number of chunks based on the number of delimiters in the diff") {
-            fileDeltaNode.hunks.size shouldBe 2
+            fileDeltaNode.hunkNodes.size shouldBe 2
         }
 
         describe("Hunk") {
 
-            val hunk = fileDeltaNode.hunks.getOrNull(0)
+            val hunk = fileDeltaNode.hunkNodes.getOrNull(0)
 
             it("should have the proper delimiter for the first hunk") {
                 hunk?.delimiter shouldBe "@@ -16,8 +16,9 @@"
             }
 
             it("should have the proper number of lines in the hunk") {
-                hunk?.lines?.size shouldBe 10
+                hunk?.lineNodes?.size shouldBe 10
             }
 
         }
 
         describe("Line") {
 
-            val hunk = fileDeltaNode.hunks.getOrNull(0)
+            val hunk = fileDeltaNode.hunkNodes.getOrNull(0)
 
             describe("Added Line") {
 
-                val example = hunk?.lines?.getOrNull(6)
+                val example = hunk?.lineNodes?.getOrNull(6)
 
                 it("should be the line I expect to be testing") {
                     example?.value shouldBe "            val path = this.dir.toString() + \"/\" +  filename"
@@ -74,7 +74,7 @@ index 39d9a33..960dae4 100644
 
             describe("Deleted Line") {
 
-                val example = hunk?.lines?.getOrNull(5)
+                val example = hunk?.lineNodes?.getOrNull(5)
 
                 it("should be the line I expect to be testing") {
                     example?.value shouldBe "            val path = this.dir.toString() + \"/\" + filename"
@@ -88,7 +88,7 @@ index 39d9a33..960dae4 100644
 
             describe("Unmodified Line") {
 
-                val example = hunk?.lines?.getOrNull(7)
+                val example = hunk?.lineNodes?.getOrNull(7)
 
                 it("should be the line I expect to be testing") {
                     example?.value shouldBe "            File(path).also { file -> file.parentFile.mkdirs() }.writeText(\"Foo\")"

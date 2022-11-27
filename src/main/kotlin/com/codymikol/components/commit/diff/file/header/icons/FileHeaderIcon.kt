@@ -7,10 +7,10 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.unit.dp
 import com.codymikol.components.commit.FileIcon
 import com.codymikol.data.diff.FileDeltaNode
-import com.codymikol.data.diff.FileDeltaNodeOld
 
 @Composable
 fun FileHeaderIcon(fileDeltaNode: FileDeltaNode) = FileIcon(
     modifier = Modifier.shadow(elevation = 3.dp, shape = RoundedCornerShape(14.dp)),
     fileDelta = fileDeltaNode.fileDelta
+
 )

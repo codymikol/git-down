@@ -2,6 +2,7 @@ package com.codymikol.extensions
 
 import androidx.compose.runtime.MutableState
 import com.codymikol.data.diff.FileDeltaNode
+import com.codymikol.data.diff.LineNode
 import com.codymikol.data.file.WorkingDirectory
 import com.codymikol.state.GitDownState
 import kotlinx.coroutines.Dispatchers
@@ -48,25 +49,18 @@ suspend fun Git.discardFile(location: String): Git = command {
     TODO()
 }
 
-suspend fun Git.unstageLines(): Git = command {
-
-//    val repoState = repository.repositoryState
-//
-//    val dc = repository.lockDirCache()
-//
-//    try {
-//        val walk = TreeWalk(repository)
-//
-//        if(commitTree)
-//
-//    } finally {
-//        dc.unlock()
-//    }
-
+suspend fun Git.unstageLines(lines: List<LineNode>): Git = command {
+    print(lines.size)
 }
 
-suspend fun Git.stageLines(): Git = command {
-    TODO()
+suspend fun Git.stageLines(lineNodes: List<LineNode>): Git = command {
+
+    val hunkNodes = lineNodes.groupBy { it.parent }
+
+    hunkNodes.forEach { hunkNode ->
+        println("Hunk ${hunkNode.key.hashCode()}, Line: ${hunkNode.value.map { it.hashCode() }}")
+    }
+
 }
 
 suspend fun Git.discardAllWorkingDirectory(): Git = command {

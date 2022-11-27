@@ -4,12 +4,16 @@ import com.codymikol.data.file.FileDelta
 
 class FileDeltaNode(
     val fileDelta: FileDelta,
-    val hunks: List<HunkNode>
+    val hunkNodes: List<HunkNode>
 ) {
 
     lateinit var parent: DiffTree
     fun getPath() = fileDelta.getPath()
-    fun isSelectingLines(): Boolean = hunks.any { hunk -> hunk.isSelectingLines() }
+
+    fun isSelectingLines(): Boolean = hunkNodes.any { hunk -> hunk.isSelectingLines() }
+
+    fun getSelectedLines(): List<LineNode> = hunkNodes.flatMap { hunk
+        -> hunk.getSelectedLines() }
 
     companion object {
         fun make(fileDelta: FileDelta): FileDeltaNode {

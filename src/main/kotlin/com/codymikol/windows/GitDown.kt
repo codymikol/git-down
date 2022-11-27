@@ -42,8 +42,17 @@ import java.awt.event.WindowFocusListener
 @Composable
 fun GitDown() {
 
+    fun handleUpArrow() {
+        //todo(mikol): if a file is selected, see if we can
+    }
+
+    fun handleDownArrow() {
+
+    }
+
     Window(
         onKeyEvent = {
+
             Keys.isShiftPressed.value = it.isShiftPressed
             Keys.isCtrlPressed.value = it.isCtrlPressed
             false
