@@ -15,8 +15,11 @@ data class DiffTree(
             // todo(mikol): Is there a better way to define parent relationships without drilling back down through the tree?
             tree.fileDeltaNodes.forEach {fileDeltaNode ->
                fileDeltaNode.parent = tree
-               fileDeltaNode.hunks.forEach {hunkNode ->
+               fileDeltaNode.hunkNodes.forEach { hunkNode ->
                    hunkNode.parent = fileDeltaNode
+                   hunkNode.lineNodes.forEach {
+                       it.parent = hunkNode
+                   }
                }
             }
 

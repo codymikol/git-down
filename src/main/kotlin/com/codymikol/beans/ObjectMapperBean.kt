@@ -7,4 +7,5 @@ import org.koin.core.annotation.Single
 @Single
 class ObjectMapperBean {
     val value: ObjectMapper by lazy { ObjectMapper().registerKotlinModule() }
+
 }
