@@ -5,6 +5,7 @@ import com.codymikol.data.diff.DiffTree
 import com.codymikol.data.file.FileDelta
 import com.codymikol.data.file.Index
 import com.codymikol.data.file.WorkingDirectory
+import com.codymikol.extensions.getCurrentRefCommitCount
 import com.codymikol.tabs.Tab
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder
@@ -44,7 +45,7 @@ object GitDownState {
     val branchName = derivedStateOf { repo.value.branch ?: "" }
 
     val commitCount = derivedStateOf {
-        git.value.log().call().toSet().size
+        git.value.getCurrentRefCommitCount()
     }
 
     val committingAsName = derivedStateOf { repo.value.config.getString("user", null, "name") ?: "" }
