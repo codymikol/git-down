@@ -10,7 +10,6 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -27,6 +26,7 @@ import androidx.compose.ui.window.rememberWindowState
 import com.codymikol.components.TabButtonLocation
 import com.codymikol.components.tabButton
 import com.codymikol.data.Colors
+import com.codymikol.extensions.onFocusGained
 import com.codymikol.extensions.scanForChanges
 import com.codymikol.state.GitDownState
 import com.codymikol.state.Keys
@@ -35,24 +35,13 @@ import com.codymikol.views.CommitView
 import com.codymikol.views.MapView
 import com.codymikol.views.StashView
 import java.awt.Dimension
-import java.awt.event.WindowEvent
-import java.awt.event.WindowFocusListener
 
 @Preview
 @Composable
 fun GitDown() {
 
-    fun handleUpArrow() {
-        //todo(mikol): if a file is selected, see if we can
-    }
-
-    fun handleDownArrow() {
-
-    }
-
     Window(
         onKeyEvent = {
-
             Keys.isShiftPressed.value = it.isShiftPressed
             Keys.isCtrlPressed.value = it.isCtrlPressed
             false
@@ -70,24 +59,10 @@ fun GitDown() {
         )
     ) {
 
-        DisposableEffect(Unit) {
-
-            window.addWindowFocusListener(object : WindowFocusListener {
-
-                override fun windowGainedFocus(p0: WindowEvent?) {
-                    GitDownState.lastRequestedUpdateTimestamp.value = System.currentTimeMillis()
-                    GitDownState.git.value.scanForChanges()
-                }
-
-                override fun windowLostFocus(p0: WindowEvent?) {
-                    /** noop **/
-                }
-
-            })
-            onDispose {}
+        window.onFocusGained {
+            GitDownState.lastRequestedUpdateTimestamp.value = System.currentTimeMillis()
+            GitDownState.git.value.scanForChanges()
         }
-
-        this.window.focusListeners
 
         this.window.minimumSize = Dimension(800, 500)
 
