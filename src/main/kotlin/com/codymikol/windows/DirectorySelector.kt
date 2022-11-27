@@ -27,11 +27,14 @@ import androidx.compose.ui.window.*
 import com.codymikol.data.Colors
 import com.codymikol.data.recent.RecentProject
 import com.codymikol.data.recent.RecentProjects
+import com.codymikol.extensions.onFocusLost
 import com.codymikol.repositories.RecentProjectRepository
 import com.codymikol.state.GitDownState
-import kotlinx.coroutines.DelicateCoroutinesApi
 import org.koin.java.KoinJavaComponent.inject
-import java.awt.*
+import java.awt.Desktop
+import java.awt.Dimension
+import java.awt.FileDialog
+import java.awt.Frame
 import java.io.File
 import java.net.URI
 import javax.swing.JFileChooser
@@ -53,10 +56,10 @@ fun RecentProjectSelector(x: Int, y: Int, closeHandler: () -> Unit, recent: Rece
         ComposeWindow().apply {
             //todo(mikol): really big hack here for this menu, might just redo into something more manageable...
             setBounds(x + 5, y + 330, 290, 48 * recent.projects.size.coerceAtMost(5) + 16)
-            focusableWindowState = false
+            focusableWindowState = true
             defaultCloseOperation = JFrame.DISPOSE_ON_CLOSE
             type = java.awt.Window.Type.POPUP
-            isAlwaysOnTop = true
+            isAlwaysOnTop = false
             isUndecorated = true
             background = java.awt.Color(0, 0,0,0)
             isResizable = false
@@ -76,6 +79,7 @@ fun RecentProjectSelector(x: Int, y: Int, closeHandler: () -> Unit, recent: Rece
                     }
                 }
             }
+            onFocusLost { closeHandler() }
         }
     },
         dispose = {})
@@ -96,6 +100,9 @@ fun DirectorySelector(applicationScope: ApplicationScope) =
             position = WindowPosition(alignment = Alignment.Center)
         )
     ) {
+
+        val showRecentProjectDropdown = remember { mutableStateOf(false) }
+
         this.window.isResizable = false
         this.window.minimumSize = Dimension(windowWidth, windowHeight)
         this.window.size = Dimension(windowWidth, windowHeight)
@@ -107,7 +114,6 @@ fun DirectorySelector(applicationScope: ApplicationScope) =
 
         val borderSize = 12.dp
 
-        val showRecentProjectDropdown = remember { mutableStateOf(false) }
         val recentProjects = remember { recentProjectsRepository.getRecentProjects() }
 
         if (showRecentProjectDropdown.value) {
