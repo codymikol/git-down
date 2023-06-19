@@ -2,14 +2,13 @@ import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm") version "1.7.20"
-    id("org.jetbrains.compose") version "1.2.1"
-    id("com.google.devtools.ksp") version "1.7.20-1.0.7"
+    kotlin("jvm") version "1.8.20"
+    id("org.jetbrains.compose") version "1.4.0"
+    id("com.google.devtools.ksp") version "1.8.20-1.0.11"
 }
 
 val koinVersion = "3.2.2"
 val koinKspVersion= "1.0.3"
-val kspVersion = "1.6.10-1.0.2"
 
 group = "com.codymikol"
 version = "1.0"
