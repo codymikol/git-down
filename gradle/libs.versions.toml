@@ -1,0 +1,30 @@
+[versions]
+kotlin = "1.9.10"
+compose = "1.5.1"
+ksp = "1.9.10-1.0.13"
+koin = "3.5.0"
+koin-ksp = "1.3.0"
+jackson = "2.15.2"
+appdirs = "1.2.1"
+jgit = "6.7.0.202309050840-r"
+kotest = "5.7.2"
+
+
+[libraries]
+koin-ksp = { group = "io.insert-koin", name = "koin-ksp-compiler", version.ref = "koin-ksp" }
+koin-annotations = { group = "io.insert-koin", name = "koin-annotations", version.ref = "koin-ksp" }
+koin-core = { group = "io.insert-koin", name = "koin-core", version.ref = "koin"  }
+koin-test = { group = "io.insert-koin", name = "koin-test", version.ref = "koin" }
+jackson-module-kotlin = { group = "com.fasterxml.jackson.module", name = "jackson-module-kotlin", version.ref = "jackson" }
+jackson-annotations = { group = "com.fasterxml.jackson.core", name = "jackson-annotations", version.ref = "jackson" }
+jackson-core = { group = "com.fasterxml.jackson.core", name = "jackson-core", version.ref = "jackson" }
+jackson-databind = { group = "com.fasterxml.jackson.core", name = "jackson-databind", version.ref = "jackson" }
+appdirs = { group = "net.harawata", name = "appdirs", version.ref = "appdirs" }
+jgit = { group = "org.eclipse.jgit", name = "org.eclipse.jgit", version.ref = "jgit" }
+kotest-runner-junit5 = { group = "io.kotest", name = "kotest-runner-junit5", version.ref = "kotest" }
+kotest-assertions-core = { group = "io.kotest", name = "kotest-assertions-core", version.ref = "kotest" }
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+jetbrains-compose = { id = "org.jetbrains.compose", version.ref = "compose" }
+google-ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
