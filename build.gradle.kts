@@ -2,20 +2,9 @@ import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm") version "1.8.20"
-    id("org.jetbrains.compose") version "1.4.0"
-    id("com.google.devtools.ksp") version "1.8.20-1.0.11"
-}
-
-val koinVersion = "3.2.2"
-val koinKspVersion= "1.0.3"
-
-group = "com.codymikol"
-version = "1.0"
-
-// Use KSP Generated sources
-sourceSets.main {
-    java.srcDirs("build/generated/ksp/main/kotlin")
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.jetbrains.compose)
+    alias(libs.plugins.google.ksp)
 }
 
 repositories {
@@ -26,29 +15,30 @@ repositories {
 }
 
 dependencies {
-    ksp("io.insert-koin:koin-ksp-compiler:$koinKspVersion")
-    implementation("com.github.git24j:git24j:1.0.0")
-    implementation("io.insert-koin:koin-core:$koinVersion")
-    implementation("io.insert-koin:koin-annotations:$koinKspVersion")
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.14.0")
+    ksp(libs.koin.ksp)
+    implementation(libs.koin.core)
+    implementation(libs.koin.ksp)
+    implementation(libs.jackson.module.kotlin)
     implementation(compose.desktop.currentOs)
-    implementation("net.harawata:appdirs:1.2.1")
-    implementation("com.fasterxml.jackson.core:jackson-annotations:2.14.0")
-    implementation("com.fasterxml.jackson.core:jackson-core:2.14.0")
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.14.0")
-    implementation("org.eclipse.jgit:org.eclipse.jgit:6.3.0.202209071007-r")
-    testImplementation("io.insert-koin:koin-test:$koinVersion")
-    testImplementation("io.kotest:kotest-runner-junit5:5.5.4")
-    testImplementation("io.kotest:kotest-assertions-core:5.5.4")
+    implementation(libs.appdirs)
+    implementation(libs.jackson.annotations)
+    implementation(libs.jackson.core)
+    implementation(libs.jackson.databind)
+    implementation(libs.jgit)
+    testImplementation(libs.koin.test)
+    testImplementation(libs.kotest.runner.junit5)
+    testImplementation(libs.kotest.assertions.core)
 }
 
-tasks.withType<Test> {
-    useJUnitPlatform()
-}
+// Use KSP Generated sources
+sourceSets.main { java.srcDirs("build/generated/ksp/main/kotlin") }
 
-tasks.withType<KotlinCompile> {
-    kotlinOptions.jvmTarget = "17"
-}
+tasks.withType<Test> { useJUnitPlatform() }
+
+tasks.withType<KotlinCompile> { kotlinOptions.jvmTarget = "17" }
+
+group = "com.codymikol"
+version = "1.0"
 
 compose.desktop {
     application {
