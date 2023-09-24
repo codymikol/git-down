@@ -1,15 +1,16 @@
+
 import com.codymikol.extensions.commitAll
 import com.codymikol.extensions.scanForChanges
 import com.codymikol.extensions.stageAll
-import org.eclipse.jgit.api.Git
 import com.codymikol.state.GitDownState
+import org.eclipse.jgit.api.Git
 import java.io.File
 import java.nio.file.Path
 
 data class TestRepository(
     val dir: Path,
     val git: Git,
-) {
+): AutoCloseable {
 
 
     fun addFile(filename: String, content: String) = this.also {
@@ -31,7 +32,7 @@ data class TestRepository(
         File(path).delete()
     }
 
-    fun close() = this.also {
+    fun closeGitRepo() = this.also {
         this.git.close()
     }
 
@@ -44,7 +45,7 @@ data class TestRepository(
     }
 
     fun transferIntoGitDownState() = this.also {
-        this.close()
+        this.closeGitRepo()
         GitDownState.gitDirectory.value = this.dir.toString() + "/.git"
         GitDownState.git.value.scanForChanges()
     }
@@ -58,6 +59,10 @@ data class TestRepository(
             GitDownState.git.value.close()
                 .let{ kotlin.io.path.createTempDirectory("git-down-state-test-") }
                 .let { TestRepository(it, Git.init().setDirectory(it.toFile()).call()) }
+    }
+
+    override fun close() {
+       closeGitDownState()
     }
 
 }

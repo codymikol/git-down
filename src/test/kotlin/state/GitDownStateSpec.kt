@@ -1,11 +1,9 @@
 package state
 
-import TestRepository
 import TestRepository.Companion.createTestRepository
 import com.codymikol.state.GitDownState
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
-import org.eclipse.jgit.api.Git
 
 
 class GitDownStateSpec : DescribeSpec({
@@ -18,15 +16,11 @@ class GitDownStateSpec : DescribeSpec({
 
             describe("Files Added") {
 
-                lateinit var repo: TestRepository
-
-                beforeTest {
-                    repo = createTestRepository()
-                      .addFile("foo.txt", "Foo")
-                      .transferIntoGitDownState()
-                }
-
-                afterTest { repo.closeGitDownState() }
+                autoClose(
+                    createTestRepository()
+                        .addFile("foo.txt", "Foo")
+                        .transferIntoGitDownState()
+                )
 
                 it("should contain a single file under workingDirectoryFilesAdded") {
                     GitDownState.workingDirectoryFilesAdded.value.size shouldBe 1
@@ -56,18 +50,14 @@ class GitDownStateSpec : DescribeSpec({
 
             describe("Files Deleted") {
 
-                lateinit var repo: TestRepository
-
-                beforeTest {
-                    repo = createTestRepository()
+                autoClose(
+                    createTestRepository()
                         .addFile("foo.txt", "Foo")
                         .stageAll()
                         .commitAll("test commit")
                         .deleteFile("foo.txt")
                         .transferIntoGitDownState()
-                }
-
-                afterTest { repo.closeGitDownState() }
+                )
 
                 it("should contain a single file under workingDirectoryFilesDeleted") {
                     GitDownState.workingDirectoryFilesDeleted.value.size shouldBe 1
@@ -97,19 +87,14 @@ class GitDownStateSpec : DescribeSpec({
 
             describe("Files Modified") {
 
-                lateinit var repo: TestRepository
-
-                beforeTest {
-                    repo = createTestRepository()
+                autoClose(
+                    createTestRepository()
                         .addFile("foo.txt", "Foo")
                         .stageAll()
                         .commitAll("test commit")
                         .appendToFile("foo.txt", "Bar")
                         .transferIntoGitDownState()
-                }
-
-                afterTest { repo.closeGitDownState() }
-
+                )
 
                 it("should contain a single file under workingDirectoryFilesModified") {
                     GitDownState.workingDirectoryFilesModified.value.size shouldBe 1
@@ -137,22 +122,18 @@ class GitDownStateSpec : DescribeSpec({
 
             }
 
-        }
+}
 
         describe("Index") {
 
             describe("Files Added") {
 
-                lateinit var repo: TestRepository
-
-                beforeTest {
-                    repo = createTestRepository()
+                autoClose(
+                    createTestRepository()
                         .addFile("foo.txt", "Foo")
                         .stageAll()
                         .transferIntoGitDownState()
-                }
-
-                afterTest { repo.closeGitDownState() }
+                )
 
                 it("should contain a single file under indexFilesAdded") {
                     GitDownState.indexFilesAdded.value.size shouldBe 1
@@ -182,19 +163,15 @@ class GitDownStateSpec : DescribeSpec({
 
             describe("Files Deleted") {
 
-                lateinit var repo: TestRepository
-
-                beforeTest {
-                    repo = createTestRepository()
+                autoClose(
+                    createTestRepository()
                         .addFile("foo.txt", "Foo")
                         .stageAll()
                         .commitAll("test commit")
                         .deleteFile("foo.txt")
                         .stageAll()
                         .transferIntoGitDownState()
-                }
-
-                afterTest { repo.closeGitDownState() }
+                )
 
                 it("should contain a single file under indexFilesDeleted") {
                     GitDownState.indexFilesDeleted.value.size shouldBe 1
@@ -224,19 +201,15 @@ class GitDownStateSpec : DescribeSpec({
 
             describe("Files Modified") {
 
-                lateinit var repo: TestRepository
-
-                beforeTest {
-                    repo = createTestRepository()
+                autoClose(
+                    createTestRepository()
                         .addFile("foo.txt", "Foo")
                         .stageAll()
                         .commitAll("test commit")
                         .appendToFile("foo.txt", "Bar")
                         .stageAll()
                         .transferIntoGitDownState()
-                }
-
-                afterTest { repo.closeGitDownState() }
+                )
 
                 it("should contain a single file under indexFilesModified") {
                     GitDownState.indexFilesModified.value.size shouldBe 1
@@ -266,10 +239,8 @@ class GitDownStateSpec : DescribeSpec({
 
             describe("commitCount") {
 
-                lateinit var repo: TestRepository
-
-                beforeTest {
-                    repo = createTestRepository()
+                autoClose(
+                    createTestRepository()
                         .addFile("foo.txt", "Foo")
                         .stageAll()
                         .commitAll("a")
@@ -280,9 +251,7 @@ class GitDownStateSpec : DescribeSpec({
                         .stageAll()
                         .commitAll("c")
                         .transferIntoGitDownState()
-                }
-
-                afterTest { repo.closeGitDownState() }
+                )
 
                 it("should properly reflect the commit count of commits [a,b,c]") {
                     GitDownState.commitCount.value shouldBe 3
@@ -294,14 +263,10 @@ class GitDownStateSpec : DescribeSpec({
 
                 describe("Happy path - there is nothing in the index at all") {
 
-                    lateinit var repo: TestRepository
-
-                    beforeTest {
-                        repo = createTestRepository()
+                    autoClose(
+                        createTestRepository()
                             .transferIntoGitDownState()
-                    }
-
-                    afterTest { repo.closeGitDownState() }
+                    )
 
                     it("should be true") {
                         GitDownState.indexIsEmpty.value shouldBe true
@@ -311,19 +276,15 @@ class GitDownStateSpec : DescribeSpec({
 
                 describe("When there is a deleted file in the index") {
 
-                    lateinit var repo: TestRepository
-
-                    beforeTest {
-                        repo = createTestRepository()
+                    autoClose(
+                        createTestRepository()
                             .addFile("foo.txt", "Foo")
                             .stageAll()
                             .commitAll("test commit")
                             .deleteFile("foo.txt")
                             .stageAll()
                             .transferIntoGitDownState()
-                    }
-
-                    afterTest { repo.closeGitDownState() }
+                    )
 
                     it("should be false") {
                         GitDownState.indexIsEmpty.value shouldBe false
@@ -333,16 +294,12 @@ class GitDownStateSpec : DescribeSpec({
 
                 describe("When there is an added file in the index") {
 
-                    lateinit var repo: TestRepository
-
-                    beforeTest {
-                        repo = createTestRepository()
+                    autoClose(
+                        createTestRepository()
                             .addFile("foo.txt", "Foo")
                             .stageAll()
                             .transferIntoGitDownState()
-                    }
-
-                    afterTest { repo.closeGitDownState() }
+                    )
 
                     it("should be false") {
                         GitDownState.indexIsEmpty.value shouldBe false
@@ -352,19 +309,15 @@ class GitDownStateSpec : DescribeSpec({
 
                 describe("When there is a modified file in the index") {
 
-                    lateinit var repo: TestRepository
-
-                    beforeTest {
-                        repo = createTestRepository()
+                    autoClose(
+                        createTestRepository()
                             .addFile("foo.txt", "Foo")
                             .stageAll()
                             .commitAll("test commit")
                             .appendToFile("foo.txt", "Bar")
                             .stageAll()
                             .transferIntoGitDownState()
-                    }
-
-                    afterTest { repo.closeGitDownState() }
+                    )
 
                     it("should be false") {
                         GitDownState.indexIsEmpty.value shouldBe false
@@ -378,14 +331,10 @@ class GitDownStateSpec : DescribeSpec({
 
                 describe("Happy path - there is nothing in the working directory") {
 
-                    lateinit var repo: TestRepository
-
-                    beforeTest {
-                        repo = createTestRepository()
+                    autoClose(
+                        createTestRepository()
                             .transferIntoGitDownState()
-                    }
-
-                    afterTest { repo.closeGitDownState() }
+                    )
 
                     it("should be true") {
                         GitDownState.workingDirectoryIsEmpty.value shouldBe true
@@ -395,18 +344,14 @@ class GitDownStateSpec : DescribeSpec({
 
                 describe("When there is a deleted file in the working directory") {
 
-                    lateinit var repo: TestRepository
-
-                    beforeTest {
-                        repo = createTestRepository()
+                    autoClose(
+                        createTestRepository()
                             .addFile("foo.txt", "Foo")
                             .stageAll()
                             .commitAll("test commit")
                             .deleteFile("foo.txt")
                             .transferIntoGitDownState()
-                    }
-
-                    afterTest { repo.closeGitDownState() }
+                    )
 
                     it("should be false") {
                         GitDownState.workingDirectoryIsEmpty.value shouldBe false
@@ -416,15 +361,11 @@ class GitDownStateSpec : DescribeSpec({
 
                 describe("When there is an added file in the working directory") {
 
-                    lateinit var repo: TestRepository
-
-                    beforeTest {
-                        repo = createTestRepository()
+                    autoClose(
+                        createTestRepository()
                             .addFile("foo.txt", "Foo")
                             .transferIntoGitDownState()
-                    }
-
-                    afterTest { repo.closeGitDownState() }
+                    )
 
                     it("should be false") {
                         GitDownState.workingDirectoryIsEmpty.value shouldBe false
@@ -434,18 +375,14 @@ class GitDownStateSpec : DescribeSpec({
 
                 describe("When there is a modified file in the working directory") {
 
-                    lateinit var repo: TestRepository
-
-                    beforeTest {
-                        repo = createTestRepository()
+                    autoClose(
+                        createTestRepository()
                             .addFile("foo.txt", "Foo")
                             .stageAll()
                             .commitAll("test commit")
                             .appendToFile("foo.txt", "Bar")
                             .transferIntoGitDownState()
-                    }
-
-                    afterTest { repo.closeGitDownState() }
+                    )
 
                     it("should be false") {
                         GitDownState.workingDirectoryIsEmpty.value shouldBe false
