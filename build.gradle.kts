@@ -4,7 +4,9 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.jetbrains.compose)
+    alias(libs.plugins.compose.compiler)
     alias(libs.plugins.google.ksp)
+    alias(libs.plugins.shadow.jar)
 }
 
 repositories {
@@ -25,24 +27,45 @@ dependencies {
     implementation(libs.jackson.core)
     implementation(libs.jackson.databind)
     implementation(libs.jgit)
+    implementation(libs.shadow.jar)
     testImplementation(libs.koin.test)
     testImplementation(libs.kotest.runner.junit5)
     testImplementation(libs.kotest.assertions.core)
 }
 
+
 // Use KSP Generated sources
 sourceSets.main { java.srcDirs("build/generated/ksp/main/kotlin") }
 
-tasks.withType<Test> { useJUnitPlatform() }
+
+tasks.withType<Test>().configureEach { 
+  useJUnitPlatform() 
+  testLogging {
+        events("passed", "skipped", "failed")
+  }
+}
 
 tasks.withType<KotlinCompile> { kotlinOptions.jvmTarget = "17" }
 
 group = "com.codymikol"
 version = "1.0"
 
+tasks.jar {
+  manifest {
+    attributes["Main-Class"] = "com.codymikol.Main"
+    attributes["Class-Path"] = configurations
+        .runtimeClasspath
+        .get()
+        .joinToString(separator = " ") { file -> "libs/${file.name}" }
+  }
+
+  duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+  configurations.runtimeClasspath.get().map { if (it.isDirectory) it else zipTree(it) }
+}
+
 compose.desktop {
     application {
-        mainClass = "com.codymikol.Main"
+        mainClass = "com.codymikol.MainKt"
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "gitdown"
