@@ -6,5 +6,5 @@ pluginManagement {
     }
     
 }
-rootProject.name = "reboot-desktop"
+rootProject.name = "gitdown"
 
