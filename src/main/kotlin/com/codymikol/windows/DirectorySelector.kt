@@ -52,8 +52,11 @@ private val recentProjectsRepository: RecentProjectRepository by inject(RecentPr
 
 @Composable
 fun RecentProjectSelector(x: Int, y: Int, closeHandler: () -> Unit, recent: RecentProjects) {
+
+    lateinit var window: ComposeWindow
+
     AwtWindow(create = {
-        ComposeWindow().apply {
+        window = ComposeWindow().apply {
             //todo(mikol): really big hack here for this menu, might just redo into something more manageable...
             setBounds(x + 5, y + 330, 290, 48 * recent.projects.size.coerceAtMost(5) + 16)
             focusableWindowState = true
@@ -71,8 +74,19 @@ fun RecentProjectSelector(x: Int, y: Int, closeHandler: () -> Unit, recent: Rece
                     onDismissRequest = {}) {
                     recent.projects.forEach {
                         DropdownMenuItem(modifier = Modifier.fillMaxWidth(), onClick = {
-                            handleDirectorySelection(it.location)
-                            closeHandler()
+                            try { 
+                              println("Handling directory selection")
+                              handleDirectorySelection(it.location) 
+                              println("Done handling directory selection")
+                            }
+                            catch(e: Exception) {
+                              println("Error selecting directory: $e")
+                              e.printStackTrace() 
+                            }
+                            finally {
+                              println("Closing recent project selector")
+                              closeHandler()
+                            }
                         }) {
                             Text(it.name)
                         }
@@ -81,10 +95,13 @@ fun RecentProjectSelector(x: Int, y: Int, closeHandler: () -> Unit, recent: Rece
             }
             onFocusLost { closeHandler() }
         }
+        
+        window
+        
     },
-        dispose = {})
-
+        dispose = { window.dispose() })
 }
+
 @Composable
 fun DirectorySelector(applicationScope: ApplicationScope) =
     Window(
@@ -116,8 +133,13 @@ fun DirectorySelector(applicationScope: ApplicationScope) =
 
         val recentProjects = remember { recentProjectsRepository.getRecentProjects() }
 
+        val closeDropdown = { 
+          showRecentProjectDropdown.value = false 
+          println("Closed selector dropdown")
+        }
+
         if (showRecentProjectDropdown.value) {
-            RecentProjectSelector(window.x, window.y, { showRecentProjectDropdown.value = false }, recentProjects)
+            RecentProjectSelector(x = window.x, y = window.y, closeHandler = closeDropdown, recent = recentProjects)
         }
 
         Box(
@@ -222,6 +244,7 @@ fun handleDirectorySelection(dir: String) {
     recentProjectsRepository.addRecentProject(
         RecentProject(name = dirFile.parentFile.name, location = dir)
     )
+    println("Selected: $dir")
     GitDownState.gitDirectory.value = dir
     isAppleDialogOpen.value = false
 }
