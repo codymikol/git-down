@@ -11,9 +11,10 @@ class Main {
         @JvmStatic
         fun main(args: Array<String>) = application {
 
+            // todo(mikol): we should move this into a load directory service and make it more robust eventually...
             if(args.size == 1) {
-                println(args[0])
-                GitDownState.gitDirectory.value = args[0]
+                println("requested directory: " + args[0])
+                GitDownState.gitDirectory.value = args[0] + "/.git"
             }
 
             startKoin { modules(
