@@ -28,15 +28,26 @@ dependencies {
     implementation(libs.jackson.databind)
     implementation(libs.jgit)
     implementation(libs.shadow.jar)
+    implementation(compose.desktop.currentOs)
+    implementation(libs.compose.components.resources)
     testImplementation(libs.koin.test)
     testImplementation(libs.kotest.runner.junit5)
     testImplementation(libs.kotest.assertions.core)
 }
 
 
+compose.resources {
+    publicResClass = true
+}
+
 // Use KSP Generated sources
 sourceSets.main { java.srcDirs("build/generated/ksp/main/kotlin") }
 
+configurations.all {
+  resolutionStrategy {
+    failOnNonReproducibleResolution()
+  }
+}
 
 tasks.withType<Test>().configureEach { 
   useJUnitPlatform() 
