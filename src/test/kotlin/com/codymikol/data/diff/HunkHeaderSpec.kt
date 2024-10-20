@@ -1,4 +1,4 @@
-package data.diff
+package com.codymikol.data.diff
 
 import com.codymikol.data.diff.HunkHeader
 import com.codymikol.data.diff.LineModification
