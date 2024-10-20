@@ -1,6 +1,7 @@
 package com.codymikol.components
 
 import androidx.compose.desktop.ui.tooling.preview.Preview
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonColors
@@ -10,6 +11,7 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.codymikol.data.Colors
@@ -38,7 +40,13 @@ fun SlimButton(
         enabled = !disabled,
         colors = SlimButtonColors(),
         modifier = Modifier.height(28.dp)
-    ) { Text(text, fontSize = 11.sp) }
+    ) { Text(
+        text,
+        fontSize = 10.sp,
+        lineHeight = 12.sp,
+        fontWeight = FontWeight.Normal,
+        modifier = Modifier.fillMaxHeight()
+    ) }
 
 @Composable
 @Preview
