@@ -10,6 +10,7 @@ interface FileDelta {
 
     val letter: String
     val color: Color
+    val borderColor: Color
     val location: Path
     val type: Status
 
