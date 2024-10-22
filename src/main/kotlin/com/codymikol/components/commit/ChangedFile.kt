@@ -36,7 +36,7 @@ fun ChangedFile(fileDelta: FileDelta) {
         .height(18.dp)
         .background(color), verticalAlignment = Alignment.CenterVertically) {
         Spacer(modifier = Modifier.width(12.dp))
-        FileIcon(letter = fileDelta.letter, color = fileDelta.color)
+        FileIcon(letter = fileDelta.letter, color = fileDelta.color, borderColor = fileDelta.borderColor)
         Text(
             fileDelta.location.toString().split("/").last(),
             modifier = Modifier.padding(6.dp, 0.dp, 0.dp, 0.dp),

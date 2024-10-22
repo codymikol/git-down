@@ -73,6 +73,7 @@ object GitDownTypography {
             modifier = Modifier.drawBehind {
 
                 // todo(mikol): horrible hack to get gutter lines working on wrapped text...
+
                 // Been working on this all day and just want to get the feature in, please fix this
                 // future Cody, I know you can do it!
                 //
@@ -108,4 +109,4 @@ object GitDownTypography {
         )
     }
 
-}
+} 
