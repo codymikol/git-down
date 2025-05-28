@@ -43,7 +43,7 @@
 
         shellHook = ''
           echo "Setting up OpenGL environment...";
-          export LD_LIBRARY_PATH="/run/opengl-driver/lib:/run/opengl-driver-32/lib";
+          LD_LIBRARY_PATH="${pkgs.libGL}/lib/:${pkgs.stdenv.cc.cc.lib}/lib/";
         '';
 
       };
