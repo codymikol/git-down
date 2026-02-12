@@ -1,10 +1,9 @@
 package com.codymikol.state
 
-import com.codymikol.repository.TestRepository.Companion.createTestRepository
 import com.codymikol.data.diff.LineType
 import com.codymikol.extensions.stageAll
 import com.codymikol.extensions.stageLinesForAddedFile
-import com.codymikol.state.GitDownState
+import com.codymikol.repository.TestRepository.Companion.createTestRepository
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
@@ -27,7 +26,7 @@ class GitDownStateSpec : DescribeSpec({
                 )
 
                 it("should contain a single file under workingDirectoryFilesAdded") {
-                    GitDownState.workingDirectoryFilesAdded.value.size shouldBe 2
+                    GitDownState.workingDirectoryFilesAdded.value.size shouldBe 1
                 }
 
                 it("should NOT contain any workingDirectoryFilesDeleted") {
@@ -35,7 +34,7 @@ class GitDownStateSpec : DescribeSpec({
                 }
 
                 it("should NOT contain any workingDirectoryFilesModified") {
-                    GitDownState.workingDirectoryFilesModified.value.size shouldBe 1
+                    GitDownState.workingDirectoryFilesModified.value.size shouldBe 0
                 }
 
                 it("should NOT contain any indexFilesModified") {
@@ -89,7 +88,7 @@ class GitDownStateSpec : DescribeSpec({
                 }
 
                 it("should NOT contain any workingDirectoryFilesAdded") {
-                    GitDownState.workingDirectoryFilesAdded.value.size shouldBe 2
+                    GitDownState.workingDirectoryFilesAdded.value.size shouldBe 0
                 }
 
                 it("should NOT contain any workingDirectoryFilesModified") {
