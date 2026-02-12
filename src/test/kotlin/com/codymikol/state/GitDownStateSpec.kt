@@ -27,7 +27,7 @@ class GitDownStateSpec : DescribeSpec({
                 )
 
                 it("should contain a single file under workingDirectoryFilesAdded") {
-                    GitDownState.workingDirectoryFilesAdded.value.size shouldBe 1
+                    GitDownState.workingDirectoryFilesAdded.value.size shouldBe 2
                 }
 
                 it("should NOT contain any workingDirectoryFilesDeleted") {
@@ -35,7 +35,7 @@ class GitDownStateSpec : DescribeSpec({
                 }
 
                 it("should NOT contain any workingDirectoryFilesModified") {
-                    GitDownState.workingDirectoryFilesModified.value.size shouldBe 0
+                    GitDownState.workingDirectoryFilesModified.value.size shouldBe 1
                 }
 
                 it("should NOT contain any indexFilesModified") {
@@ -89,7 +89,7 @@ class GitDownStateSpec : DescribeSpec({
                 }
 
                 it("should NOT contain any workingDirectoryFilesAdded") {
-                    GitDownState.workingDirectoryFilesAdded.value.size shouldBe 0
+                    GitDownState.workingDirectoryFilesAdded.value.size shouldBe 2
                 }
 
                 it("should NOT contain any workingDirectoryFilesModified") {

@@ -34,12 +34,13 @@ fun SlimButton(
     text: String,
     disabled: Boolean = false,
     onClick: () -> Unit = {},
+    modifier: Modifier = Modifier,
 ) =
     Button(
         onClick = onClick,
         enabled = !disabled,
         colors = SlimButtonColors(),
-        modifier = Modifier.height(28.dp)
+        modifier = Modifier.height(28.dp).then(modifier)
     ) { Text(
         text,
         fontSize = 10.sp,
@@ -52,4 +53,4 @@ fun SlimButton(
 @Preview
 fun PreviewSlimButton() = /** noop **/
     /** noop **/
-    SlimButton("Hello") { /** noop **/ }
+    SlimButton("Hello")
