@@ -189,7 +189,10 @@ private fun DiffLine(lineNode: LineNode, parentFileNode: FileDeltaNode) {
             LineNumberGutter(lineNode.line.originalLineNumber)
             LineNumberGutter(lineNode.line.newLineNumber)
             ModificationTypeGutter(lineNode)
-            GitDownTypography.DiffContent(lineNode.line.value, lineNode.line.getTextColor())
+
+            val displayLine = lineNode.line.value.replace("\t", "  ")
+
+            GitDownTypography.DiffContent(displayLine, lineNode.line.getTextColor())
         }
     }
 }
@@ -290,15 +293,17 @@ private fun CommitWorkingDirectory() {
                 .background(Colors.MediumGrayBackground)
                 .padding(horizontal = 8.dp)
         ) {
-            SlimButton("Discard All...") {
+
+            SlimButton("Discard All...", onClick = {
                 isConfirmingDiscardAll.value = true
-            }
-            SlimButton("Stage All") {
+            })
+
+            SlimButton("Stage All", onClick = {
                 scope.launch {
                     GitDownState.git.value.stageAll()
                     GitDownState.selectedFiles.clear()
                 }
-            }
+            })
         }
     }
 

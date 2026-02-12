@@ -56,7 +56,7 @@ tasks.withType<Test>().configureEach {
   }
 }
 
-tasks.withType<KotlinCompile> { kotlinOptions.jvmTarget = "17" }
+tasks.withType<KotlinCompile> { kotlinOptions.jvmTarget = "21" }
 
 group = "com.codymikol"
 version = "1.0"
