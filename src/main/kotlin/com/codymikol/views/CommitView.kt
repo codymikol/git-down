@@ -4,7 +4,10 @@ import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -13,6 +16,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -154,38 +158,87 @@ private fun DiffPanel() = when(GitDownState.diffTree.value.fileDeltaNodes.size >
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun Diff() {
-    LazyColumn {
-        GitDownState.diffTree.value.fileDeltaNodes.forEach { fileDeltaNode ->
-            stickyHeader { FileHeader(fileDeltaNode) }
-            fileDeltaNode.hunkNodes.forEach { hunkNode ->
-                item { HunkHeader(hunkNode.hunk) }
-                hunkNode.lineNodes.forEach { lineNode -> item { DiffLine(lineNode, fileDeltaNode) } }
+    val dragState = remember { DragSelectionState() }
+    val listState = rememberLazyListState()
+    val diffItems by remember(GitDownState.diffTree.value.fileDeltaNodes) {
+        derivedStateOf { buildDiffItems(GitDownState.diffTree.value.fileDeltaNodes) }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(diffItems, listState) {
+                detectTapGestures { position ->
+                    val lineItem = findLineItemAtPosition(position.y, diffItems, listState) ?: return@detectTapGestures
+                    val fileLines = lineItem.parentFileNode.hunkNodes.map { it.lineNodes }.flatten()
+                    val lineNode = lineItem.lineNode
+                    when {
+                        Keys.isShiftPressed.value -> shiftSelectLine(fileLines, lineNode)
+                        Keys.isCtrlPressed.value -> ctrlSelectLine(lineNode)
+                        else -> unmodifiedLineSelect(fileLines, lineNode)
+                    }
+                }
+            }
+            .pointerInput(diffItems, listState) {
+                detectDragGestures(
+                    onDragStart = { position ->
+                        val lineItem = findLineItemAtPosition(position.y, diffItems, listState) ?: return@detectDragGestures
+                        val fileLines = lineItem.parentFileNode.hunkNodes.map { it.lineNodes }.flatten()
+                        val startIndex = fileLines.indexOf(lineItem.lineNode)
+                        if (startIndex < 0) return@detectDragGestures
+
+                        dragState.isDragging.value = true
+                        dragState.didDrag.value = false
+                        dragState.startIndex.value = startIndex
+                        dragState.activeFileNode.value = lineItem.parentFileNode
+
+                        if (!Keys.isCtrlPressed.value) {
+                            if (!Keys.isShiftPressed.value) {
+                                fileLines.forEach { it.line.selected.value = false }
+                            }
+                            lineItem.lineNode.line.selected.value = true
+                        }
+                    },
+                    onDrag = { change, _ ->
+                        if (!dragState.isDragging.value) return@detectDragGestures
+                        val lineItem = findLineItemAtPosition(change.position.y, diffItems, listState) ?: return@detectDragGestures
+                        if (dragState.activeFileNode.value != lineItem.parentFileNode) return@detectDragGestures
+
+                        val fileLines = lineItem.parentFileNode.hunkNodes.map { it.lineNodes }.flatten()
+                        val startIndex = dragState.startIndex.value ?: return@detectDragGestures
+                        val currentIndex = fileLines.indexOf(lineItem.lineNode)
+                        if (currentIndex < 0) return@detectDragGestures
+
+                        dragState.didDrag.value = true
+                        selectRange(fileLines, startIndex, currentIndex, Keys.isShiftPressed.value)
+                    },
+                    onDragEnd = { dragState.reset() },
+                    onDragCancel = { dragState.reset() }
+                )
+            }
+    ) {
+        LazyColumn(state = listState) {
+            diffItems.forEach { item ->
+                when (item) {
+                    is DiffItem.FileHeaderItem -> stickyHeader { FileHeader(item.fileDeltaNode) }
+                    is DiffItem.HunkHeaderItem -> item { HunkHeader(item.hunk) }
+                    is DiffItem.LineItem -> item { DiffLine(item.lineNode) }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun DiffLine(lineNode: LineNode, parentFileNode: FileDeltaNode) {
+private fun DiffLine(lineNode: LineNode) {
 
-    val fileLines = parentFileNode.hunkNodes.map { it.lineNodes }.flatten()
-
-    //todo(mikol): figure out drag selection :')
     //todo(mikol): limit click hitbox to around the gutter area
 
     Box(modifier = Modifier
         .background(lineNode.line.getBackgroundColor())
         .fillMaxWidth()
         .wrapContentHeight()) {
-        Row(modifier = Modifier
-            .clickable {
-                when {
-                    Keys.isShiftPressed.value -> shiftSelectLine(fileLines, lineNode)
-                    Keys.isCtrlPressed.value -> ctrlSelectLine(lineNode)
-                    else -> unmodifiedLineSelect(fileLines, lineNode)
-                }
-            }
-            .fillMaxSize()) {
+        Row(modifier = Modifier.fillMaxSize()) {
             LineNumberGutter(lineNode.line.originalLineNumber)
             LineNumberGutter(lineNode.line.newLineNumber)
             ModificationTypeGutter(lineNode)
@@ -216,6 +269,66 @@ private fun unmodifiedLineSelect(fileLines: List<LineNode>, lineNode: LineNode) 
 
 private fun ctrlSelectLine(lineNode: LineNode) {
     lineNode.line.toggleSelected()
+}
+
+private fun selectRange(fileLines: List<LineNode>, startIndex: Int, endIndex: Int, additive: Boolean) {
+    val low = minOf(startIndex, endIndex)
+    val high = maxOf(startIndex, endIndex)
+
+    if (!additive) {
+        fileLines.forEach { it.line.selected.value = false }
+    }
+
+    (low..high).forEach { fileLines[it].line.selected.value = true }
+}
+
+private class DragSelectionState {
+    val isDragging = mutableStateOf(false)
+    val didDrag = mutableStateOf(false)
+    val startIndex = mutableStateOf<Int?>(null)
+    val activeFileNode = mutableStateOf<FileDeltaNode?>(null)
+
+    fun reset() {
+        isDragging.value = false
+        didDrag.value = false
+        startIndex.value = null
+        activeFileNode.value = null
+    }
+}
+
+private sealed class DiffItem {
+    data class FileHeaderItem(val fileDeltaNode: FileDeltaNode) : DiffItem()
+    data class HunkHeaderItem(val hunk: Hunk) : DiffItem()
+    data class LineItem(val lineNode: LineNode, val parentFileNode: FileDeltaNode) : DiffItem()
+}
+
+private fun buildDiffItems(fileDeltaNodes: List<FileDeltaNode>): List<DiffItem> {
+    val items = ArrayList<DiffItem>()
+    fileDeltaNodes.forEach { fileDeltaNode ->
+        items.add(DiffItem.FileHeaderItem(fileDeltaNode))
+        fileDeltaNode.hunkNodes.forEach { hunkNode ->
+            items.add(DiffItem.HunkHeaderItem(hunkNode.hunk))
+            hunkNode.lineNodes.forEach { lineNode ->
+                items.add(DiffItem.LineItem(lineNode, fileDeltaNode))
+            }
+        }
+    }
+    return items
+}
+
+private fun findLineItemAtPosition(
+    y: Float,
+    diffItems: List<DiffItem>,
+    listState: androidx.compose.foundation.lazy.LazyListState
+): DiffItem.LineItem? {
+    val visibleItem = listState.layoutInfo.visibleItemsInfo.firstOrNull { itemInfo ->
+        val start = itemInfo.offset
+        val end = itemInfo.offset + itemInfo.size
+        y >= start && y < end
+    } ?: return null
+
+    val item = diffItems.getOrNull(visibleItem.index)
+    return item as? DiffItem.LineItem
 }
 
 @Composable
