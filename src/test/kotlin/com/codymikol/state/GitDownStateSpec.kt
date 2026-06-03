@@ -1,7 +1,9 @@
 package com.codymikol.state
 
 import com.codymikol.data.diff.LineType
+import com.codymikol.extensions.discardAllWorkingDirectory
 import com.codymikol.extensions.stageAll
+import com.codymikol.extensions.stageSelectedLines
 import com.codymikol.extensions.stageLinesForAddedFile
 import com.codymikol.repository.TestRepository.Companion.createTestRepository
 import io.kotest.core.spec.style.DescribeSpec
@@ -163,6 +165,7 @@ class GitDownStateSpec : DescribeSpec({
 
                 val fooFileDelta = fileDeltas.toList().first()
 
+                GitDownState.selectedFiles.clear()
                 GitDownState.selectedFiles.add(fooFileDelta)
 
                 val diffTree = GitDownState.diffTree.value
@@ -337,6 +340,118 @@ class GitDownStateSpec : DescribeSpec({
 
                 it("should NOT contain any workingDirectoryFilesModified") {
                     GitDownState.workingDirectoryFilesModified.value.size shouldBe 0
+                }
+
+            }
+
+            describe("Staging added and deleted lines from a hunk") {
+
+                autoClose(
+                    createTestRepository()
+                        .addFile("init.txt", "init")
+                        .stageAll()
+                        .commitAll("init")
+                        .addFile("foo.txt", "a\nb\nc\nd\ne\nf\ng\nh\ni\nj\nk\nl\n")
+                        .stageAll()
+                        .commitAll("base")
+                        .addFile("foo.txt", "a\nb\nc\nx\ny\nz\ng\nh\ni\nj\nk\nl\n")
+                        .transferIntoGitDownState()
+                )
+
+                val workingFileDelta = GitDownState.workingDirectory.value
+                    .first { it.getPath() == "foo.txt" }
+
+                GitDownState.selectedFiles.clear()
+                GitDownState.selectedFiles.add(workingFileDelta)
+
+                val workingNode = GitDownState.diffTree.value.fileDeltaNodes.single()
+                val workingLines = workingNode.hunkNodes.flatMap { it.lineNodes }
+
+                val removedLines = workingLines
+                    .filter { it.line.type == LineType.Removed }
+
+                val addedLines = workingLines
+                    .filter { it.line.type == LineType.Added }
+
+                check(removedLines.isNotEmpty()) { "Expected removed lines in working hunk" }
+                check(addedLines.isNotEmpty()) { "Expected added lines in working hunk" }
+
+                val selected = removedLines + addedLines
+
+                GitDownState.git.value.stageSelectedLines(selected)
+
+                it("should include staged added and removed lines in the index") {
+                    val indexFileDelta = GitDownState.index.value
+                        .first { it.getPath() == "foo.txt" }
+
+                    GitDownState.selectedFiles.clear()
+                    GitDownState.selectedFiles.add(indexFileDelta)
+
+                    val indexNode = GitDownState.diffTree.value.fileDeltaNodes.single()
+                    val indexTypes = indexNode.hunkNodes
+                        .flatMap { it.lineNodes }
+                        .associate { it.line.value to it.line.type }
+
+                    selected.forEach { lineNode ->
+                        indexTypes[lineNode.line.value] shouldBe lineNode.line.type
+                    }
+                }
+
+            }
+
+            describe("Staging two added lines from ten added lines") {
+
+                autoClose(
+                    createTestRepository()
+                        .addFile("init.txt", "init")
+                        .stageAll()
+                        .commitAll("init")
+                        .addFile("foo.txt", "one\ntwo\nthree\nfour\nfive\n")
+                        .stageAll()
+                        .commitAll("base")
+                        .addFile(
+                            "foo.txt",
+                            "one\ntwo\nthree\na1\na2\na3\na4\na5\na6\na7\na8\na9\na10\nfour\nfive\n"
+                        )
+                        .transferIntoGitDownState()
+                )
+
+                val workingFileDelta = GitDownState.workingDirectory.value
+                    .first { it.getPath() == "foo.txt" }
+
+                GitDownState.selectedFiles.clear()
+                GitDownState.selectedFiles.add(workingFileDelta)
+
+                val workingNode = GitDownState.diffTree.value.fileDeltaNodes.single()
+                val workingLines = workingNode.hunkNodes.flatMap { it.lineNodes }
+
+                val addedLines = workingLines.filter { it.line.type == LineType.Added }
+
+                check(addedLines.size >= 10) { "Expected at least ten added lines" }
+
+                val selected = addedLines.take(2)
+
+                GitDownState.git.value.stageSelectedLines(selected)
+                GitDownState.git.value.discardAllWorkingDirectory()
+
+                it("should include staged added lines in the index") {
+                    val indexFileDelta = GitDownState.index.value
+                        .first { it.getPath() == "foo.txt" }
+
+                    GitDownState.selectedFiles.clear()
+                    GitDownState.selectedFiles.add(indexFileDelta)
+
+                    val indexNode = GitDownState.diffTree.value.fileDeltaNodes.single()
+                    val indexTypes = indexNode.hunkNodes
+                        .flatMap { it.lineNodes }
+                        .associate { it.line.value to it.line.type }
+
+                    selected.forEach { lineNode ->
+                        indexTypes[lineNode.line.value] shouldBe LineType.Added
+                    }
+
+                    val unstagedLine = addedLines[2].line.value
+                    indexTypes[unstagedLine] shouldBe null
                 }
 
             }
