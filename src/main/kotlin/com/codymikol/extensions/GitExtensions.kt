@@ -13,13 +13,18 @@ import org.eclipse.jgit.api.ResetCommand
 import org.eclipse.jgit.api.errors.NoHeadException
 import org.eclipse.jgit.dircache.DirCache
 import org.eclipse.jgit.dircache.DirCacheBuildIterator
+import org.eclipse.jgit.dircache.DirCacheEditor
 import org.eclipse.jgit.dircache.DirCacheEntry
 import org.eclipse.jgit.dircache.DirCacheIterator
 import org.eclipse.jgit.lib.Constants.OBJ_BLOB
+import org.eclipse.jgit.lib.FileMode
+import org.eclipse.jgit.lib.Repository
 import org.eclipse.jgit.treewalk.FileTreeIterator
 import org.eclipse.jgit.treewalk.NameConflictTreeWalk
 import org.eclipse.jgit.treewalk.TreeWalk.OperationType
 import org.eclipse.jgit.treewalk.WorkingTreeIterator
+import org.eclipse.jgit.treewalk.TreeWalk
+import org.eclipse.jgit.treewalk.filter.PathFilter
 import org.eclipse.jgit.treewalk.filter.PathFilterGroup
 import org.slf4j.LoggerFactory
 import java.io.ByteArrayInputStream
@@ -72,6 +77,131 @@ suspend fun Git.discardFile(location: String): Git = command {
 
 suspend fun Git.unstageLines(lines: List<LineNode>): Git = command {
     lines.forEach { println(it.line.value) }
+}
+
+private data class FileContent(
+    val lines: List<String>,
+    val endsWithNewline: Boolean,
+)
+
+private fun readIndexFileContent(repo: Repository, path: String): FileContent? {
+    val entry = repo.readDirCache().getEntry(path) ?: return null
+    val loader = repo.open(entry.objectId)
+    val text = loader.bytes.toString(Charsets.UTF_8)
+    val endsWithNewline = text.endsWith("\n")
+    val lines = when {
+        text.isEmpty() -> emptyList()
+        endsWithNewline -> text.dropLast(1).split("\n")
+        else -> text.split("\n")
+    }
+    return FileContent(lines, endsWithNewline)
+}
+
+private fun readHeadFileContent(repo: Repository, path: String): FileContent {
+    val headTree = repo.resolve("HEAD^{tree}") ?: return FileContent(emptyList(), false)
+    TreeWalk(repo).use { treeWalk ->
+        treeWalk.addTree(headTree)
+        treeWalk.isRecursive = true
+        treeWalk.filter = PathFilter.create(path)
+        if (!treeWalk.next()) return FileContent(emptyList(), false)
+        val loader = repo.open(treeWalk.getObjectId(0))
+        val text = loader.bytes.toString(Charsets.UTF_8)
+        val endsWithNewline = text.endsWith("\n")
+        val lines = when {
+            text.isEmpty() -> emptyList()
+            endsWithNewline -> text.dropLast(1).split("\n")
+            else -> text.split("\n")
+        }
+        return FileContent(lines, endsWithNewline)
+    }
+}
+
+private fun buildStagedLines(
+    fileDeltaNode: FileDeltaNode,
+    baseLines: List<String>,
+    selectedLines: Set<LineNode>,
+): List<String> {
+    val output = mutableListOf<String>()
+    var currentIndex = 0
+
+    fileDeltaNode.hunkNodes.forEach { hunkNode ->
+        val header = hunkNode.hunk.header
+        val fromCount = header.fromFileLineNumbersCount?.toInt()
+            ?: if (header.fromFileLineNumbersStart == 0U) 0 else 1
+        val startIndex = (header.fromFileLineNumbersStart.toInt() - 1).coerceAtLeast(0)
+        val safeStartIndex = startIndex.coerceAtMost(baseLines.size)
+        val endIndex = (safeStartIndex + fromCount).coerceAtMost(baseLines.size)
+
+        if (safeStartIndex > currentIndex) {
+            output.addAll(baseLines.subList(currentIndex, safeStartIndex))
+        }
+
+        val stagedSegment = mutableListOf<String>()
+        hunkNode.lineNodes.forEach { lineNode ->
+            when (lineNode.line.type) {
+                LineType.Unchanged -> stagedSegment.add(lineNode.line.value)
+                LineType.Removed -> if (!selectedLines.contains(lineNode)) stagedSegment.add(lineNode.line.value)
+                LineType.Added -> if (selectedLines.contains(lineNode)) stagedSegment.add(lineNode.line.value)
+                LineType.NoNewline, LineType.Unknown -> Unit
+            }
+        }
+
+        output.addAll(stagedSegment)
+        currentIndex = endIndex
+    }
+
+    if (currentIndex < baseLines.size) {
+        output.addAll(baseLines.subList(currentIndex, baseLines.size))
+    }
+
+    return output
+}
+
+private fun writeIndexFileContent(repo: Repository, path: String, content: String) {
+    val objectInserter = repo.newObjectInserter()
+    val bytes = content.toByteArray()
+    val id = objectInserter.insert(OBJ_BLOB, bytes)
+    objectInserter.flush()
+
+    val dc = repo.lockDirCache()
+    try {
+        val existingEntry = dc.getEntry(path)
+        val editor = dc.editor()
+        editor.add(object : DirCacheEditor.PathEdit(path) {
+            override fun apply(ent: DirCacheEntry) {
+                ent.fileMode = existingEntry?.fileMode ?: FileMode.REGULAR_FILE
+                ent.length = bytes.size
+                ent.setObjectId(id)
+            }
+        })
+        editor.finish()
+        dc.write()
+        dc.commit()
+    } finally {
+        dc.unlock()
+    }
+}
+
+suspend fun Git.stageSelectedLines(lines: List<LineNode>): Git = command {
+    if (lines.isEmpty()) return@command
+
+    val fileDeltaNode = lines[0].parent.parent
+    require(lines.all { it.parent.parent == fileDeltaNode }) {
+        "Unexpected call to stageSelectedLines with multiple files, this currently only supports a single file!"
+    }
+
+    val repo = GitDownState.repo.value
+    val path = fileDeltaNode.getPath()
+    val base = readIndexFileContent(repo, path) ?: readHeadFileContent(repo, path)
+    val selectedSet = lines.toSet()
+    val stagedLines = buildStagedLines(fileDeltaNode, base.lines, selectedSet)
+    val stagedText = when {
+        stagedLines.isEmpty() -> ""
+        base.endsWithNewline || stagedLines.isNotEmpty() -> stagedLines.joinToString("\n", postfix = "\n")
+        else -> stagedLines.joinToString("\n")
+    }
+
+    writeIndexFileContent(repo, path, stagedText)
 }
 
 
@@ -136,6 +266,7 @@ suspend fun Git.stageLinesForAddedFile(lineNodes: List<LineNode>): Git = command
 
         val objectInserter = repo.newObjectInserter()
         val treeWalk = NameConflictTreeWalk(repo)
+        treeWalk.isRecursive = true
 
         treeWalk.operationType = OperationType.CHECKIN_OP
 
@@ -160,6 +291,7 @@ suspend fun Git.stageLinesForAddedFile(lineNodes: List<LineNode>): Git = command
             val path = treeWalk.rawPath
             val entry = DirCacheEntry(path)
             val fileMode = file.getIndexFileMode(cache)
+            if (fileMode == FileMode.TREE) continue
             entry.fileMode = fileMode
 
             entry.setLastModified(file.entryLastModifiedInstant)
