@@ -37,7 +37,7 @@ fun FileHeader(fileDeltaNode: FileDeltaNode) = Row(
         }
 
         Row(
-            modifier = Modifier.fillMaxHeight().width(100.dp),
+            modifier = Modifier.fillMaxHeight().width(140.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
