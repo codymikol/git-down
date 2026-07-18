@@ -164,7 +164,7 @@ fun DirectorySelector(applicationScope: ApplicationScope) =
                 Spacer(modifier = Modifier.height(14.dp))
                 if (GitDownState.isInvalidGitDirectorySelected.value) {
                     Text(
-                        "Git has not been initialized for the selected directory.",
+                        "Selected directory is not a git repository.",
                         color = Colors.FileRemoved,
                         fontSize = 11.sp,
                         textAlign = TextAlign.Center,
