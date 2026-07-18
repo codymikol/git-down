@@ -162,6 +162,16 @@ fun DirectorySelector(applicationScope: ApplicationScope) =
                 Spacer(modifier = Modifier.height(4.dp))
                 InspirationText()
                 Spacer(modifier = Modifier.height(14.dp))
+                if (GitDownState.isInvalidGitDirectorySelected.value) {
+                    Text(
+                        "Git has not been initialized for the selected directory.",
+                        color = Colors.FileRemoved,
+                        fontSize = 11.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+                }
                 SelectRepositoryButton()
                 RecentlyOpenedButton {
                     showRecentProjectDropdown.value = !showRecentProjectDropdown.value

@@ -707,5 +707,27 @@ class GitDownStateSpec : DescribeSpec({
 
         }
 
+        describe("isValidGitDirectory") {
+
+            describe("when the selected directory does not have git initialized") {
+
+                autoClose(createTestRepository().transferIntoGitDownState())
+
+                it("should not throw and should report the directory as invalid") {
+                    val validGitDirectory = GitDownState.gitDirectory.value
+
+                    val uninitializedDir = kotlin.io.path.createTempDirectory("git-down-state-test-no-git-")
+                    GitDownState.gitDirectory.value = uninitializedDir.toString() + "/.git"
+
+                    GitDownState.isValidGitDirectory.value shouldBe false
+                    GitDownState.isInvalidGitDirectorySelected.value shouldBe true
+
+                    GitDownState.gitDirectory.value = validGitDirectory
+                }
+
+            }
+
+        }
+
     }
 })
