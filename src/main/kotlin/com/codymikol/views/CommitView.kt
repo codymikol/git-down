@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -47,6 +48,7 @@ import kotlinx.coroutines.launch
 
 val commitMessage = mutableStateOf("")
 val isConfirmingDiscardAll = mutableStateOf(false)
+val isCommitMessageFocused = mutableStateOf(false)
 
 @Composable
 @Preview
@@ -132,6 +134,7 @@ private fun CommitMessageInput() {
             .fillMaxSize()
             .padding(top = 8.dp, start = 8.dp, bottom = 0.dp, end = 8.dp)
             .background(Colors.DarkGrayBackground)
+            .onFocusChanged { isCommitMessageFocused.value = it.isFocused }
             .onPreviewKeyEvent { event ->
                 val isShiftEnter = event.type == KeyEventType.KeyDown &&
                     event.key == Key.Enter &&

@@ -13,8 +13,12 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.isShiftPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -32,6 +36,7 @@ import com.codymikol.state.GitDownState
 import com.codymikol.state.Keys
 import com.codymikol.tabs.Tab
 import com.codymikol.views.CommitView
+import com.codymikol.views.isCommitMessageFocused
 import com.codymikol.views.MapView
 import com.codymikol.views.StashView
 import java.awt.Dimension
@@ -44,7 +49,19 @@ fun GitDown() {
         onKeyEvent = {
             Keys.isShiftPressed.value = it.isShiftPressed
             Keys.isCtrlPressed.value = it.isCtrlPressed
-            false
+
+            val isFileSelectionArrow = it.type == KeyEventType.KeyDown &&
+                (it.key == Key.DirectionUp || it.key == Key.DirectionDown) &&
+                GitDownState.currentTab.value == Tab.Commit &&
+                !isCommitMessageFocused.value &&
+                GitDownState.selectedFiles.size == 1
+
+            if (isFileSelectionArrow) {
+                GitDownState.selectAdjacentFile(if (it.key == Key.DirectionUp) -1 else 1)
+                true
+            } else {
+                false
+            }
         },
         onCloseRequest = {
             GitDownState.gitDirectory.value = ""
