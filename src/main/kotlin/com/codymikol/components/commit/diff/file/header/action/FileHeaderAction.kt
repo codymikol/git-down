@@ -34,5 +34,5 @@ private fun FileActions(fileDeltaNode: FileDeltaNode) = Row(verticalAlignment = 
         Status.INDEX -> UnstageFileButton(fileDeltaNode)
     }
     Spacer(modifier = Modifier.width(6.dp))
-    FileHeaderCogButton()
+    FileHeaderCogButton(fileDeltaNode)
 }
