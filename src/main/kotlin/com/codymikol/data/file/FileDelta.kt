@@ -42,6 +42,7 @@ interface FileDelta {
         when(this.type) {
             Status.INDEX -> loadIndexDiff(stream)
             Status.WORKING_DIRECTORY -> loadWorkingDirectoryDiff(stream)
+            Status.STASH -> Unit
         }
 
         return stream.toString()
