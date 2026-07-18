@@ -63,7 +63,7 @@ version = "1.0"
 
 tasks.jar {
   manifest {
-    attributes["Main-Class"] = "com.codymikol.Main"
+    attributes["Main-Class"] = "com.codymikol.MainKt"
     attributes["Class-Path"] = configurations
         .runtimeClasspath
         .get()
