@@ -2,3 +2,5 @@
 /build
 /.idea
 /out
+harness.env
+logs/
