@@ -12,7 +12,7 @@ import com.codymikol.components.commit.diff.file.header.text.FileHeaderText
 import com.codymikol.data.diff.FileDeltaNode
 
 @Composable
-fun FileHeader(fileDeltaNode: FileDeltaNode) = Row(
+fun FileHeader(fileDeltaNode: FileDeltaNode, showActions: Boolean = true) = Row(
     modifier = Modifier.height(32.dp)
         .background(fileDeltaNode.fileDelta.color)
         .fillMaxWidth(),
@@ -36,15 +36,17 @@ fun FileHeader(fileDeltaNode: FileDeltaNode) = Row(
 
         }
 
-        Row(
-            modifier = Modifier.fillMaxHeight().width(140.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
+        if (showActions) {
+            Row(
+                modifier = Modifier.fillMaxHeight().width(140.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
 
-            FileHeaderActions(fileDeltaNode)
+                FileHeaderActions(fileDeltaNode)
 
-            Spacer(modifier = Modifier.width(6.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+            }
         }
     }
 

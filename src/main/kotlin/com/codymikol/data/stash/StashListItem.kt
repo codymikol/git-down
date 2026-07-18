@@ -15,6 +15,7 @@ data class StashListItem(
     val description: String,
     val branchOrSha: String,
     val commitMessage: String,
+    val revCommit: RevCommit,
 ) {
 
     val title: String
@@ -53,6 +54,7 @@ data class StashListItem(
                 description = description,
                 branchOrSha = branchOrSha,
                 commitMessage = commitMessage,
+                revCommit = revCommit,
             )
         }
     }

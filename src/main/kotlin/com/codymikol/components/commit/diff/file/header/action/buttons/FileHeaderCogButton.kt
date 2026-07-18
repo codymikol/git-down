@@ -63,6 +63,7 @@ fun FileHeaderCogButton(fileDeltaNode: FileDeltaNode) {
                     FileActionMenuItem("Open File", "index.openFile") { expanded = false }
                     FileActionMenuItem("Show In Files", "index.showInFiles") { expanded = false }
                 }
+                Status.STASH -> Unit
             }
         }
     }

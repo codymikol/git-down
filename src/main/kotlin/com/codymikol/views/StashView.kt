@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.codymikol.components.Subheader
+import com.codymikol.components.commit.diff.Diff
 import com.codymikol.components.stash.StashRow
 import com.codymikol.data.Colors
 import com.codymikol.state.GitDownState
@@ -72,7 +73,10 @@ private fun ColumnScope.StashList() {
 @Composable
 private fun StashDiffPanel() = when (GitDownState.selectedStash.value) {
     null -> Column { StashEmptyState("No stash selected") }
-    else -> Column { StashEmptyState("Stash diff view coming soon") }
+    else -> when (GitDownState.stashDiffTree.value.fileDeltaNodes.isNotEmpty()) {
+        true -> Diff(GitDownState.stashDiffTree.value.fileDeltaNodes, showActions = false)
+        false -> Column { StashEmptyState("No changes in stash") }
+    }
 }
 
 @Composable
