@@ -20,6 +20,7 @@ private fun fileDeltaNodeFor(path: String, status: Status): FileDeltaNode {
     val fileDelta = when (status) {
         Status.WORKING_DIRECTORY -> GitDownState.workingDirectory.value.firstOrNull { it.getPath() == path }
         Status.INDEX -> GitDownState.index.value.firstOrNull { it.getPath() == path }
+        Status.STASH -> null
     }
     fileDelta.shouldNotBeNull()
     GitDownState.selectedFiles.clear()

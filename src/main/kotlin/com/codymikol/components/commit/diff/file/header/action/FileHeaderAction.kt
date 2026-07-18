@@ -25,6 +25,7 @@ fun FileHeaderActions(fileDeltaNode: FileDeltaNode) = when (fileDeltaNode.isSele
 private fun LineActions(fileDeltaNode: FileDeltaNode) = when (fileDeltaNode.fileDelta.type) {
     Status.WORKING_DIRECTORY -> StageLinesButton(fileDeltaNode)
     Status.INDEX -> UnstageLinesButton(fileDeltaNode)
+    Status.STASH -> Unit
 }
 
 @Composable
@@ -32,6 +33,7 @@ private fun FileActions(fileDeltaNode: FileDeltaNode) = Row(verticalAlignment = 
     when (fileDeltaNode.fileDelta.type) {
         Status.WORKING_DIRECTORY -> StageFileButton(fileDeltaNode)
         Status.INDEX -> UnstageFileButton(fileDeltaNode)
+        Status.STASH -> Unit
     }
     Spacer(modifier = Modifier.width(6.dp))
     FileHeaderCogButton(fileDeltaNode)

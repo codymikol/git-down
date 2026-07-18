@@ -4,6 +4,8 @@ import androidx.compose.runtime.MutableState
 import com.codymikol.data.diff.FileDeltaNode
 import com.codymikol.data.diff.LineNode
 import com.codymikol.data.diff.LineType
+import com.codymikol.data.file.FileDelta
+import com.codymikol.data.file.Stash
 import com.codymikol.data.file.WorkingDirectory
 import com.codymikol.state.GitDownState
 import kotlinx.coroutines.Dispatchers
@@ -11,6 +13,8 @@ import kotlinx.coroutines.withContext
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.api.ResetCommand
 import org.eclipse.jgit.api.errors.NoHeadException
+import org.eclipse.jgit.diff.DiffEntry
+import org.eclipse.jgit.diff.DiffFormatter
 import org.eclipse.jgit.dircache.DirCache
 import org.eclipse.jgit.dircache.DirCacheBuildIterator
 import org.eclipse.jgit.dircache.DirCacheEditor
@@ -20,6 +24,7 @@ import org.eclipse.jgit.lib.Constants.OBJ_BLOB
 import org.eclipse.jgit.lib.FileMode
 import org.eclipse.jgit.lib.Repository
 import org.eclipse.jgit.revwalk.RevCommit
+import org.eclipse.jgit.revwalk.RevWalk
 import org.eclipse.jgit.treewalk.FileTreeIterator
 import org.eclipse.jgit.treewalk.NameConflictTreeWalk
 import org.eclipse.jgit.treewalk.TreeWalk.OperationType
@@ -27,10 +32,13 @@ import org.eclipse.jgit.treewalk.WorkingTreeIterator
 import org.eclipse.jgit.treewalk.TreeWalk
 import org.eclipse.jgit.treewalk.filter.PathFilter
 import org.eclipse.jgit.treewalk.filter.PathFilterGroup
+import org.eclipse.jgit.util.io.DisabledOutputStream
 import org.slf4j.LoggerFactory
 import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream
+import java.nio.file.Path
 
 class GitExtensions
 
@@ -55,6 +63,45 @@ fun Git.getCurrentRefCommitCount() = try {
 fun Git.getStashes(): List<RevCommit> = try {
     this.stashList().call().toList()
 } catch (e: Exception) {
+    emptyList()
+}
+
+fun Git.getStashDiff(stash: RevCommit): List<FileDelta> = try {
+    RevWalk(this.repository).use { walk ->
+        val commit = walk.parseCommit(stash)
+
+        when (commit.parentCount > 0) {
+            false -> emptyList()
+            true -> {
+                val parent = walk.parseCommit(commit.getParent(0))
+
+                DiffFormatter(DisabledOutputStream.INSTANCE).use { scanner ->
+                    scanner.setRepository(this.repository)
+                    scanner.scan(parent.tree, commit.tree).map { entry ->
+
+                        val diffText = ByteArrayOutputStream().also { stream ->
+                            DiffFormatter(stream).use { formatter ->
+                                formatter.setRepository(this.repository)
+                                formatter.format(entry)
+                            }
+                        }.toString()
+
+                        val path = Path.of(
+                            if (entry.changeType == DiffEntry.ChangeType.DELETE) entry.oldPath else entry.newPath
+                        )
+
+                        when (entry.changeType) {
+                            DiffEntry.ChangeType.ADD -> Stash.FileAdded(path, diffText)
+                            DiffEntry.ChangeType.DELETE -> Stash.FileDeleted(path, diffText)
+                            else -> Stash.FileModified(path, diffText)
+                        }
+                    }
+                }
+            }
+        }
+    }
+} catch (e: Exception) {
+    logger.error("An exception was thrown while diffing a stash: ${e.message}")
     emptyList()
 }
 
