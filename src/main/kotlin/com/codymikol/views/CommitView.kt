@@ -16,8 +16,16 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isShiftPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.codymikol.components.SlimButton
@@ -110,15 +118,41 @@ fun DrawScope.drawCommitGuideline(xOffset: Float, lineHeight: Float, spaceHeight
 
 @Composable
 private fun CommitMessageInput() {
+    var textFieldValue by remember { mutableStateOf(TextFieldValue(commitMessage.value)) }
+
+    // commitMessage can be mutated externally (amend, post-commit clear); resync when it drifts.
+    if (textFieldValue.text != commitMessage.value) {
+        textFieldValue = TextFieldValue(commitMessage.value, TextRange(commitMessage.value.length))
+    }
+
     BasicTextField(
         cursorBrush = Brush.verticalGradient(0.00f to Color.White),
-        value = commitMessage.value,
+        value = textFieldValue,
         modifier = Modifier
             .fillMaxSize()
             .padding(top = 8.dp, start = 8.dp, bottom = 0.dp, end = 8.dp)
-            .background(Colors.DarkGrayBackground),
+            .background(Colors.DarkGrayBackground)
+            .onPreviewKeyEvent { event ->
+                val isShiftEnter = event.type == KeyEventType.KeyDown &&
+                    event.key == Key.Enter &&
+                    event.isShiftPressed
+
+                if (!isShiftEnter) return@onPreviewKeyEvent false
+
+                val selection = textFieldValue.selection
+                val newText = textFieldValue.text.replaceRange(selection.min, selection.max, "\n")
+                val newValue = TextFieldValue(newText, TextRange(selection.min + 1))
+
+                textFieldValue = newValue
+                commitMessage.value = newValue.text
+
+                true
+            },
         textStyle = TextStyle(color = Color.White, fontSize = 12.sp),
-        onValueChange = { commitMessage.value = it },
+        onValueChange = {
+            textFieldValue = it
+            commitMessage.value = it.text
+        },
         decorationBox = { innerTextField ->
             Row(modifier = Modifier
                 .fillMaxWidth()
