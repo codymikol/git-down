@@ -4,6 +4,7 @@ import androidx.compose.runtime.*
 import com.codymikol.data.diff.DiffTree
 import com.codymikol.data.file.FileDelta
 import com.codymikol.data.file.Index
+import com.codymikol.data.file.Status
 import com.codymikol.data.file.WorkingDirectory
 import com.codymikol.data.stash.StashListItem
 import com.codymikol.extensions.getCurrentRefCommitCount
@@ -146,5 +147,22 @@ object GitDownState {
 
     //todo(mikol): this is not ideal, work out a better way to manage this...
     val lastRequestedUpdateTimestamp = mutableStateOf(System.currentTimeMillis())
+
+    fun selectAdjacentFile(offset: Int) {
+        val current = selectedFiles.singleOrNull() ?: return
+
+        val siblings = when (current.type) {
+            Status.WORKING_DIRECTORY -> workingDirectory.value
+            Status.INDEX -> index.value
+        }.toList()
+
+        val currentIndex = siblings.indexOf(current)
+        if (currentIndex < 0) return
+
+        val nextIndex = (currentIndex + offset).coerceIn(siblings.indices)
+
+        selectedFiles.clear()
+        selectedFiles.add(siblings[nextIndex])
+    }
 
 }

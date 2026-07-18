@@ -612,5 +612,100 @@ class GitDownStateSpec : DescribeSpec({
             }
         }
 
+        describe("selectAdjacentFile") {
+
+            describe("when there are multiple files in the working directory") {
+
+                autoClose(
+                    createTestRepository()
+                        .addFile("a.txt", "A")
+                        .addFile("b.txt", "B")
+                        .addFile("c.txt", "C")
+                        .transferIntoGitDownState()
+                )
+
+                val files = GitDownState.workingDirectory.value.toList()
+
+                it("should select the next file when moving down") {
+                    GitDownState.selectedFiles.clear()
+                    GitDownState.selectedFiles.add(files[0])
+
+                    GitDownState.selectAdjacentFile(1)
+
+                    GitDownState.selectedFiles.toList() shouldBe listOf(files[1])
+                }
+
+                it("should select the previous file when moving up") {
+                    GitDownState.selectedFiles.clear()
+                    GitDownState.selectedFiles.add(files[1])
+
+                    GitDownState.selectAdjacentFile(-1)
+
+                    GitDownState.selectedFiles.toList() shouldBe listOf(files[0])
+                }
+
+                it("should stay on the first file when moving up from the top") {
+                    GitDownState.selectedFiles.clear()
+                    GitDownState.selectedFiles.add(files[0])
+
+                    GitDownState.selectAdjacentFile(-1)
+
+                    GitDownState.selectedFiles.toList() shouldBe listOf(files[0])
+                }
+
+                it("should stay on the last file when moving down from the bottom") {
+                    GitDownState.selectedFiles.clear()
+                    GitDownState.selectedFiles.add(files[2])
+
+                    GitDownState.selectAdjacentFile(1)
+
+                    GitDownState.selectedFiles.toList() shouldBe listOf(files[2])
+                }
+
+                it("should do nothing when there is no selection") {
+                    GitDownState.selectedFiles.clear()
+
+                    GitDownState.selectAdjacentFile(1)
+
+                    GitDownState.selectedFiles.toList() shouldBe emptyList()
+                }
+
+                it("should do nothing when multiple files are selected") {
+                    GitDownState.selectedFiles.clear()
+                    GitDownState.selectedFiles.add(files[0])
+                    GitDownState.selectedFiles.add(files[1])
+
+                    GitDownState.selectAdjacentFile(1)
+
+                    GitDownState.selectedFiles.toList() shouldBe listOf(files[0], files[1])
+                }
+
+            }
+
+            describe("when a file in the index is selected") {
+
+                autoClose(
+                    createTestRepository()
+                        .addFile("foo.txt", "Foo")
+                        .addFile("bar.txt", "Bar")
+                        .stageAll()
+                        .transferIntoGitDownState()
+                )
+
+                val indexFiles = GitDownState.index.value.toList()
+
+                it("should navigate within the index, not the working directory") {
+                    GitDownState.selectedFiles.clear()
+                    GitDownState.selectedFiles.add(indexFiles[0])
+
+                    GitDownState.selectAdjacentFile(1)
+
+                    GitDownState.selectedFiles.toList() shouldBe listOf(indexFiles[1])
+                }
+
+            }
+
+        }
+
     }
 })
