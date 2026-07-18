@@ -19,6 +19,7 @@ import org.eclipse.jgit.dircache.DirCacheIterator
 import org.eclipse.jgit.lib.Constants.OBJ_BLOB
 import org.eclipse.jgit.lib.FileMode
 import org.eclipse.jgit.lib.Repository
+import org.eclipse.jgit.revwalk.RevCommit
 import org.eclipse.jgit.treewalk.FileTreeIterator
 import org.eclipse.jgit.treewalk.NameConflictTreeWalk
 import org.eclipse.jgit.treewalk.TreeWalk.OperationType
@@ -49,6 +50,12 @@ fun Git.getCurrentRefCommitCount() = try {
     this.log().call().toSet().size
 } catch (e: NoHeadException) {
     0
+}
+
+fun Git.getStashes(): List<RevCommit> = try {
+    this.stashList().call().toList()
+} catch (e: Exception) {
+    emptyList()
 }
 
 suspend fun Git.stageAll(): Git = command {
