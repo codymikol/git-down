@@ -22,12 +22,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.codymikol.components.commit.diff.file.header.colors.HeaderButtonColors
 import com.codymikol.data.Colors
+import com.codymikol.data.diff.FileDeltaNode
+import com.codymikol.data.file.Status
 import org.slf4j.LoggerFactory
 
 private val logger = LoggerFactory.getLogger("FileHeaderCogButton")
 
 @Composable
-fun FileHeaderCogButton() {
+fun FileHeaderCogButton(fileDeltaNode: FileDeltaNode) {
 
     var expanded by remember { mutableStateOf(false) }
 
@@ -46,30 +48,25 @@ fun FileHeaderCogButton() {
             onDismissRequest = { expanded = false },
             modifier = Modifier.background(Colors.DarkGrayBackground)
         ) {
-            FileActionSectionHeader("Working Directory")
-            FileActionMenuItem("View in Diff Tool", "workingDirectory.viewInDiffTool") { expanded = false }
-            Divider(color = Colors.DisabledGray)
-            FileActionMenuItem("Open File", "workingDirectory.openFile") { expanded = false }
-            FileActionMenuItem("Show In Files", "workingDirectory.showInFiles") { expanded = false }
-            Divider(color = Colors.DisabledGray)
-            FileActionMenuItem("Delete File", "workingDirectory.deleteFile") { expanded = false }
-
-            FileActionSectionHeader("Index")
-            FileActionMenuItem("View in Diff Tool", "index.viewInDiffTool") { expanded = false }
-            Divider(color = Colors.DisabledGray)
-            FileActionMenuItem("Open File", "index.openFile") { expanded = false }
-            FileActionMenuItem("Show In Files", "index.showInFiles") { expanded = false }
+            when (fileDeltaNode.fileDelta.type) {
+                Status.WORKING_DIRECTORY -> {
+                    FileActionMenuItem("View in Diff Tool", "workingDirectory.viewInDiffTool") { expanded = false }
+                    Divider(color = Colors.DisabledGray)
+                    FileActionMenuItem("Open File", "workingDirectory.openFile") { expanded = false }
+                    FileActionMenuItem("Show In Files", "workingDirectory.showInFiles") { expanded = false }
+                    Divider(color = Colors.DisabledGray)
+                    FileActionMenuItem("Delete File", "workingDirectory.deleteFile") { expanded = false }
+                }
+                Status.INDEX -> {
+                    FileActionMenuItem("View in Diff Tool", "index.viewInDiffTool") { expanded = false }
+                    Divider(color = Colors.DisabledGray)
+                    FileActionMenuItem("Open File", "index.openFile") { expanded = false }
+                    FileActionMenuItem("Show In Files", "index.showInFiles") { expanded = false }
+                }
+            }
         }
     }
 }
-
-@Composable
-private fun FileActionSectionHeader(text: String) = Text(
-    text,
-    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-    color = Colors.LightGrayText,
-    fontSize = 10.sp
-)
 
 @Composable
 private fun FileActionMenuItem(label: String, actionId: String, onSelect: () -> Unit) = DropdownMenuItem(onClick = {
