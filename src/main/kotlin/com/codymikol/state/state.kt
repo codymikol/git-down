@@ -43,9 +43,29 @@ object GitDownState {
         Git(repo.value)
     }
 
-    val isValidGitDirectory = derivedStateOf { repo.value.branch != null }
+    val isValidGitDirectory = derivedStateOf {
+        if (gitDirectory.value.isBlank()) {
+            false
+        } else {
+            try {
+                repo.value.branch != null
+            } catch (e: Exception) {
+                false
+            }
+        }
+    }
 
-    val branchName = derivedStateOf { repo.value.branch ?: "" }
+    val isInvalidGitDirectorySelected = derivedStateOf {
+        gitDirectory.value.isNotBlank() && !isValidGitDirectory.value
+    }
+
+    val branchName = derivedStateOf {
+        try {
+            repo.value.branch ?: ""
+        } catch (e: Exception) {
+            ""
+        }
+    }
 
     val commitCount = derivedStateOf {
         git.value.getCurrentRefCommitCount()
