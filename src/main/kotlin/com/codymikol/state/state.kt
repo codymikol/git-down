@@ -5,7 +5,9 @@ import com.codymikol.data.diff.DiffTree
 import com.codymikol.data.file.FileDelta
 import com.codymikol.data.file.Index
 import com.codymikol.data.file.WorkingDirectory
+import com.codymikol.data.stash.StashListItem
 import com.codymikol.extensions.getCurrentRefCommitCount
+import com.codymikol.extensions.getStashes
 import com.codymikol.tabs.Tab
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder
@@ -47,6 +49,12 @@ object GitDownState {
     val commitCount = derivedStateOf {
         git.value.getCurrentRefCommitCount()
     }
+
+    val stashes = derivedStateOf {
+        git.value.getStashes().map { StashListItem.make(repo.value, it) }
+    }
+
+    val selectedStash = mutableStateOf<StashListItem?>(null)
 
     val committingAsName = derivedStateOf { repo.value.config.getString("user", null, "name") ?: "" }
 

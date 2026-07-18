@@ -45,6 +45,15 @@ data class TestRepository(
         this.git.commitAll(message)
     }
 
+    fun stashCreate(message: String? = null) = this.also {
+        val command = this.git.stashCreate()
+        // setWorkingDirectoryMessage is a MessageFormat template ({0}=branch, {1}=abbrev sha,
+        // {2}=HEAD short message), matching "On {0}: <message>" reproduces the shape `git
+        // stash push -m` produces so StashListItem's parsing sees a realistic custom message.
+        message?.let { command.setWorkingDirectoryMessage("On {0}: $it") }
+        command.call()
+    }
+
     fun transferIntoGitDownState() = this.also {
         this.closeGitRepo()
         GitDownState.gitDirectory.value = this.dir.toString() + "/.git"
