@@ -27,11 +27,7 @@ import com.codymikol.data.Colors
 import com.codymikol.data.recent.RecentProject
 import com.codymikol.data.recent.RecentProjects
 import com.codymikol.extensions.onFocusLost
-import com.codymikol.gitdown.generated.resources.Res
-import com.codymikol.gitdown.generated.resources.discord
-import com.codymikol.gitdown.generated.resources.email
-import com.codymikol.gitdown.generated.resources.icon
-import com.codymikol.gitdown.generated.resources.icon_256x256
+import com.codymikol.gitdown.generated.resources.*
 import com.codymikol.repositories.RecentProjectRepository
 import com.codymikol.state.GitDownState
 import org.jetbrains.compose.resources.DrawableResource
@@ -167,16 +163,16 @@ fun DirectorySelector(applicationScope: ApplicationScope) =
                 Spacer(modifier = Modifier.height(4.dp))
                 InspirationText()
                 Spacer(modifier = Modifier.height(14.dp))
-                if (GitDownState.isInvalidGitDirectorySelected.value) {
+                if(GitDownState.isInvalidGitDirectorySelected.value) {
                     Text(
                         "Selected directory is not a git repository.",
-                        color = Colors.FileRemoved,
+                        color = errorMessageColor(GitDownState.isInvalidGitDirectorySelected.value),
                         fontSize = 11.sp,
                         textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(horizontal = 16.dp)
+                        modifier = Modifier.padding(horizontal = 16.dp).height(warningTextHeight.dp)
                     )
-                    Spacer(modifier = Modifier.height(14.dp))
                 }
+                Spacer(modifier = Modifier.height(14.dp))
                 SelectRepositoryButton()
                 RecentlyOpenedButton {
                     showRecentProjectDropdown.value = !showRecentProjectDropdown.value
@@ -303,9 +299,14 @@ fun ExitButton(applicationScope: ApplicationScope) {
     }
 }
 
-const val windowHeight = 385
+const val warningTextHeight = 12
+
+const val windowHeight = 385 + warningTextHeight
 
 const val windowWidth = 310
+
+fun errorMessageColor(isInvalid: Boolean): Color =
+    if (isInvalid) Colors.FileRemoved else Color.Transparent
 
 @Composable
 private fun InspirationText() {
