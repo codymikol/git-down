@@ -7,8 +7,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.window.WindowDraggableArea
-import androidx.compose.material.DropdownMenu
-import androidx.compose.material.DropdownMenuItem
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
@@ -24,6 +22,8 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.*
+import com.codymikol.components.menu.ThemedDropdownMenu
+import com.codymikol.components.menu.ThemedDropdownMenuItem
 import com.codymikol.data.Colors
 import com.codymikol.data.recent.RecentProject
 import com.codymikol.data.recent.RecentProjects
@@ -68,28 +68,26 @@ fun RecentProjectSelector(x: Int, y: Int, closeHandler: () -> Unit, recent: Rece
             isResizable = false
             isVisible = true
             setContent {
-                DropdownMenu(
-                    modifier = Modifier.background(Color.Transparent).fillMaxWidth(),
+                ThemedDropdownMenu(
+                    modifier = Modifier.fillMaxWidth(),
                     expanded = true,
                     onDismissRequest = {}) {
                     recent.projects.forEach {
-                        DropdownMenuItem(modifier = Modifier.fillMaxWidth(), onClick = {
-                            try { 
+                        ThemedDropdownMenuItem(label = it.name, modifier = Modifier.fillMaxWidth(), onClick = {
+                            try {
                               println("Handling directory selection")
-                              handleDirectorySelection(it.location) 
+                              handleDirectorySelection(it.location)
                               println("Done handling directory selection")
                             }
                             catch(e: Exception) {
                               println("Error selecting directory: $e")
-                              e.printStackTrace() 
+                              e.printStackTrace()
                             }
                             finally {
                               println("Closing recent project selector")
                               closeHandler()
                             }
-                        }) {
-                            Text(it.name)
-                        }
+                        })
                     }
                 }
             }
