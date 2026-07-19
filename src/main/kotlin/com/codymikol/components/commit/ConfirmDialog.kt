@@ -1,20 +1,30 @@
 package com.codymikol.components.commit
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.codymikol.components.SlimButton
+import com.codymikol.data.Colors
+import com.codymikol.typography.jetbrainsMono
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun ConfirmDialog(title: String? = null, content: String, onDismiss: () -> Unit, onConfirm: () -> Unit) {
     AlertDialog(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().border(1.dp, Color.Black, RoundedCornerShape(4.dp)),
         onDismissRequest = { onDismiss() },
+        backgroundColor = Colors.LightGrayBackground,
+        contentColor = Color.White,
+        shape = RoundedCornerShape(4.dp),
         text = {
             Column (
                 modifier = Modifier
@@ -24,21 +34,19 @@ fun ConfirmDialog(title: String? = null, content: String, onDismiss: () -> Unit,
                 if (!title.isNullOrEmpty()) {
                     Text(title,
                         modifier = Modifier.padding(vertical = 8.dp),
+                        color = Color.White,
+                        fontFamily = jetbrainsMono(),
                         style = MaterialTheme.typography.subtitle1)
                 }
 
-                Text(content)
+                Text(content, color = Colors.LightGrayText, fontFamily = jetbrainsMono(), fontSize = 12.sp)
             }
         },
         dismissButton = {
-            Button(onClick = { onDismiss() }) {
-                Text("No")
-            }
+            SlimButton("No", onClick = { onDismiss() })
         },
         confirmButton = {
-            Button(onClick = { onConfirm() }) {
-                Text("Yes")
-            }
+            SlimButton("Yes", onClick = { onConfirm() })
         }
     )
 }
