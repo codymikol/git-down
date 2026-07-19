@@ -82,12 +82,25 @@ fun CommitBottomToolbar(
     val unstageWidth = 100.dp
     val commitWidth = 100.dp
     val amendCheckboxWidth = 50.dp
-    val amendTextWidth = 80.dp
+    val amendHeadTextWidth = 80.dp
+    val amendOnlyTextWidth = 50.dp
     val committingAsWidth = 90.dp
+    val onBranchWidth = 70.dp
+    val usernameWidth = 100.dp
 
-        val totalFixedWidth = unstageWidth + commitWidth + amendTextWidth + amendCheckboxWidth + committingAsWidth
+        val fullWidth = unstageWidth + commitWidth + amendCheckboxWidth + amendHeadTextWidth +
+            committingAsWidth + onBranchWidth + usernameWidth
 
-        val showComittingAs = constraints.maxWidth > totalFixedWidth
+        val showComittingAs = constraints.maxWidth > fullWidth
+        val widthWithoutCommittingAs = fullWidth - committingAsWidth
+
+        val showOnBranch = constraints.maxWidth > widthWithoutCommittingAs
+        val widthWithoutOnBranch = widthWithoutCommittingAs - onBranchWidth
+
+        val showAmendHeadSuffix = constraints.maxWidth > widthWithoutOnBranch
+        val widthWithoutAmendHeadSuffix = widthWithoutOnBranch - (amendHeadTextWidth - amendOnlyTextWidth)
+
+        val showUsername = constraints.maxWidth > widthWithoutAmendHeadSuffix
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -95,18 +108,23 @@ fun CommitBottomToolbar(
         modifier = Modifier.background(color = Colors.LightGrayBackground).fillMaxWidth().requiredHeight(48.dp)
             .padding(10.dp)
     ) {
-        SlimButton("Unstage All", onClick = {
-            scope.launch {
-                GitDownState.git.value.unstageAll()
-                GitDownState.selectedFiles.clear()
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            SlimButton("Unstage All", onClick = {
+                scope.launch {
+                    GitDownState.git.value.unstageAll()
+                    GitDownState.selectedFiles.clear()
+                }
+            })
+
+            if(showComittingAs) RegularText("Commiting as ", modifier = Modifier.requiredWidth(committingAsWidth))
+            if(showUsername) {
+                BoldText("$committingAsName <$committingAsEmail> ")
+            } else {
+                BoldText("$committingAsEmail ")
             }
-        })
-
-
-        if(showComittingAs) RegularText("Commiting as ", modifier = Modifier.requiredWidth(committingAsWidth))
-        BoldText("$committingAsName <$committingAsEmail> ")
-        RegularText(getObjectNamePrefix(isDetachedHead))
-        BoldText(getObjectName(isDetachedHead, branchName), modifier = Modifier.widthIn(max = 100.dp, min = 100.dp))
+            if(showOnBranch) RegularText(getObjectNamePrefix(isDetachedHead))
+            BoldText(getObjectName(isDetachedHead, branchName), modifier = Modifier.widthIn(max = 100.dp, min = 100.dp))
+        }
 
         Row(verticalAlignment = Alignment.CenterVertically) {
             Checkbox(
@@ -114,8 +132,9 @@ fun CommitBottomToolbar(
                 checked = amendEnabled.value,
                 onCheckedChange = { toggleAmendHead() })
             Text(
-                modifier = Modifier.padding(0.dp, 0.dp, 12.dp, 0.dp).requiredWidth(80.dp),
-                text = "Amend Head",
+                modifier = Modifier.padding(0.dp, 0.dp, 12.dp, 0.dp)
+                    .requiredWidth(if (showAmendHeadSuffix) amendHeadTextWidth else amendOnlyTextWidth),
+                text = if (showAmendHeadSuffix) "Amend Head" else "Amend",
                 fontSize = 12.sp,
                 color = Color.White,
                 overflow = TextOverflow.Ellipsis,
