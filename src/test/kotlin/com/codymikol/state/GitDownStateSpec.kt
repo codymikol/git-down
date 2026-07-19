@@ -770,6 +770,81 @@ class GitDownStateSpec : DescribeSpec({
 
             }
 
+            describe("when switching to the Commit tab and there are files in the working directory") {
+
+                autoClose(
+                    createTestRepository()
+                        .addFile("a.txt", "A")
+                        .addFile("b.txt", "B")
+                        .transferIntoGitDownState()
+                )
+
+                it("should select the first working directory file") {
+                    GitDownState.selectedFiles.clear()
+
+                    GitDownState.selectTab(Tab.Commit)
+
+                    GitDownState.selectedFiles.toList() shouldBe listOf(GitDownState.workingDirectory.value.toList()[0])
+                }
+
+            }
+
+            describe("when switching to the Commit tab and the working directory is empty but the index has files") {
+
+                autoClose(
+                    createTestRepository()
+                        .addFile("foo.txt", "Foo")
+                        .addFile("bar.txt", "Bar")
+                        .stageAll()
+                        .transferIntoGitDownState()
+                )
+
+                it("should select the first index file") {
+                    GitDownState.selectedFiles.clear()
+
+                    GitDownState.selectTab(Tab.Commit)
+
+                    GitDownState.selectedFiles.toList() shouldBe listOf(GitDownState.index.value.toList()[0])
+                }
+
+            }
+
+            describe("when switching to the Commit tab and there are no files at all") {
+
+                autoClose(createTestRepository().transferIntoGitDownState())
+
+                it("should leave no file selected") {
+                    GitDownState.selectedFiles.clear()
+
+                    GitDownState.selectTab(Tab.Commit)
+
+                    GitDownState.selectedFiles.toList() shouldBe emptyList()
+                }
+
+            }
+
+            describe("when switching to the Commit tab and a file is already selected") {
+
+                autoClose(
+                    createTestRepository()
+                        .addFile("a.txt", "A")
+                        .addFile("b.txt", "B")
+                        .transferIntoGitDownState()
+                )
+
+                it("should leave the existing selection untouched") {
+                    val files = GitDownState.workingDirectory.value.toList()
+
+                    GitDownState.selectedFiles.clear()
+                    GitDownState.selectedFiles.add(files[1])
+
+                    GitDownState.selectTab(Tab.Commit)
+
+                    GitDownState.selectedFiles.toList() shouldBe listOf(files[1])
+                }
+
+            }
+
         }
 
         describe("isValidGitDirectory") {
