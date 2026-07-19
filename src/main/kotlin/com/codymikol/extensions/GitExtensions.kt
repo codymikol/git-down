@@ -22,6 +22,7 @@ import org.eclipse.jgit.dircache.DirCacheEntry
 import org.eclipse.jgit.dircache.DirCacheIterator
 import org.eclipse.jgit.lib.Constants.OBJ_BLOB
 import org.eclipse.jgit.lib.FileMode
+import org.eclipse.jgit.lib.Ref
 import org.eclipse.jgit.lib.Repository
 import org.eclipse.jgit.revwalk.RevCommit
 import org.eclipse.jgit.revwalk.RevWalk
@@ -63,6 +64,12 @@ fun Git.getCurrentRefCommitCount() = try {
 
 fun Git.getStashes(): List<RevCommit> = try {
     this.stashList().call().toList()
+} catch (e: Exception) {
+    emptyList()
+}
+
+fun Git.listLocalBranches(): List<Ref> = try {
+    this.branchList().call()
 } catch (e: Exception) {
     emptyList()
 }

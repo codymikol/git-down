@@ -5,6 +5,7 @@ import com.codymikol.extensions.scanForChanges
 import com.codymikol.extensions.stageAll
 import com.codymikol.state.GitDownState
 import org.eclipse.jgit.api.Git
+import org.eclipse.jgit.api.MergeCommand
 import java.io.File
 import java.nio.file.Path
 
@@ -43,6 +44,23 @@ data class TestRepository(
 
     suspend fun commitAll(message: String) = this.also {
         this.git.commitAll(message)
+    }
+
+    fun createBranch(name: String) = this.also {
+        this.git.branchCreate().setName(name).call()
+    }
+
+    fun checkout(name: String) = this.also {
+        this.git.checkout().setName(name).call()
+    }
+
+    // Forces a real merge commit even when the merge could fast-forward, since this
+    // fixture exists to produce multi-parent commits for diamond-graph test coverage.
+    fun merge(branchName: String, message: String? = null) = this.also {
+        val ref = this.git.repository.findRef(branchName)
+        val command = this.git.merge().include(ref).setFastForward(MergeCommand.FastForwardMode.NO_FF)
+        message?.let { command.setMessage(it) }
+        command.call()
     }
 
     fun stashCreate(message: String? = null) = this.also {

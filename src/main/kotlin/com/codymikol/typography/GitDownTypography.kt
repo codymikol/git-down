@@ -12,6 +12,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
 import com.codymikol.gitdown.generated.resources.*
 import org.jetbrains.compose.resources.Font
@@ -93,6 +94,30 @@ object GitDownTypography {
             color = color,
             fontFamily = jetbrainsMono(),
             fontSize = 12.sp
+        )
+    }
+
+    @Composable
+    fun CommitSha(value: String) {
+        Text(
+            value,
+            color = Color(whiteLevel, whiteLevel, whiteLevel),
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = jetbrainsMono(),
+        )
+    }
+
+    @Composable
+    fun CommitSubject(value: String) {
+        Text(
+            value,
+            modifier = Modifier.fillMaxWidth(),
+            color = Color(whiteLevel, whiteLevel, whiteLevel),
+            fontSize = 11.sp,
+            fontFamily = jetbrainsMono(),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 
