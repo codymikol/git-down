@@ -22,6 +22,7 @@
               gitUserName = "bot";
               gitUserEmail = "hi@codymikol.com";
             };
+            concurrency = { maxParallel = 1; };
           };
         }; 
         devShells.default = pkgs.mkShell {
