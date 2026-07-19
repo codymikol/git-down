@@ -9,11 +9,16 @@ import com.codymikol.data.file.Index
 import com.codymikol.data.file.Status
 import com.codymikol.repository.TestRepository.Companion.createTestRepository
 import com.codymikol.state.GitDownState
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import java.io.File
 import java.nio.file.Path
+import java.util.concurrent.atomic.AtomicInteger
+import org.eclipse.jgit.api.errors.JGitInternalException
+import org.eclipse.jgit.errors.LockFailedException
 
 private fun content(lines: List<String>) = lines.joinToString("\n", postfix = "\n")
 
@@ -730,6 +735,72 @@ class GitExtensions : DescribeSpec({
 
             it("should no longer report the file as missing") {
                 GitDownState.workingDirectory.value.any { it.getPath() == "foo.txt" } shouldBe false
+            }
+
+        }
+
+    }
+
+    describe("stageAll") {
+
+        describe("Staging when the index is locked by another process") {
+
+            val repo = createTestRepository().addFile("foo.txt", "content")
+
+            val lockFile = File(repo.dir.toString(), ".git/index.lock")
+            val lockCreated = lockFile.createNewFile()
+
+            Thread {
+                Thread.sleep(150)
+                lockFile.delete()
+            }.start()
+
+            autoClose(
+                repo
+                    .stageAll()
+                    .transferIntoGitDownState()
+            )
+
+            it("should retry until the lock clears and stage the file") {
+                lockCreated shouldBe true
+                GitDownState.index.value.any { it.getPath() == "foo.txt" } shouldBe true
+            }
+
+        }
+
+    }
+
+    describe("retryOnIndexLock") {
+
+        describe("when every attempt fails because the index is locked") {
+
+            val attempts = AtomicInteger(0)
+            val thrown = shouldThrow<JGitInternalException> {
+                retryOnIndexLock(maxAttempts = 3, initialDelayMs = 1L) {
+                    attempts.incrementAndGet()
+                    throw JGitInternalException("locked", LockFailedException(File("index.lock"), "locked"))
+                }
+            }
+
+            it("should retry until maxAttempts is reached, then rethrow the exception") {
+                attempts.get() shouldBe 3
+                thrown.cause.shouldBeInstanceOf<LockFailedException>()
+            }
+
+        }
+
+        describe("when the failure is not caused by a locked index") {
+
+            val attempts = AtomicInteger(0)
+            shouldThrow<JGitInternalException> {
+                retryOnIndexLock(maxAttempts = 5, initialDelayMs = 1000L) {
+                    attempts.incrementAndGet()
+                    throw JGitInternalException("boom", RuntimeException("not a lock"))
+                }
+            }
+
+            it("should rethrow immediately without retrying") {
+                attempts.get() shouldBe 1
             }
 
         }

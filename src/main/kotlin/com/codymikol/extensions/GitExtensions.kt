@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.api.ResetCommand
+import org.eclipse.jgit.api.errors.JGitInternalException
 import org.eclipse.jgit.api.errors.NoHeadException
 import org.eclipse.jgit.diff.DiffEntry
 import org.eclipse.jgit.diff.DiffFormatter
@@ -20,6 +21,7 @@ import org.eclipse.jgit.dircache.DirCacheBuildIterator
 import org.eclipse.jgit.dircache.DirCacheEditor
 import org.eclipse.jgit.dircache.DirCacheEntry
 import org.eclipse.jgit.dircache.DirCacheIterator
+import org.eclipse.jgit.errors.LockFailedException
 import org.eclipse.jgit.lib.Constants.OBJ_BLOB
 import org.eclipse.jgit.lib.FileMode
 import org.eclipse.jgit.lib.Ref
@@ -113,23 +115,56 @@ fun Git.getStashDiff(stash: RevCommit): List<FileDelta> = try {
     emptyList()
 }
 
+private const val INDEX_LOCK_RETRY_MAX_ATTEMPTS = 6
+private const val INDEX_LOCK_RETRY_INITIAL_DELAY_MS = 100L
+private const val INDEX_LOCK_RETRY_BACKOFF_MULTIPLIER = 2
+
+/**
+ *  jgit's add/commit commands lock .git/index while they run, which can throw
+ *  a LockFailedException (wrapped in JGitInternalException) if another process
+ *  is holding that lock. Retry with exponential backoff until it clears.
+ */
+internal fun <T> retryOnIndexLock(
+    maxAttempts: Int = INDEX_LOCK_RETRY_MAX_ATTEMPTS,
+    initialDelayMs: Long = INDEX_LOCK_RETRY_INITIAL_DELAY_MS,
+    fn: () -> T
+): T {
+    var attempt = 1
+    var delayMs = initialDelayMs
+    while (true) {
+        try {
+            return fn()
+        } catch (e: JGitInternalException) {
+            if (e.cause !is LockFailedException || attempt >= maxAttempts) throw e
+            logger.warn("Git index is locked, retrying in ${delayMs}ms (attempt $attempt/$maxAttempts)")
+            Thread.sleep(delayMs)
+            attempt++
+            delayMs *= INDEX_LOCK_RETRY_BACKOFF_MULTIPLIER
+        }
+    }
+}
+
 suspend fun Git.stageAll(): Git = command {
 
     // setUpdate allows us to add deleted files, but disallows adding new files. So we have to do this twice...
-    this@stageAll
-        .add()
-        .addFilepattern(".")
-        .setUpdate(true)
-        .call()
-        .also { logger.info("Staging all files") }
-        .unit()
+    retryOnIndexLock {
+        this@stageAll
+            .add()
+            .addFilepattern(".")
+            .setUpdate(true)
+            .call()
+            .also { logger.info("Staging all files") }
+            .unit()
+    }
 
-    this@stageAll
-        .add()
-        .addFilepattern(".")
-        .call()
-        .also { logger.info("Staging all files") }
-        .unit()
+    retryOnIndexLock {
+        this@stageAll
+            .add()
+            .addFilepattern(".")
+            .call()
+            .also { logger.info("Staging all files") }
+            .unit()
+    }
 
 }
 
