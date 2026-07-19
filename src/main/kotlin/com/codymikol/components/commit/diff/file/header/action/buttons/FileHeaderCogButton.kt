@@ -10,9 +10,13 @@ import androidx.compose.ui.unit.sp
 import com.codymikol.components.commit.diff.file.header.colors.HeaderButtonColors
 import com.codymikol.components.menu.ThemedDropdownMenu
 import com.codymikol.components.menu.ThemedDropdownMenuItem
-import org.slf4j.LoggerFactory
+import com.codymikol.services.DiffToolService
+import com.codymikol.services.FileSystemService
+import kotlinx.coroutines.launch
+import org.koin.java.KoinJavaComponent.inject
 
-private val logger = LoggerFactory.getLogger("FileHeaderCogButton")
+internal val diffToolService: DiffToolService by inject(DiffToolService::class.java)
+internal val fileSystemService: FileSystemService by inject(FileSystemService::class.java)
 
 @Composable
 internal fun FileHeaderCogButton(menuItems: @Composable (dismiss: () -> Unit) -> Unit) {
@@ -39,10 +43,14 @@ internal fun FileHeaderCogButton(menuItems: @Composable (dismiss: () -> Unit) ->
 }
 
 @Composable
-internal fun FileActionMenuItem(label: String, actionId: String, onSelect: () -> Unit) = ThemedDropdownMenuItem(
-    label = label,
-    onClick = {
-        logger.info("todo: $actionId")
-        onSelect()
-    }
-)
+internal fun FileActionMenuItem(label: String, dismiss: () -> Unit, action: suspend () -> Unit) {
+    val scope = rememberCoroutineScope()
+
+    ThemedDropdownMenuItem(
+        label = label,
+        onClick = {
+            scope.launch { action() }
+            dismiss()
+        }
+    )
+}
