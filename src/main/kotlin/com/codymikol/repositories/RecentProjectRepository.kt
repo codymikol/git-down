@@ -48,6 +48,14 @@ class RecentProjectRepository(
         setRecentProjects(newRecentProjects)
     }
 
+    fun removeRecentProject(location: String) {
+        val currentRecentProjects = getRecentProjects()
+        val newProjects = currentRecentProjects.projects.filterNot { it.location == location }
+        if (newProjects.size != currentRecentProjects.projects.size) {
+            setRecentProjects(RecentProjects(newProjects))
+        }
+    }
+
     private fun getFile() = File("${requireNotNull(userDirectoryRepository.getUserDataDir())}/$recentFilename")
 
     private fun initializeRecentProjects(): RecentProjects {

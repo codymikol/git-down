@@ -5,7 +5,7 @@ import net.harawata.appdirs.AppDirsFactory
 import org.koin.core.annotation.Single
 
 @Single
-class UserDirectoryRepository {
+open class UserDirectoryRepository {
 
     private val appDirs : AppDirs by lazy { AppDirsFactory.getInstance() }
 
@@ -13,6 +13,6 @@ class UserDirectoryRepository {
     private val projectVersion = "0.0.0"
     private val author = "Cody Mikol"
 
-    fun getUserDataDir(): String? = appDirs.getUserDataDir(projectName, projectVersion, author)
+    open fun getUserDataDir(): String? = appDirs.getUserDataDir(projectName, projectVersion, author)
 
 }
