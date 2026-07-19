@@ -16,7 +16,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.ComposeWindow
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -28,8 +27,15 @@ import com.codymikol.data.Colors
 import com.codymikol.data.recent.RecentProject
 import com.codymikol.data.recent.RecentProjects
 import com.codymikol.extensions.onFocusLost
+import com.codymikol.gitdown.generated.resources.Res
+import com.codymikol.gitdown.generated.resources.discord
+import com.codymikol.gitdown.generated.resources.email
+import com.codymikol.gitdown.generated.resources.icon
+import com.codymikol.gitdown.generated.resources.icon_256x256
 import com.codymikol.repositories.RecentProjectRepository
 import com.codymikol.state.GitDownState
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.painterResource
 import org.koin.java.KoinJavaComponent.inject
 import java.awt.Desktop
 import java.awt.Dimension
@@ -105,7 +111,7 @@ fun DirectorySelector(applicationScope: ApplicationScope) =
     Window(
         onCloseRequest = applicationScope::exitApplication,
         title = GitDownState.branchName.value,
-        icon = painterResource(resourcePath = "icons/icon.png"),
+        icon = painterResource(Res.drawable.icon),
         undecorated = true,
         transparent = true,
         state = rememberWindowState(
@@ -200,7 +206,7 @@ private fun SocialFooter() {
 
 @Composable
 private fun SocialButton(
-    iconSrc: String,
+    iconSrc: DrawableResource,
     text: String,
     onClick: () -> Any
 ) = Box(
@@ -211,7 +217,7 @@ private fun SocialButton(
 ) {
     Row {
         Image(
-            painter = painterResource(resourcePath = iconSrc),
+            painter = painterResource(iconSrc),
             contentDescription = "",
             modifier = Modifier.height(12.dp)
         )
@@ -222,11 +228,11 @@ private fun SocialButton(
 
 @Composable
 private fun DiscordButton() =
-    SocialButton("icons/discord.svg", "Discord") { openLink("https://discord.gg/aPqQzDFn7N") }
+    SocialButton(Res.drawable.discord, "Discord") { openLink("https://discord.gg/aPqQzDFn7N") }
 
 @Composable
 private fun EmailButton() =
-    SocialButton("icons/email.svg", "Email") { openLink("mailto:hi@codymikol.com") }
+    SocialButton(Res.drawable.email, "Email") { openLink("mailto:hi@codymikol.com") }
 
 @Composable
 private fun AppleFileWindow(
@@ -374,7 +380,7 @@ private fun RecentlyOpenedButton(onClick: () -> Unit = {}) =
 private fun GitDownImage() {
     Image(
         modifier = Modifier.size(148.dp),
-        painter = painterResource(resourcePath = "icons/icon_256x256.png"),
+        painter = painterResource(Res.drawable.icon_256x256),
         contentDescription = "Git down icon",
     )
 }

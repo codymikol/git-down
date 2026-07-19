@@ -13,11 +13,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.*
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.codymikol.data.Colors
+import com.codymikol.gitdown.generated.resources.Res
+import com.codymikol.gitdown.generated.resources.commit
+import com.codymikol.gitdown.generated.resources.commit_white
 import com.codymikol.state.GitDownState
 import com.codymikol.tabs.Tab
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.painterResource
 
 private val activeTabBackground = Color(200, 200, 200)
 private val inactiveTabBackground = Color(106,106,106)
@@ -71,8 +75,8 @@ private fun getTabButtonShape(location: TabButtonLocation): AbsoluteRoundedCorne
 fun tabButton(
     location: TabButtonLocation,
     tab: Tab,
-    enabledIconSrc: String,
-    disabledIconSrc: String,
+    enabledIconSrc: DrawableResource,
+    disabledIconSrc: DrawableResource,
     description: String
 ) {
     Box(
@@ -87,7 +91,7 @@ fun tabButton(
         ) {
             Image(
                 modifier = Modifier.scale(0.5f).fillMaxSize(),
-                painter = painterResource(resourcePath = if(tab == GitDownState.currentTab.value) enabledIconSrc else disabledIconSrc),
+                painter = painterResource(if(tab == GitDownState.currentTab.value) enabledIconSrc else disabledIconSrc),
                 contentDescription = description,
             )
         }
@@ -100,8 +104,8 @@ fun previewButton() {
     tabButton(
         TabButtonLocation.Left,
         Tab.Commit,
-        "icons/commit.png",
-        "icons/commit_white.png",
+        Res.drawable.commit,
+        Res.drawable.commit_white,
         "lol"
     )
 }
