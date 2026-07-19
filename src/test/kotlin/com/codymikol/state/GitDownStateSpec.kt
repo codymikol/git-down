@@ -6,6 +6,7 @@ import com.codymikol.extensions.stageAll
 import com.codymikol.extensions.stageSelectedLines
 import com.codymikol.extensions.stageLinesForAddedFile
 import com.codymikol.repository.TestRepository.Companion.createTestRepository
+import com.codymikol.tabs.Tab
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
@@ -701,6 +702,70 @@ class GitDownStateSpec : DescribeSpec({
                     GitDownState.selectAdjacentFile(1)
 
                     GitDownState.selectedFiles.toList() shouldBe listOf(indexFiles[1])
+                }
+
+            }
+
+        }
+
+        describe("selectTab") {
+
+            describe("when switching to the Stash tab and stashes exist") {
+
+                autoClose(
+                    createTestRepository()
+                        .addFile("foo.txt", "one\n")
+                        .stageAll()
+                        .commitAll("init")
+                        .appendToFile("foo.txt", "two\n")
+                        .stashCreate()
+                        .transferIntoGitDownState()
+                )
+
+                it("should automatically select the first stash") {
+                    GitDownState.selectedStash.value = null
+
+                    GitDownState.selectTab(Tab.Stash)
+
+                    GitDownState.currentTab.value shouldBe Tab.Stash
+                    GitDownState.selectedStash.value shouldBe GitDownState.stashes.value.first()
+                }
+
+            }
+
+            describe("when switching to the Stash tab and no stashes exist") {
+
+                autoClose(
+                    createTestRepository()
+                        .addFile("foo.txt", "Foo")
+                        .transferIntoGitDownState()
+                )
+
+                it("should leave no stash selected") {
+                    GitDownState.selectedStash.value = null
+
+                    GitDownState.selectTab(Tab.Stash)
+
+                    GitDownState.selectedStash.value shouldBe null
+                }
+
+            }
+
+            describe("when switching to a non-Stash tab") {
+
+                autoClose(
+                    createTestRepository()
+                        .addFile("foo.txt", "Foo")
+                        .transferIntoGitDownState()
+                )
+
+                it("should not touch the stash selection") {
+                    GitDownState.selectedStash.value = null
+
+                    GitDownState.selectTab(Tab.Commit)
+
+                    GitDownState.currentTab.value shouldBe Tab.Commit
+                    GitDownState.selectedStash.value shouldBe null
                 }
 
             }

@@ -79,7 +79,7 @@ fun tabButton(
         modifier = Modifier
             .width(38.dp)
             .height(28.dp)
-            .clickable { GitDownState.currentTab.value = tab }
+            .clickable { GitDownState.selectTab(tab) }
             .clip(getTabButtonShape(location))
     ) {
         Box(
