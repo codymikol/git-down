@@ -2,6 +2,7 @@ package com.codymikol// Copyright 2000-2021 JetBrains s.r.o. and contributors. U
 import androidx.compose.ui.window.application
 import com.codymikol.config.BeansModule
 import com.codymikol.config.RepositoriesModule
+import com.codymikol.config.ServicesModule
 import org.koin.core.context.startKoin
 import org.koin.ksp.generated.module
 
@@ -17,6 +18,7 @@ fun main(args: Array<String>) = application {
         modules(
             RepositoriesModule().module,
             BeansModule().module,
+            ServicesModule().module,
         )
     }
     App(this)
