@@ -9,6 +9,6 @@ import com.codymikol.windows.GitDown
 @Composable
 @Preview
 fun App(applicationScope: ApplicationScope) = when (GitDownState.isValidGitDirectory.value) {
-    true -> GitDown()
+    true -> GitDown(applicationScope)
     false -> DirectorySelector(applicationScope)
 }
