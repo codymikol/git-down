@@ -7,7 +7,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.codymikol.components.commit.diff.file.header.action.buttons.FileHeaderCogButton
+import com.codymikol.components.commit.diff.file.header.action.buttons.FileHeaderCogButtonIndex
+import com.codymikol.components.commit.diff.file.header.action.buttons.FileHeaderCogButtonWorkingDirectory
 import com.codymikol.components.commit.diff.file.header.action.buttons.StageFileButton
 import com.codymikol.components.commit.diff.file.header.action.buttons.StageLinesButton
 import com.codymikol.components.commit.diff.file.header.action.buttons.UnstageFileButton
@@ -36,5 +37,9 @@ private fun FileActions(fileDeltaNode: FileDeltaNode) = Row(verticalAlignment = 
         Status.STASH -> Unit
     }
     Spacer(modifier = Modifier.width(6.dp))
-    FileHeaderCogButton(fileDeltaNode)
+    when (fileDeltaNode.fileDelta.type) {
+        Status.WORKING_DIRECTORY -> FileHeaderCogButtonWorkingDirectory(fileDeltaNode)
+        Status.INDEX -> FileHeaderCogButtonIndex(fileDeltaNode)
+        Status.STASH -> Unit
+    }
 }
