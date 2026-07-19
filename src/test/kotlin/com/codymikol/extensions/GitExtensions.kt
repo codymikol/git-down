@@ -12,6 +12,7 @@ import com.codymikol.state.GitDownState
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import java.io.File
 import java.nio.file.Path
 
 private fun content(lines: List<String>) = lines.joinToString("\n", postfix = "\n")
@@ -447,6 +448,85 @@ class GitExtensions : DescribeSpec({
         describe("Unstaging a few lines between two hunks") {
 
 
+
+        }
+
+    }
+
+    describe("discardFile") {
+
+        describe("Discarding changes to a modified tracked file") {
+
+            val repo = autoClose(
+                createTestRepository()
+                    .addFile("foo.txt", "original\n")
+                    .stageAll()
+                    .commitAll("init")
+                    .addFile("foo.txt", "changed\n")
+                    .transferIntoGitDownState()
+            )
+
+            val workingNode = fileDeltaNodeFor("foo.txt", Status.WORKING_DIRECTORY)
+
+            GitDownState.git.value.discardFile(workingNode)
+
+            it("should restore the file's committed content on disk") {
+                File(repo.dir.toString(), "foo.txt").readText() shouldBe "original\n"
+            }
+
+            it("should no longer report the file as changed") {
+                GitDownState.workingDirectory.value.any { it.getPath() == "foo.txt" } shouldBe false
+            }
+
+        }
+
+        describe("Discarding a newly added untracked file") {
+
+            val repo = autoClose(
+                createTestRepository()
+                    .addFile("init.txt", "init")
+                    .stageAll()
+                    .commitAll("init")
+                    .addFile("new.txt", "new content\n")
+                    .transferIntoGitDownState()
+            )
+
+            val workingNode = fileDeltaNodeFor("new.txt", Status.WORKING_DIRECTORY)
+
+            GitDownState.git.value.discardFile(workingNode)
+
+            it("should delete the file from disk") {
+                File(repo.dir.toString(), "new.txt").exists() shouldBe false
+            }
+
+            it("should no longer report the file in the working directory") {
+                GitDownState.workingDirectory.value.any { it.getPath() == "new.txt" } shouldBe false
+            }
+
+        }
+
+        describe("Discarding a deleted tracked file") {
+
+            val repo = autoClose(
+                createTestRepository()
+                    .addFile("foo.txt", "original\n")
+                    .stageAll()
+                    .commitAll("init")
+                    .deleteFile("foo.txt")
+                    .transferIntoGitDownState()
+            )
+
+            val workingNode = fileDeltaNodeFor("foo.txt", Status.WORKING_DIRECTORY)
+
+            GitDownState.git.value.discardFile(workingNode)
+
+            it("should restore the file's committed content on disk") {
+                File(repo.dir.toString(), "foo.txt").readText() shouldBe "original\n"
+            }
+
+            it("should no longer report the file as missing") {
+                GitDownState.workingDirectory.value.any { it.getPath() == "foo.txt" } shouldBe false
+            }
 
         }
 

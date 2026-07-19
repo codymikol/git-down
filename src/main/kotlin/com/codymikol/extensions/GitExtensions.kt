@@ -126,8 +126,18 @@ suspend fun Git.stageAll(): Git = command {
 
 }
 
-suspend fun Git.discardFile(location: String): Git = command {
-    TODO()
+suspend fun Git.discardFile(fileDeltaNode: FileDeltaNode): Git = command {
+    val path = fileDeltaNode.getPath()
+
+    when (fileDeltaNode.fileDelta) {
+        // untracked files aren't in the index, so there is nothing for jgit's
+        // checkout command to restore them from. Deleting is the only revert.
+        is WorkingDirectory.FileAdded -> File(this@discardFile.repository.workTree, path).delete()
+        // path-limited checkout returns a null Ref (only branch checkouts return one),
+        // so chaining .unit() here would force a non-null check and NPE on that null.
+        else -> this@discardFile.checkout().addPath(path).call()
+    }
+        .also { logger.info("Discarding changes to $path") }
 }
 
 // Deletes a file from the working directory. Intended for new files with only
