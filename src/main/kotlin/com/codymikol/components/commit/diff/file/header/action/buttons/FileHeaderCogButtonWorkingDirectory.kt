@@ -11,11 +11,15 @@ import com.codymikol.components.commit.ConfirmDialog
 import com.codymikol.components.menu.MenuColors
 import com.codymikol.components.menu.ThemedDropdownMenuItem
 import com.codymikol.data.diff.FileDeltaNode
+import com.codymikol.data.file.FileDelta
+import com.codymikol.data.file.WorkingDirectory
 import com.codymikol.extensions.deleteFile
 import com.codymikol.extensions.discardFile
 import com.codymikol.extensions.openFile
 import com.codymikol.state.GitDownState
 import kotlinx.coroutines.launch
+
+fun isNewUntrackedFile(fileDelta: FileDelta): Boolean = fileDelta is WorkingDirectory.FileAdded
 
 @Composable
 fun FileHeaderCogButtonWorkingDirectory(fileDeltaNode: FileDeltaNode) {
@@ -30,8 +34,11 @@ fun FileHeaderCogButtonWorkingDirectory(fileDeltaNode: FileDeltaNode) {
         FileActionMenuItem("Open File", dismiss) { GitDownState.git.value.openFile(fileDeltaNode.fileDelta.location) }
         FileActionMenuItem("Show In Files", dismiss) { fileSystemService.showInFiles(fileDeltaNode.fileDelta.location) }
         Divider(color = MenuColors.Divider)
-        ThemedDropdownMenuItem(label = "Discard Changes", onClick = { isConfirmingDiscard = true; dismiss() })
-        ThemedDropdownMenuItem(label = "Delete File", onClick = { isConfirmingDelete = true; dismiss() })
+        if (isNewUntrackedFile(fileDeltaNode.fileDelta)) {
+            ThemedDropdownMenuItem(label = "Delete File", onClick = { isConfirmingDelete = true; dismiss() })
+        } else {
+            ThemedDropdownMenuItem(label = "Discard Changes", onClick = { isConfirmingDiscard = true; dismiss() })
+        }
     }
 
     if (isConfirmingDiscard) {
