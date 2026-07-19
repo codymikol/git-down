@@ -5,6 +5,7 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -12,6 +13,7 @@ import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
@@ -46,6 +48,8 @@ import com.codymikol.typography.GitDownTypography
 import kotlinx.coroutines.launch
 
 
+private val ViewportCornerRadius = 4.dp
+
 val commitMessage = mutableStateOf("")
 val isConfirmingDiscardAll = mutableStateOf(false)
 val isCommitMessageFocused = mutableStateOf(false)
@@ -77,9 +81,10 @@ fun CommitView() {
         Row(modifier = Modifier.weight(40f, true).fillMaxWidth()) {
             Column(
                 modifier = Modifier
-                    .background(Colors.DarkGrayBackground)
                     .weight(40f).fillMaxHeight()
-                    .border(width = 1.dp, color = Color.Black)
+                    .clip(RoundedCornerShape(ViewportCornerRadius))
+                    .background(Colors.DarkGrayBackground)
+                    .border(width = 1.dp, color = Color.Black, shape = RoundedCornerShape(ViewportCornerRadius))
             ) {
                 Column(modifier = Modifier.weight(50f)) { CommitWorkingDirectory() }
                 Column(modifier = Modifier.weight(50f)) { CommitIndex() }
@@ -88,8 +93,9 @@ fun CommitView() {
                 modifier = Modifier
                     .weight(60f)
                     .fillMaxHeight()
+                    .clip(RoundedCornerShape(ViewportCornerRadius))
                     .background(Colors.DarkGrayBackground)
-                    .border(width = 1.dp, color = Color.Black)
+                    .border(width = 1.dp, color = Color.Black, shape = RoundedCornerShape(ViewportCornerRadius))
             ) {
                 DiffPanel()
             }

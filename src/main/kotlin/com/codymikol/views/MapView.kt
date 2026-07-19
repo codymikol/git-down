@@ -16,12 +16,14 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -39,6 +41,7 @@ import org.eclipse.jgit.lib.Ref
 private val LaneWidth = 260.dp
 private val NodeRadius = 5.dp
 private val GutterX = 20.dp
+private val ViewportCornerRadius = 4.dp
 private const val LoadMoreThreshold = 5
 
 @Composable
@@ -107,7 +110,8 @@ private fun BranchLane(branch: Ref) {
         modifier = Modifier
             .width(LaneWidth)
             .fillMaxHeight()
-            .border(width = 1.dp, color = Color.Black)
+            .clip(RoundedCornerShape(ViewportCornerRadius))
+            .border(width = 1.dp, color = Color.Black, shape = RoundedCornerShape(ViewportCornerRadius))
     ) {
         Subheader(branchName)
         LazyColumn(state = listState, modifier = Modifier.fillMaxWidth().fillMaxHeight()) {

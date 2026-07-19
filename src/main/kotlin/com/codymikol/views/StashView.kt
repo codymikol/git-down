@@ -10,11 +10,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.codymikol.components.Subheader
@@ -23,16 +25,19 @@ import com.codymikol.components.stash.StashRow
 import com.codymikol.data.Colors
 import com.codymikol.state.GitDownState
 
+private val ViewportCornerRadius = 4.dp
+
 @Composable
 @Preview
 fun StashView() {
     Row(modifier = Modifier.fillMaxWidth().fillMaxHeight()) {
         Column(
             modifier = Modifier
-                .background(Colors.DarkGrayBackground)
                 .weight(40f)
                 .fillMaxHeight()
-                .border(width = 1.dp, color = Color.Black)
+                .clip(RoundedCornerShape(ViewportCornerRadius))
+                .background(Colors.DarkGrayBackground)
+                .border(width = 1.dp, color = Color.Black, shape = RoundedCornerShape(ViewportCornerRadius))
         ) {
             StashList()
         }
@@ -40,8 +45,9 @@ fun StashView() {
             modifier = Modifier
                 .weight(60f)
                 .fillMaxHeight()
+                .clip(RoundedCornerShape(ViewportCornerRadius))
                 .background(Colors.DarkGrayBackground)
-                .border(width = 1.dp, color = Color.Black)
+                .border(width = 1.dp, color = Color.Black, shape = RoundedCornerShape(ViewportCornerRadius))
         ) {
             StashDiffPanel()
         }
