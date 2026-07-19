@@ -34,7 +34,9 @@ object Grammars {
         keywords = setOf(
             "const", "let", "var", "function", "class", "extends", "if", "else", "for", "while", "return",
             "import", "export", "from", "default", "null", "undefined", "true", "false", "this", "super",
-            "try", "catch", "finally", "throw", "new", "typeof", "instanceof", "async", "await", "yield"
+            "try", "catch", "finally", "throw", "new", "typeof", "instanceof", "async", "await", "yield",
+            "interface", "type", "enum", "implements", "declare", "namespace", "readonly", "public",
+            "private", "protected"
         ),
         lineComment = "//"
     )

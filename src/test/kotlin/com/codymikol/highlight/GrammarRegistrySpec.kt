@@ -35,10 +35,10 @@ class GrammarRegistrySpec : DescribeSpec({
 
             describe("when a caller registers a custom grammar") {
 
-                val custom = Grammar(id = "custom-lang", extensions = setOf("cstm"), keywords = setOf("FOO"))
-                GrammarRegistry.register(custom)
-
                 it("should resolve paths with the registered extension to that grammar") {
+                    val custom = Grammar(id = "custom-lang", extensions = setOf("cstm"), keywords = setOf("FOO"))
+                    GrammarRegistry.register(custom)
+
                     GrammarRegistry.forPath("file.cstm").id shouldBe "custom-lang"
                 }
 

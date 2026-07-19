@@ -1,11 +1,13 @@
 package com.codymikol.highlight
 
+import java.util.concurrent.CopyOnWriteArrayList
+
 object GrammarRegistry {
 
-    private val grammars = mutableListOf<Grammar>().apply { addAll(Grammars.ALL) }
+    private val grammars: MutableList<Grammar> = CopyOnWriteArrayList(Grammars.ALL)
 
     fun register(grammar: Grammar) {
-        grammars.removeAll { it.id == grammar.id }
+        grammars.removeIf { it.id == grammar.id }
         grammars.add(grammar)
     }
 
