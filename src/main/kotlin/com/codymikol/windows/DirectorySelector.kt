@@ -129,15 +129,16 @@ fun DirectorySelector(applicationScope: ApplicationScope) =
 
         val borderSize = 12.dp
 
-        val recentProjects = remember { recentProjectsRepository.getRecentProjects() }
+        val recentProjects = remember { mutableStateOf(recentProjectsRepository.getRecentProjects()) }
 
-        val closeDropdown = { 
-          showRecentProjectDropdown.value = false 
+        val closeDropdown = {
+          showRecentProjectDropdown.value = false
+          recentProjects.value = recentProjectsRepository.getRecentProjects()
           println("Closed selector dropdown")
         }
 
         if (showRecentProjectDropdown.value) {
-            RecentProjectSelector(x = window.x, y = window.y, closeHandler = closeDropdown, recent = recentProjects)
+            RecentProjectSelector(x = window.x, y = window.y, closeHandler = closeDropdown, recent = recentProjects.value)
         }
 
         Box(
@@ -248,12 +249,16 @@ private fun AppleFileWindow(
 )
 
 fun handleDirectorySelection(dir: String) {
-    val dirFile = File(dir)
-    recentProjectsRepository.addRecentProject(
-        RecentProject(name = dirFile.parentFile.name, location = dir)
-    )
-    println("Selected: $dir")
     GitDownState.gitDirectory.value = dir
+    if (GitDownState.isValidGitDirectory.value) {
+        val dirFile = File(dir)
+        recentProjectsRepository.addRecentProject(
+            RecentProject(name = dirFile.parentFile.name, location = dir)
+        )
+    } else {
+        recentProjectsRepository.removeRecentProject(dir)
+    }
+    println("Selected: $dir")
     isAppleDialogOpen.value = false
 }
 
