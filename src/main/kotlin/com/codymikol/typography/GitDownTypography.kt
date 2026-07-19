@@ -8,13 +8,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.sp
 import com.codymikol.gitdown.generated.resources.*
+import com.codymikol.highlight.Token
+import com.codymikol.highlight.TokenColors
 import org.jetbrains.compose.resources.Font
 
 
@@ -68,9 +73,17 @@ object GitDownTypography {
     }
 
     @Composable
-    fun DiffContent(value: String, color: Color) {
+    fun DiffContent(tokens: List<Token>, baseColor: Color) {
+        val annotatedValue = buildAnnotatedString {
+            tokens.forEach { token ->
+                withStyle(SpanStyle(color = TokenColors.colorFor(token.kind, baseColor))) {
+                    append(token.text)
+                }
+            }
+        }
+
         Text(
-            value,
+            annotatedValue,
             modifier = Modifier.drawBehind {
 
                 // todo(mikol): horrible hack to get gutter lines working on wrapped text...
@@ -91,7 +104,6 @@ object GitDownTypography {
                     )
                 }
             },
-            color = color,
             fontFamily = jetbrainsMono(),
             fontSize = 12.sp
         )

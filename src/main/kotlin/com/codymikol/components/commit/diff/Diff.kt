@@ -20,6 +20,7 @@ import com.codymikol.data.diff.FileDeltaNode
 import com.codymikol.data.diff.Hunk
 import com.codymikol.data.diff.LineNode
 import com.codymikol.extensions.*
+import com.codymikol.highlight.SyntaxHighlighter
 import com.codymikol.state.Keys
 import com.codymikol.typography.GitDownTypography
 
@@ -113,7 +114,7 @@ fun Diff(fileDeltaNodes: List<FileDeltaNode>, showActions: Boolean = true) {
                 when (item) {
                     is DiffItem.FileHeaderItem -> stickyHeader { FileHeader(item.fileDeltaNode, showActions = showActions) }
                     is DiffItem.HunkHeaderItem -> item { HunkHeader(item.hunk) }
-                    is DiffItem.LineItem -> item { DiffLine(item.lineNode) }
+                    is DiffItem.LineItem -> item { DiffLine(item.lineNode, item.parentFileNode.getPath()) }
                 }
             }
         }
@@ -137,7 +138,7 @@ private fun ModificationTypeGutter(lineNode: LineNode) {
 }
 
 @Composable
-private fun DiffLine(lineNode: LineNode) {
+private fun DiffLine(lineNode: LineNode, filePath: String) {
 
     Box(modifier = Modifier
         .background(lineNode.line.getBackgroundColor())
@@ -149,8 +150,9 @@ private fun DiffLine(lineNode: LineNode) {
             ModificationTypeGutter(lineNode)
 
             val displayLine = lineNode.line.value.replace("\t", "  ")
+            val tokens = remember(filePath, displayLine) { SyntaxHighlighter.highlight(filePath, displayLine) }
 
-            GitDownTypography.DiffContent(displayLine, lineNode.line.getTextColor())
+            GitDownTypography.DiffContent(tokens, lineNode.line.getTextColor())
         }
     }
 }
