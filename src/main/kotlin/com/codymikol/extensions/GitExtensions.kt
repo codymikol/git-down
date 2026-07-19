@@ -36,6 +36,7 @@ import org.eclipse.jgit.util.io.DisabledOutputStream
 import org.slf4j.LoggerFactory
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.io.IOException
 import java.io.InputStream
 import java.nio.file.Path
@@ -127,6 +128,14 @@ suspend fun Git.stageAll(): Git = command {
 
 suspend fun Git.discardFile(location: String): Git = command {
     TODO()
+}
+
+// Deletes a file from the working directory. Intended for new files with only
+// additions, where there is no committed version for git to check out back to.
+suspend fun Git.deleteFile(location: String): Git = command {
+    File(this@deleteFile.repository.workTree, location)
+        .delete()
+        .also { logger.info("Deleting file $location") }
 }
 
 suspend fun Git.unstageLines(lines: List<LineNode>): Git = command {
