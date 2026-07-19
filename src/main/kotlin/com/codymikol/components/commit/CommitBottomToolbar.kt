@@ -114,7 +114,7 @@ fun CommitBottomToolbar(
             .padding(10.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            SlimButton("Unstage All", onClick = {
+            SlimButton("Unstage All", modifier = Modifier.padding(end = 12.dp), onClick = {
                 scope.launch {
                     GitDownState.git.value.unstageAll()
                     GitDownState.selectedFiles.clear()
