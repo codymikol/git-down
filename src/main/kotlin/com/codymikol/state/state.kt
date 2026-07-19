@@ -179,6 +179,11 @@ object GitDownState {
         if (tab == Tab.Stash) {
             selectedStash.value = stashes.value.firstOrNull()
         }
+
+        if (tab == Tab.Commit && selectedFiles.isEmpty()) {
+            val firstFile = workingDirectory.value.firstOrNull() ?: index.value.firstOrNull()
+            firstFile?.let { selectedFiles.add(it) }
+        }
     }
 
     fun selectAdjacentFile(offset: Int) {
