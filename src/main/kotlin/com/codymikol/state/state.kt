@@ -173,6 +173,14 @@ object GitDownState {
     //todo(mikol): this is not ideal, work out a better way to manage this...
     val lastRequestedUpdateTimestamp = mutableStateOf(System.currentTimeMillis())
 
+    fun selectTab(tab: Tab) {
+        currentTab.value = tab
+
+        if (tab == Tab.Stash) {
+            selectedStash.value = stashes.value.firstOrNull()
+        }
+    }
+
     fun selectAdjacentFile(offset: Int) {
         val current = selectedFiles.singleOrNull() ?: return
 
