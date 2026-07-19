@@ -11,6 +11,11 @@ world projects until I have a stable release published.
 
 Simply run `./gradlew run`
 
+#### Command line arguments
+
+GitDown can be pointed at a repository directly from the command line. See
+[CLI Documentation](./docs/CLI.md) for details.
+
 #### File selection view
 
 <div style="width:100%; display:flex; justify-content:center;">
