@@ -1,33 +1,21 @@
 package com.codymikol.components.commit.diff.file.header.action.buttons
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.material.Divider
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.OutlinedButton
 import androidx.compose.material.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.codymikol.components.commit.diff.file.header.colors.HeaderButtonColors
-import com.codymikol.components.menu.MenuColors
 import com.codymikol.components.menu.ThemedDropdownMenu
 import com.codymikol.components.menu.ThemedDropdownMenuItem
-import com.codymikol.data.diff.FileDeltaNode
-import com.codymikol.data.file.Status
 import org.slf4j.LoggerFactory
 
 private val logger = LoggerFactory.getLogger("FileHeaderCogButton")
 
 @Composable
-fun FileHeaderCogButton(fileDeltaNode: FileDeltaNode) {
+internal fun FileHeaderCogButton(menuItems: @Composable (dismiss: () -> Unit) -> Unit) {
 
     var expanded by remember { mutableStateOf(false) }
 
@@ -45,29 +33,13 @@ fun FileHeaderCogButton(fileDeltaNode: FileDeltaNode) {
             expanded = expanded,
             onDismissRequest = { expanded = false }
         ) {
-            when (fileDeltaNode.fileDelta.type) {
-                Status.WORKING_DIRECTORY -> {
-                    FileActionMenuItem("View in Diff Tool", "workingDirectory.viewInDiffTool") { expanded = false }
-                    Divider(color = MenuColors.Divider)
-                    FileActionMenuItem("Open File", "workingDirectory.openFile") { expanded = false }
-                    FileActionMenuItem("Show In Files", "workingDirectory.showInFiles") { expanded = false }
-                    Divider(color = MenuColors.Divider)
-                    FileActionMenuItem("Delete File", "workingDirectory.deleteFile") { expanded = false }
-                }
-                Status.INDEX -> {
-                    FileActionMenuItem("View in Diff Tool", "index.viewInDiffTool") { expanded = false }
-                    Divider(color = MenuColors.Divider)
-                    FileActionMenuItem("Open File", "index.openFile") { expanded = false }
-                    FileActionMenuItem("Show In Files", "index.showInFiles") { expanded = false }
-                }
-                Status.STASH -> Unit
-            }
+            menuItems { expanded = false }
         }
     }
 }
 
 @Composable
-private fun FileActionMenuItem(label: String, actionId: String, onSelect: () -> Unit) = ThemedDropdownMenuItem(
+internal fun FileActionMenuItem(label: String, actionId: String, onSelect: () -> Unit) = ThemedDropdownMenuItem(
     label = label,
     onClick = {
         logger.info("todo: $actionId")
