@@ -445,9 +445,213 @@ class GitExtensions : DescribeSpec({
 
     describe("unstageSelectedLines") {
 
+        describe("Unstaging a single added line") {
+
+            autoClose(
+                createTestRepository()
+                    .addFile("init.txt", "init")
+                    .stageAll()
+                    .commitAll("init")
+                    .addFile("foo.txt", content(listOf("one", "two", "three", "four", "five", "six")))
+                    .stageAll()
+                    .commitAll("base")
+                    .addFile("foo.txt", content(listOf("one", "two", "three", "alpha", "beta", "gamma", "four", "five", "six")))
+                    .stageAll()
+                    .transferIntoGitDownState()
+            )
+
+            val indexNode = fileDeltaNodeFor("foo.txt", Status.INDEX)
+            val betaLine = indexNode.findLine(LineType.Added, "beta")
+
+            GitDownState.git.value.unstageLines(listOf(betaLine))
+
+            it("should remove that line from the index") {
+                val indexTypes = indexFileDeltaNode("foo.txt").lineTypesByValue()
+                indexTypes["alpha"] shouldBe LineType.Added
+                indexTypes["beta"] shouldBe null
+                indexTypes["gamma"] shouldBe LineType.Added
+            }
+
+            it("should return that line to the working directory as an unstaged change") {
+                val workingTypes = fileDeltaNodeFor("foo.txt", Status.WORKING_DIRECTORY).lineTypesByValue()
+                workingTypes["beta"] shouldBe LineType.Added
+            }
+
+        }
+
+        describe("Unstaging three staged deleted lines") {
+
+            autoClose(
+                createTestRepository()
+                    .addFile("init.txt", "init")
+                    .stageAll()
+                    .commitAll("init")
+                    .addFile("foo.txt", content(listOf("a", "b", "c", "d", "e", "f", "g", "h", "i", "j")))
+                    .stageAll()
+                    .commitAll("base")
+                    .addFile("foo.txt", content(listOf("a", "b", "i", "j")))
+                    .stageAll()
+                    .transferIntoGitDownState()
+            )
+
+            val indexNode = fileDeltaNodeFor("foo.txt", Status.INDEX)
+            val selected = listOf(
+                indexNode.findLine(LineType.Removed, "c"),
+                indexNode.findLine(LineType.Removed, "d"),
+                indexNode.findLine(LineType.Removed, "e"),
+            )
+
+            GitDownState.git.value.unstageLines(selected)
+
+            it("should restore those lines to the index") {
+                val indexTypes = indexFileDeltaNode("foo.txt").lineTypesByValue()
+                indexTypes["c"] shouldBe LineType.Unchanged
+                indexTypes["d"] shouldBe LineType.Unchanged
+                indexTypes["e"] shouldBe LineType.Unchanged
+            }
+
+            it("should leave the other staged deletions in place") {
+                val indexTypes = indexFileDeltaNode("foo.txt").lineTypesByValue()
+                indexTypes["f"] shouldBe LineType.Removed
+                indexTypes["g"] shouldBe LineType.Removed
+                indexTypes["h"] shouldBe LineType.Removed
+            }
+
+        }
+
+        describe("Unstaging three added lines in a nine line hunk") {
+
+            autoClose(
+                createTestRepository()
+                    .addFile("init.txt", "init")
+                    .stageAll()
+                    .commitAll("init")
+                    .addFile("foo.txt", content(listOf("one", "two", "three", "four", "five", "six")))
+                    .stageAll()
+                    .commitAll("base")
+                    .addFile("foo.txt", content(listOf("one", "two", "three", "a1", "a2", "a3", "a4", "a5", "a6", "four", "five", "six")))
+                    .stageAll()
+                    .transferIntoGitDownState()
+            )
+
+            val indexNode = fileDeltaNodeFor("foo.txt", Status.INDEX)
+            val selected = listOf(
+                indexNode.findLine(LineType.Added, "a2"),
+                indexNode.findLine(LineType.Added, "a3"),
+                indexNode.findLine(LineType.Added, "a4"),
+            )
+
+            GitDownState.git.value.unstageLines(selected)
+
+            it("should remove those lines from the index") {
+                val indexTypes = indexFileDeltaNode("foo.txt").lineTypesByValue()
+                indexTypes["a1"] shouldBe LineType.Added
+                indexTypes["a2"] shouldBe null
+                indexTypes["a3"] shouldBe null
+                indexTypes["a4"] shouldBe null
+                indexTypes["a5"] shouldBe LineType.Added
+                indexTypes["a6"] shouldBe LineType.Added
+            }
+
+            it("should return those lines to the working directory as unstaged changes") {
+                val workingTypes = fileDeltaNodeFor("foo.txt", Status.WORKING_DIRECTORY).lineTypesByValue()
+                workingTypes["a2"] shouldBe LineType.Added
+                workingTypes["a3"] shouldBe LineType.Added
+                workingTypes["a4"] shouldBe LineType.Added
+            }
+
+        }
+
         describe("Unstaging a few lines between two hunks") {
 
+            val baseLines = (1..40).map { "line-$it" }
+            val modifiedLines = listOf(
+                "line-1",
+                "line-2",
+                "a1",
+                "a2",
+                "line-3",
+                "line-4",
+                "line-5",
+                "line-6",
+                "line-7",
+                "line-8",
+                "line-9",
+                "line-10",
+                "line-11",
+                "line-12",
+                "line-13",
+                "line-14",
+                "line-15",
+                "line-16",
+                "line-17",
+                "line-18",
+                "b1",
+                "b2",
+                "line-19",
+                "line-20",
+                "line-21",
+                "line-22",
+                "line-23",
+                "line-24",
+                "line-25",
+                "line-26",
+                "line-27",
+                "line-28",
+                "line-29",
+                "line-30",
+                "line-31",
+                "line-32",
+                "line-33",
+                "line-34",
+                "c1",
+                "c2",
+                "line-35",
+                "line-36",
+                "line-37",
+                "line-38",
+                "line-39",
+                "line-40",
+            )
 
+            autoClose(
+                createTestRepository()
+                    .addFile("init.txt", "init")
+                    .stageAll()
+                    .commitAll("init")
+                    .addFile("foo.txt", content(baseLines))
+                    .stageAll()
+                    .commitAll("base")
+                    .addFile("foo.txt", content(modifiedLines))
+                    .stageAll()
+                    .transferIntoGitDownState()
+            )
+
+            val indexNode = fileDeltaNodeFor("foo.txt", Status.INDEX)
+            val selected = listOf(
+                indexNode.findLine(LineType.Added, "b1"),
+                indexNode.findLine(LineType.Added, "b2"),
+            )
+
+            GitDownState.git.value.unstageLines(selected)
+
+            it("should remove those lines from the index") {
+                val indexNode = indexFileDeltaNode("foo.txt")
+                val indexTypes = indexNode.lineTypesByValue()
+                indexTypes["a1"] shouldBe LineType.Added
+                indexTypes["a2"] shouldBe LineType.Added
+                indexTypes["b1"] shouldBe null
+                indexTypes["b2"] shouldBe null
+                indexTypes["c1"] shouldBe LineType.Added
+                indexTypes["c2"] shouldBe LineType.Added
+                indexNode.hunkCount() shouldBe 2
+            }
+
+            it("should return those lines to the working directory as unstaged changes") {
+                val workingTypes = fileDeltaNodeFor("foo.txt", Status.WORKING_DIRECTORY).lineTypesByValue()
+                workingTypes["b1"] shouldBe LineType.Added
+                workingTypes["b2"] shouldBe LineType.Added
+            }
 
         }
 

@@ -149,7 +149,24 @@ suspend fun Git.deleteFile(location: String): Git = command {
 }
 
 suspend fun Git.unstageLines(lines: List<LineNode>): Git = command {
-    lines.forEach { println(it.line.value) }
+    if (lines.isEmpty()) return@command
+
+    val fileDeltaNode = lines[0].parent.parent
+    require(lines.all { it.parent.parent == fileDeltaNode }) {
+        "Unexpected call to unstageLines with multiple files, this currently only supports a single file!"
+    }
+
+    val repo = GitDownState.repo.value
+    val path = fileDeltaNode.getPath()
+    val base = readHeadFileContent(repo, path)
+    val selectedSet = lines.toSet()
+    val unstagedLines = buildUnstagedLines(fileDeltaNode, base.lines, selectedSet)
+    val unstagedText = when {
+        unstagedLines.isEmpty() -> ""
+        else -> unstagedLines.joinToString("\n", postfix = "\n")
+    }
+
+    writeIndexFileContent(repo, path, unstagedText)
 }
 
 private data class FileContent(
@@ -189,10 +206,10 @@ private fun readHeadFileContent(repo: Repository, path: String): FileContent {
     }
 }
 
-private fun buildStagedLines(
+private fun buildPatchedLines(
     fileDeltaNode: FileDeltaNode,
     baseLines: List<String>,
-    selectedLines: Set<LineNode>,
+    shouldIncludeChangedLine: (LineNode) -> Boolean,
 ): List<String> {
     val output = mutableListOf<String>()
     var currentIndex = 0
@@ -209,17 +226,16 @@ private fun buildStagedLines(
             output.addAll(baseLines.subList(currentIndex, safeStartIndex))
         }
 
-        val stagedSegment = mutableListOf<String>()
+        val segment = mutableListOf<String>()
         hunkNode.lineNodes.forEach { lineNode ->
             when (lineNode.line.type) {
-                LineType.Unchanged -> stagedSegment.add(lineNode.line.value)
-                LineType.Removed -> if (!selectedLines.contains(lineNode)) stagedSegment.add(lineNode.line.value)
-                LineType.Added -> if (selectedLines.contains(lineNode)) stagedSegment.add(lineNode.line.value)
+                LineType.Unchanged -> segment.add(lineNode.line.value)
+                LineType.Removed, LineType.Added -> if (shouldIncludeChangedLine(lineNode)) segment.add(lineNode.line.value)
                 LineType.NoNewline, LineType.Unknown -> Unit
             }
         }
 
-        output.addAll(stagedSegment)
+        output.addAll(segment)
         currentIndex = endIndex
     }
 
@@ -228,6 +244,34 @@ private fun buildStagedLines(
     }
 
     return output
+}
+
+// Base is the current index (pre-change): a selected Removed line is dropped
+// (staged as deleted) and a selected Added line is inserted (staged as added).
+private fun buildStagedLines(
+    fileDeltaNode: FileDeltaNode,
+    baseLines: List<String>,
+    selectedLines: Set<LineNode>,
+): List<String> = buildPatchedLines(fileDeltaNode, baseLines) { lineNode ->
+    when (lineNode.line.type) {
+        LineType.Removed -> !selectedLines.contains(lineNode)
+        LineType.Added -> selectedLines.contains(lineNode)
+        else -> false
+    }
+}
+
+// Base is HEAD (pre-staging): a selected Removed line (a staged deletion) is
+// restored, and a selected Added line (a staged addition) is dropped back out.
+private fun buildUnstagedLines(
+    fileDeltaNode: FileDeltaNode,
+    baseLines: List<String>,
+    selectedLines: Set<LineNode>,
+): List<String> = buildPatchedLines(fileDeltaNode, baseLines) { lineNode ->
+    when (lineNode.line.type) {
+        LineType.Removed -> selectedLines.contains(lineNode)
+        LineType.Added -> !selectedLines.contains(lineNode)
+        else -> false
+    }
 }
 
 private fun writeIndexFileContent(repo: Repository, path: String, content: String) {
