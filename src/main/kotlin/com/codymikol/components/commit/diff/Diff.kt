@@ -1,7 +1,8 @@
 package com.codymikol.components.commit.diff
 
 import androidx.compose.foundation.*
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -10,8 +11,10 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
+import kotlin.math.hypot
 import com.codymikol.components.commit.diff.file.header.FileHeader
 import com.codymikol.data.diff.FileDeltaNode
 import com.codymikol.data.diff.Hunk
@@ -45,41 +48,64 @@ fun Diff(fileDeltaNodes: List<FileDeltaNode>, showActions: Boolean = true) {
                 }
             }
             .pointerInput(diffItems, listState) {
-                detectDragGestures(
-                    onDragStart = { position ->
-                        val lineItem = findLineItemAtPosition(position.y, diffItems, listState) ?: return@detectDragGestures
-                        val fileLines = lineItem.parentFileNode.hunkNodes.map { it.lineNodes }.flatten()
-                        val startIndex = fileLines.indexOf(lineItem.lineNode)
-                        if (startIndex < 0) return@detectDragGestures
+                // Line drag-selection must not start tracking (and therefore must not consume
+                // any pointer events) unless the initial down is actually over a diff line.
+                // detectDragGestures() begins slop tracking - and consumes the slop-crossing
+                // move - unconditionally, before its onDragStart callback can veto an invalid
+                // target. That consumption cancels any button underneath the pointer (e.g. the
+                // Stage/Unstage/Cog buttons in the sticky file header) whenever the click has
+                // even a little incidental movement, so the target check has to happen before
+                // any tracking/consumption begins rather than inside onDragStart.
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                    val startLineItem = findLineItemAtPosition(down.position.y, diffItems, listState)
+                        ?: return@awaitEachGesture
 
-                        dragState.isDragging.value = true
-                        dragState.didDrag.value = false
-                        dragState.startIndex.value = startIndex
-                        dragState.activeFileNode.value = lineItem.parentFileNode
+                    val startFileLines = startLineItem.parentFileNode.hunkNodes.map { it.lineNodes }.flatten()
+                    val startIndex = startFileLines.indexOf(startLineItem.lineNode)
+                    if (startIndex < 0) return@awaitEachGesture
 
-                        if (!Keys.isCtrlPressed.value) {
-                            if (!Keys.isShiftPressed.value) {
-                                fileLines.forEach { it.line.selected.value = false }
+                    var dragStarted = false
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                        if (!change.pressed) break
+
+                        if (!dragStarted) {
+                            val dx = change.position.x - down.position.x
+                            val dy = change.position.y - down.position.y
+                            if (hypot(dx, dy) < viewConfiguration.touchSlop) continue
+                            dragStarted = true
+
+                            dragState.isDragging.value = true
+                            dragState.didDrag.value = false
+                            dragState.startIndex.value = startIndex
+                            dragState.activeFileNode.value = startLineItem.parentFileNode
+
+                            if (!Keys.isCtrlPressed.value) {
+                                if (!Keys.isShiftPressed.value) {
+                                    startFileLines.forEach { it.line.selected.value = false }
+                                }
+                                startLineItem.lineNode.line.selected.value = true
                             }
-                            lineItem.lineNode.line.selected.value = true
                         }
-                    },
-                    onDrag = { change, _ ->
-                        if (!dragState.isDragging.value) return@detectDragGestures
-                        val lineItem = findLineItemAtPosition(change.position.y, diffItems, listState) ?: return@detectDragGestures
-                        if (dragState.activeFileNode.value != lineItem.parentFileNode) return@detectDragGestures
+
+                        change.consume()
+
+                        val lineItem = findLineItemAtPosition(change.position.y, diffItems, listState) ?: continue
+                        if (dragState.activeFileNode.value != lineItem.parentFileNode) continue
 
                         val fileLines = lineItem.parentFileNode.hunkNodes.map { it.lineNodes }.flatten()
-                        val startIndex = dragState.startIndex.value ?: return@detectDragGestures
+                        val dragStartIndex = dragState.startIndex.value ?: continue
                         val currentIndex = fileLines.indexOf(lineItem.lineNode)
-                        if (currentIndex < 0) return@detectDragGestures
+                        if (currentIndex < 0) continue
 
                         dragState.didDrag.value = true
-                        selectRange(fileLines, startIndex, currentIndex, Keys.isShiftPressed.value)
-                    },
-                    onDragEnd = { dragState.reset() },
-                    onDragCancel = { dragState.reset() }
-                )
+                        selectRange(fileLines, dragStartIndex, currentIndex, Keys.isShiftPressed.value)
+                    }
+
+                    dragState.reset()
+                }
             }
     ) {
         LazyColumn(state = listState) {
