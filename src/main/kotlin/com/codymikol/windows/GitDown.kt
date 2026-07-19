@@ -19,7 +19,6 @@ import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,6 +31,14 @@ import com.codymikol.components.tabButton
 import com.codymikol.data.Colors
 import com.codymikol.extensions.onFocusGained
 import com.codymikol.extensions.scanForChanges
+import com.codymikol.gitdown.generated.resources.Res
+import com.codymikol.gitdown.generated.resources.commit
+import com.codymikol.gitdown.generated.resources.commit_white
+import com.codymikol.gitdown.generated.resources.icon
+import com.codymikol.gitdown.generated.resources.map
+import com.codymikol.gitdown.generated.resources.map_white
+import com.codymikol.gitdown.generated.resources.stash
+import com.codymikol.gitdown.generated.resources.stash_white
 import com.codymikol.state.GitDownState
 import com.codymikol.state.Keys
 import com.codymikol.tabs.Tab
@@ -39,6 +46,7 @@ import com.codymikol.views.CommitView
 import com.codymikol.views.isCommitMessageFocused
 import com.codymikol.views.MapView
 import com.codymikol.views.StashView
+import org.jetbrains.compose.resources.painterResource
 import java.awt.Dimension
 
 @Preview
@@ -67,7 +75,7 @@ fun GitDown() {
             GitDownState.gitDirectory.value = ""
         },
         title = GitDownState.projectName.value,
-        icon = painterResource(resourcePath = "icons/icon.png"),
+        icon = painterResource(Res.drawable.icon),
         state = rememberWindowState(
             width = windowWidth.dp,
             height = windowHeight.dp,
@@ -105,24 +113,24 @@ fun GitDown() {
                                 tabButton(
                                     TabButtonLocation.Left,
                                     Tab.Map,
-                                    "icons/map.png",
-                                    "icons/map_white.png",
+                                    Res.drawable.map,
+                                    Res.drawable.map_white,
                                     "Shows a map of commit history across branches."
                                 )
 
                                 tabButton(
                                     TabButtonLocation.Middle,
                                     Tab.Commit,
-                                    "icons/commit.png",
-                                    "icons/commit_white.png",
+                                    Res.drawable.commit,
+                                    Res.drawable.commit_white,
                                     "Allows you to view and commit changes to the repository."
                                 )
 
                                 tabButton(
                                     TabButtonLocation.Right,
                                     Tab.Stash,
-                                    "icons/stash.png",
-                                    "icons/stash_white.png",
+                                    Res.drawable.stash,
+                                    Res.drawable.stash_white,
                                     "Allows you to manage stashes.",
                                 )
 
