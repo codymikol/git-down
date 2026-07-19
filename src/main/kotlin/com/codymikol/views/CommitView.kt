@@ -56,6 +56,10 @@ fun CommitView() {
 
     val scope = rememberCoroutineScope()
 
+    LaunchedEffect(Unit) {
+        GitDownState.selectFirstFileIfNoneSelected()
+    }
+
     if (isConfirmingDiscardAll.value) {
         ConfirmDialog(title = "Discard Changes?",
             content = "This will discard all changes in the working directory, are you sure?",

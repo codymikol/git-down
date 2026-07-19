@@ -707,6 +707,89 @@ class GitDownStateSpec : DescribeSpec({
 
         }
 
+        describe("selectFirstFileIfNoneSelected") {
+
+            describe("when there are files in the working directory") {
+
+                autoClose(
+                    createTestRepository()
+                        .addFile("a.txt", "A")
+                        .addFile("b.txt", "B")
+                        .transferIntoGitDownState()
+                )
+
+                val files = GitDownState.workingDirectory.value.toList()
+
+                it("should select the first working directory file") {
+                    GitDownState.selectedFiles.clear()
+
+                    GitDownState.selectFirstFileIfNoneSelected()
+
+                    GitDownState.selectedFiles.toList() shouldBe listOf(files[0])
+                }
+
+            }
+
+            describe("when the working directory is empty but the index has files") {
+
+                autoClose(
+                    createTestRepository()
+                        .addFile("a.txt", "A")
+                        .addFile("b.txt", "B")
+                        .stageAll()
+                        .transferIntoGitDownState()
+                )
+
+                val files = GitDownState.index.value.toList()
+
+                it("should select the first index file") {
+                    GitDownState.selectedFiles.clear()
+
+                    GitDownState.selectFirstFileIfNoneSelected()
+
+                    GitDownState.selectedFiles.toList() shouldBe listOf(files[0])
+                }
+
+            }
+
+            describe("when both the working directory and index are empty") {
+
+                autoClose(createTestRepository().transferIntoGitDownState())
+
+                it("should not select anything") {
+                    GitDownState.selectedFiles.clear()
+
+                    GitDownState.selectFirstFileIfNoneSelected()
+
+                    GitDownState.selectedFiles.toList() shouldBe emptyList()
+                }
+
+            }
+
+            describe("when a file is already selected") {
+
+                autoClose(
+                    createTestRepository()
+                        .addFile("a.txt", "A")
+                        .addFile("b.txt", "B")
+                        .transferIntoGitDownState()
+                )
+
+                val files = GitDownState.workingDirectory.value.toList()
+
+                it("should leave the existing selection untouched") {
+                    GitDownState.selectedFiles.clear()
+                    GitDownState.selectedFiles.add(files[1])
+
+                    GitDownState.selectFirstFileIfNoneSelected()
+
+                    GitDownState.selectedFiles.toList() shouldBe listOf(files[1])
+                }
+
+            }
+
+        }
+
         describe("isValidGitDirectory") {
 
             describe("when the selected directory does not have git initialized") {

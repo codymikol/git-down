@@ -173,6 +173,14 @@ object GitDownState {
     //todo(mikol): this is not ideal, work out a better way to manage this...
     val lastRequestedUpdateTimestamp = mutableStateOf(System.currentTimeMillis())
 
+    fun selectFirstFileIfNoneSelected() {
+        if (selectedFiles.isNotEmpty()) return
+
+        val firstFile = workingDirectory.value.firstOrNull() ?: index.value.firstOrNull() ?: return
+
+        selectedFiles.add(firstFile)
+    }
+
     fun selectAdjacentFile(offset: Int) {
         val current = selectedFiles.singleOrNull() ?: return
 
