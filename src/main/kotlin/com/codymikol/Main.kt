@@ -3,16 +3,11 @@ import androidx.compose.ui.window.application
 import com.codymikol.config.BeansModule
 import com.codymikol.config.RepositoriesModule
 import com.codymikol.config.ServicesModule
+import com.codymikol.windows.handleDirectorySelection
 import org.koin.core.context.startKoin
 import org.koin.ksp.generated.module
 
 fun main(args: Array<String>) = application {
-
-    // todo(mikol): we should move this into a load directory service and make it more robust eventually...
-    if (args.size == 0) {
-//        println("requested directory: " + args[-1])
-//        GitDownState.gitDirectory.value = args[-1] + "/.git"
-    }
 
     startKoin {
         modules(
@@ -21,5 +16,11 @@ fun main(args: Array<String>) = application {
             ServicesModule().module,
         )
     }
+
+    // todo(mikol): we should move this into a load directory service and make it more robust eventually...
+    if (args.size == 1) {
+        handleDirectorySelection(args[0] + "/.git")
+    }
+
     App(this)
 }
