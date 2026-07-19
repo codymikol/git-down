@@ -22,6 +22,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.ApplicationScope
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowPosition
@@ -51,7 +52,7 @@ import java.awt.Dimension
 
 @Preview
 @Composable
-fun GitDown() {
+fun GitDown(applicationScope: ApplicationScope) {
 
     Window(
         onKeyEvent = {
@@ -76,6 +77,7 @@ fun GitDown() {
         },
         title = GitDownState.projectName.value,
         icon = painterResource(Res.drawable.icon),
+        undecorated = true,
         state = rememberWindowState(
             width = windowWidth.dp,
             height = windowHeight.dp,
@@ -107,7 +109,7 @@ fun GitDown() {
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     WindowDraggableArea(modifier = Modifier.fillMaxWidth()) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                             Row(modifier = Modifier.padding(10.dp)) {
 
                                 tabButton(
@@ -150,6 +152,8 @@ fun GitDown() {
                                     modifier = Modifier.padding(0.dp, 3.dp, 0.dp, 0.dp)
                                 )
                             }
+                            Spacer(modifier = Modifier.weight(1f))
+                            ExitButton(applicationScope)
                         }
                     }
                 }
