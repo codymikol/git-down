@@ -35,6 +35,7 @@ fun BoldText(_text: String, modifier: Modifier = Modifier) = Text(
     fontWeight = FontWeight.Bold,
     color = Colors.LightGrayText,
     fontSize = 12.sp,
+    softWrap = false,
     overflow = TextOverflow.Ellipsis,
     modifier = modifier,
 )
@@ -113,7 +114,7 @@ fun CommitBottomToolbar(
         modifier = Modifier.background(color = Colors.LightGrayBackground).fillMaxWidth().requiredHeight(48.dp)
             .padding(10.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
             SlimButton("Unstage All", modifier = Modifier.padding(end = 12.dp), onClick = {
                 scope.launch {
                     GitDownState.git.value.unstageAll()
@@ -128,7 +129,7 @@ fun CommitBottomToolbar(
                 BoldText("$committingAsEmail ")
             }
             if(showOnBranch) RegularText(getObjectNamePrefix(isDetachedHead))
-            BoldText(getObjectName(isDetachedHead, branchName), modifier = Modifier.widthIn(max = 100.dp, min = 100.dp))
+            BoldText(getObjectName(isDetachedHead, branchName), modifier = Modifier.weight(1f))
         }
 
         Row(verticalAlignment = Alignment.CenterVertically) {
