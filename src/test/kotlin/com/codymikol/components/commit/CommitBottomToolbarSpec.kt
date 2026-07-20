@@ -5,32 +5,6 @@ import io.kotest.matchers.shouldBe
 
 class CommitBottomToolbarSpec : DescribeSpec({
 
-    describe("truncateBranchName") {
-
-        describe("when the branch name is within the limit") {
-
-            it("should return the branch name unchanged") {
-                truncateBranchName("main") shouldBe "main"
-            }
-
-            it("should return a 40 character branch name unchanged") {
-                val branchName = "a".repeat(40)
-                truncateBranchName(branchName) shouldBe branchName
-            }
-
-        }
-
-        describe("when the branch name exceeds the limit") {
-
-            it("should truncate to 40 characters and append an ellipsis") {
-                val branchName = "a".repeat(50)
-                truncateBranchName(branchName) shouldBe ("a".repeat(40) + "...")
-            }
-
-        }
-
-    }
-
     describe("getObjectName") {
 
         describe("when the head is detached") {
@@ -43,13 +17,13 @@ class CommitBottomToolbarSpec : DescribeSpec({
 
         describe("when the head is not detached") {
 
-            it("should return the branch name unchanged when within the limit") {
+            it("should return the branch name unchanged when short") {
                 getObjectName(false, "main") shouldBe "main"
             }
 
-            it("should return the truncated branch name when it exceeds the limit") {
+            it("should return the branch name unchanged even when long, leaving truncation to the UI") {
                 val branchName = "a".repeat(50)
-                getObjectName(false, branchName) shouldBe ("a".repeat(40) + "...")
+                getObjectName(false, branchName) shouldBe branchName
             }
 
         }

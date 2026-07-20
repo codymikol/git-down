@@ -41,14 +41,9 @@ fun BoldText(_text: String, modifier: Modifier = Modifier) = Text(
 )
 
 
-const val MAX_BRANCH_NAME_LENGTH = 40
-
-fun truncateBranchName(branchName: String, maxLength: Int = MAX_BRANCH_NAME_LENGTH): String =
-    if (branchName.length > maxLength) branchName.take(maxLength) + "..." else branchName
-
 fun getObjectName(isDetatchedHead: Boolean, branchName: String): String = when (isDetatchedHead) {
     true -> "HEAD"
-    false -> truncateBranchName(branchName)
+    false -> branchName
 }
 
 fun getObjectNamePrefix(isDetatchedHead: Boolean): String = "on " + when (isDetatchedHead) {
