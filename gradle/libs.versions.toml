@@ -1,7 +1,7 @@
 [versions]
 shadow = "8.3.3"
 kotlin = "2.4.10"
-compose = "1.7.0"
+compose = "1.11.1"
 ksp = "2.3.10"
 koin = "4.2.2"
 koin-ksp = "2.3.1"

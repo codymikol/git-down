@@ -1,6 +1,6 @@
 package com.codymikol.components
 
-import androidx.compose.desktop.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
