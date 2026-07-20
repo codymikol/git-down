@@ -16,6 +16,13 @@ Simply run `./gradlew run`
 GitDown can be pointed at a repository directly from the command line. See
 [CLI Documentation](./docs/CLI.md) for details.
 
+#### Releases & packaging
+
+Versions are managed by [release-please](https://github.com/googleapis/release-please)
+from Conventional Commit history on `main`. See
+[Packaging](./docs/PACKAGING.md) for the deploy workflow's status and
+apt/Homebrew/nix distribution plans.
+
 #### File selection view
 
 <div style="width:100%; display:flex; justify-content:center;">

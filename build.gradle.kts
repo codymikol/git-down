@@ -59,7 +59,6 @@ tasks.withType<Test>().configureEach {
 tasks.withType<KotlinCompile> { kotlinOptions.jvmTarget = "21" }
 
 group = "com.codymikol"
-version = "1.0"
 
 tasks.jar {
   manifest {
@@ -80,7 +79,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "gitdown"
-            packageVersion = "1.0.0"
+            packageVersion = project.version.toString()
         }
     }
 }
