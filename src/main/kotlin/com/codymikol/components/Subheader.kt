@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.codymikol.data.Colors
+import com.codymikol.state.GitDownState
 
 @Composable
 fun Subheader(title: String) {
@@ -25,7 +26,7 @@ fun Subheader(title: String) {
             .requiredHeight(32.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 12.sp), modifier = Modifier.padding(8.dp).fillMaxWidth(), color = Color.White, text = title)
+        Text(style = TextStyle(fontWeight = FontWeight.Bold, fontSize = GitDownState.headerTextSize.value.sp), modifier = Modifier.padding(8.dp).fillMaxWidth(), color = Color.White, text = title)
     }
 }
 

@@ -3,8 +3,11 @@ import androidx.compose.ui.window.application
 import com.codymikol.config.BeansModule
 import com.codymikol.config.RepositoriesModule
 import com.codymikol.config.ServicesModule
+import com.codymikol.repositories.SettingsRepository
+import com.codymikol.state.GitDownState
 import com.codymikol.windows.handleDirectorySelection
 import org.koin.core.context.startKoin
+import org.koin.java.KoinJavaComponent.inject
 import org.koin.ksp.generated.module
 
 fun main(args: Array<String>) = application {
@@ -16,6 +19,11 @@ fun main(args: Array<String>) = application {
             ServicesModule().module,
         )
     }
+
+    val settingsRepository: SettingsRepository by inject(SettingsRepository::class.java)
+    val settings = settingsRepository.getSettings()
+    GitDownState.headerTextSize.value = settings.headerTextSize
+    GitDownState.bodyTextSize.value = settings.bodyTextSize
 
     // todo(mikol): we should move this into a load directory service and make it more robust eventually...
     if (args.size == 1) {
