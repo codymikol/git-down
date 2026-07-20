@@ -23,6 +23,12 @@ class SyntaxHighlighterSpec : DescribeSpec({
                     SyntaxHighlighter.highlight("README.md", "hello") shouldBe listOf(Token("hello", TokenKind.PLAIN))
                 }
 
+                it("should not misinterpret digits or apostrophes as numbers or strings") {
+                    SyntaxHighlighter.highlight("README.md", "don't stop at 42") shouldBe listOf(
+                        Token("don't stop at 42", TokenKind.PLAIN)
+                    )
+                }
+
             }
 
         }

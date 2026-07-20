@@ -5,5 +5,6 @@ data class Grammar(
     val extensions: Set<String>,
     val keywords: Set<String> = emptySet(),
     val lineComment: String? = null,
-    val stringDelimiters: Set<Char> = setOf('"', '\'')
+    val stringDelimiters: Set<Char> = setOf('"', '\''),
+    val plainText: Boolean = false
 )

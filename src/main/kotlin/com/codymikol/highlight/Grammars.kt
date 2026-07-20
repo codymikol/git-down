@@ -2,7 +2,7 @@ package com.codymikol.highlight
 
 object Grammars {
 
-    val PLAIN = Grammar(id = "plain", extensions = emptySet())
+    val PLAIN = Grammar(id = "plain", extensions = emptySet(), plainText = true)
 
     val KOTLIN = Grammar(
         id = "kotlin",

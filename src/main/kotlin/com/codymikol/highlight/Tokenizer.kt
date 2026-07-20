@@ -3,6 +3,10 @@ package com.codymikol.highlight
 object Tokenizer {
 
     fun tokenize(grammar: Grammar, line: String): List<Token> {
+        if (grammar.plainText) {
+            return if (line.isEmpty()) emptyList() else listOf(Token(line, TokenKind.PLAIN))
+        }
+
         val tokens = mutableListOf<Token>()
         val plain = StringBuilder()
         var i = 0

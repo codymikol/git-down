@@ -72,6 +72,16 @@ class TokenizerSpec : DescribeSpec({
 
         }
 
+        describe("when the grammar has no syntax rules") {
+
+            it("should classify the whole line as a single plain token without scanning for numbers or strings") {
+                Tokenizer.tokenize(Grammars.PLAIN, "don't stop at 42") shouldBe listOf(
+                    Token("don't stop at 42", TokenKind.PLAIN)
+                )
+            }
+
+        }
+
     }
 
 })
