@@ -70,6 +70,26 @@ class TokenizerSpec : DescribeSpec({
 
             }
 
+            describe("when the string contains an escaped quote") {
+
+                it("should include the escaped quote in the string token instead of ending the string early") {
+                    Tokenizer.tokenize(grammar, "\"a\\\"b\"") shouldBe listOf(
+                        Token("\"a\\\"b\"", TokenKind.STRING)
+                    )
+                }
+
+            }
+
+            describe("when a string is missing its closing quote") {
+
+                it("should classify the rest of the line as a single string token") {
+                    Tokenizer.tokenize(grammar, "\"unterminated") shouldBe listOf(
+                        Token("\"unterminated", TokenKind.STRING)
+                    )
+                }
+
+            }
+
         }
 
         describe("when the grammar has no syntax rules") {
