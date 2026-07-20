@@ -13,7 +13,7 @@ object GrammarRegistry {
 
     fun forPath(path: String): Grammar {
         val extension = path.substringAfterLast('.', "").lowercase()
-        return grammars.firstOrNull { extension in it.extensions } ?: Grammars.PLAIN
+        return grammars.lastOrNull { extension in it.extensions } ?: Grammars.PLAIN
     }
 
 }

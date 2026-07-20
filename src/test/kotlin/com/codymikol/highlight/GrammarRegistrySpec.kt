@@ -44,6 +44,19 @@ class GrammarRegistrySpec : DescribeSpec({
 
             }
 
+            describe("when a caller registers a grammar for an extension a baked-in grammar already owns") {
+
+                it("should let the newly registered grammar override the baked-in one") {
+                    val override = Grammar(id = "kotlin-override", extensions = setOf("kt"), keywords = setOf("FOO"))
+                    GrammarRegistry.register(override)
+
+                    GrammarRegistry.forPath("Foo.kt").id shouldBe "kotlin-override"
+
+                    GrammarRegistry.register(Grammars.KOTLIN)
+                }
+
+            }
+
         }
 
     }
