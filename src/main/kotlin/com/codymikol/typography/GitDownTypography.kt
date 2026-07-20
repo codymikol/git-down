@@ -15,6 +15,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
 import com.codymikol.gitdown.generated.resources.*
+import com.codymikol.state.GitDownState
 import org.jetbrains.compose.resources.Font
 
 
@@ -48,7 +49,7 @@ object GitDownTypography {
             value,
             modifier = Modifier.fillMaxWidth(),
             color = Color(whiteLevel, whiteLevel, whiteLevel),
-            fontSize = 10.sp,
+            fontSize = GitDownState.headerTextSize.value.sp,
             fontWeight = FontWeight.Bold,
             fontFamily = jetbrainsMono(),
         )
@@ -93,7 +94,7 @@ object GitDownTypography {
             },
             color = color,
             fontFamily = jetbrainsMono(),
-            fontSize = 12.sp
+            fontSize = GitDownState.bodyTextSize.value.sp
         )
     }
 
