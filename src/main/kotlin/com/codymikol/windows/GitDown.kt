@@ -1,6 +1,6 @@
 package com.codymikol.windows
 
-import androidx.compose.desktop.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.foundation.LocalScrollbarStyle
 import androidx.compose.foundation.ScrollbarStyle
 import androidx.compose.foundation.background

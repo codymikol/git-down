@@ -1,5 +1,5 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.kotlin.jvm)
@@ -56,7 +56,11 @@ tasks.withType<Test>().configureEach {
   }
 }
 
-tasks.withType<KotlinCompile> { kotlinOptions.jvmTarget = "21" }
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_21)
+    }
+}
 
 group = "com.codymikol"
 version = "1.0"
