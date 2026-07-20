@@ -40,6 +40,7 @@ import com.codymikol.gitdown.generated.resources.map
 import com.codymikol.gitdown.generated.resources.map_white
 import com.codymikol.gitdown.generated.resources.stash
 import com.codymikol.gitdown.generated.resources.stash_white
+import com.codymikol.services.WindowSizeService
 import com.codymikol.state.GitDownState
 import com.codymikol.state.Keys
 import com.codymikol.tabs.Tab
@@ -48,11 +49,16 @@ import com.codymikol.views.isCommitMessageFocused
 import com.codymikol.views.MapView
 import com.codymikol.views.StashView
 import org.jetbrains.compose.resources.painterResource
+import org.koin.java.KoinJavaComponent.inject
 import java.awt.Dimension
+
+private val windowSizeService: WindowSizeService by inject(WindowSizeService::class.java)
 
 @Preview
 @Composable
 fun GitDown(applicationScope: ApplicationScope) {
+
+    val defaultWindowSize = windowSizeService.getDefaultWindowSize()
 
     Window(
         onKeyEvent = {
@@ -79,8 +85,8 @@ fun GitDown(applicationScope: ApplicationScope) {
         icon = painterResource(Res.drawable.icon),
         undecorated = true,
         state = rememberWindowState(
-            width = windowWidth.dp,
-            height = windowHeight.dp,
+            width = defaultWindowSize.width.dp,
+            height = defaultWindowSize.height.dp,
             placement = WindowPlacement.Floating,
             position = WindowPosition(alignment = Alignment.Center)
         )
@@ -91,7 +97,7 @@ fun GitDown(applicationScope: ApplicationScope) {
             GitDownState.git.value.scanForChanges()
         }
 
-        this.window.minimumSize = Dimension(800, 500)
+        this.window.minimumSize = Dimension(WindowSizeService.MIN_WIDTH, WindowSizeService.MIN_HEIGHT)
 
         CompositionLocalProvider(
             LocalScrollbarStyle provides ScrollbarStyle(
