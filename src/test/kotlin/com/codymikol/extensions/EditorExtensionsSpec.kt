@@ -4,61 +4,39 @@ import com.codymikol.repository.TestRepository.Companion.createTestRepository
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
 import java.io.File
+import java.nio.file.Path
 
 class EditorExtensionsSpec : DescribeSpec({
 
-    describe("Git.getConfiguredEditor") {
+    describe("Git.openFile") {
 
-        it("prefers the GIT_EDITOR environment variable over core.editor") {
+        it("opens the file with the system default handler, ignoring a configured terminal editor") {
             val repo = createTestRepository()
-            repo.git.repository.config.setString("core", null, "editor", "configured-editor")
+            repo.addFile("foo.txt", "hello")
+            // A terminal editor (vim, nano, or CI's noop "true") launched without a
+            // controlling terminal silently does nothing, which is exactly the bug
+            // this test guards against: "Open File" must always use the OS's default
+            // file handler rather than git's commit-message editor.
+            repo.git.repository.config.setString("core", null, "editor", "true")
 
-            repo.git.getConfiguredEditor(getenv = { key -> if (key == "GIT_EDITOR") "env-editor" else null }) shouldBe "env-editor"
+            var opened: File? = null
+            repo.git.openFile(Path.of("foo.txt"), open = { opened = it })
+
+            opened shouldBe File(repo.git.repository.workTree, "foo.txt")
 
             repo.closeGitRepo()
         }
 
-        it("falls back to core.editor when GIT_EDITOR is unset") {
+        it("resolves nested paths relative to the repository's work tree") {
             val repo = createTestRepository()
-            repo.git.repository.config.setString("core", null, "editor", "configured-editor")
+            repo.addFile("nested/dir/foo.txt", "hello")
 
-            repo.git.getConfiguredEditor(getenv = { null }) shouldBe "configured-editor"
+            var opened: File? = null
+            repo.git.openFile(Path.of("nested/dir/foo.txt"), open = { opened = it })
+
+            opened shouldBe File(repo.git.repository.workTree, "nested/dir/foo.txt")
 
             repo.closeGitRepo()
-        }
-
-        it("returns null when neither is configured") {
-            val repo = createTestRepository()
-
-            repo.git.getConfiguredEditor(getenv = { null }) shouldBe null
-
-            repo.closeGitRepo()
-        }
-
-        it("treats a blank GIT_EDITOR as unset") {
-            val repo = createTestRepository()
-            repo.git.repository.config.setString("core", null, "editor", "configured-editor")
-
-            repo.git.getConfiguredEditor(getenv = { key -> if (key == "GIT_EDITOR") "" else null }) shouldBe "configured-editor"
-
-            repo.closeGitRepo()
-        }
-
-    }
-
-    describe("buildEditorCommand") {
-
-        it("appends the file path to a simple command") {
-            buildEditorCommand("vim", File("/tmp/foo.txt")) shouldBe listOf("vim", "/tmp/foo.txt")
-        }
-
-        it("splits flags from the editor command") {
-            buildEditorCommand("code --wait", File("/tmp/foo.txt")) shouldBe listOf("code", "--wait", "/tmp/foo.txt")
-        }
-
-        it("preserves quoted segments containing spaces as a single token") {
-            buildEditorCommand("\"/opt/My Editor/bin/edit\" -w", File("/tmp/foo.txt")) shouldBe
-                listOf("/opt/My Editor/bin/edit", "-w", "/tmp/foo.txt")
         }
 
     }

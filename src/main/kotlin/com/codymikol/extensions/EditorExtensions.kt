@@ -8,31 +8,6 @@ import java.nio.file.Path
 
 private val logger = LoggerFactory.getLogger("EditorExtensions")
 
-/**
- *  Mirrors git's own precedence for choosing an editor: the GIT_EDITOR
- *  environment variable wins over the repository's core.editor config.
- *  Returns null when neither is configured so callers can fall back to
- *  the system's default file handler.
- */
-fun Git.getConfiguredEditor(getenv: (String) -> String? = System::getenv): String? =
-    getenv("GIT_EDITOR")?.takeIf { it.isNotBlank() }
-        ?: this.repository.config.getString("core", null, "editor")?.takeIf { it.isNotBlank() }
-
-/**
- *  Splits a configured editor command (which may itself carry flags, e.g.
- *  `code --wait`, and quoted paths, e.g. `"/opt/My Editor/bin/edit" -w`)
- *  into process arguments and appends the target file, without involving a
- *  shell.
- */
-fun buildEditorCommand(editorCommand: String, file: File): List<String> {
-    val tokenPattern = Regex("""'([^']*)'|"([^"]*)"|(\S+)""")
-    val tokens = tokenPattern.findAll(editorCommand.trim()).map { match ->
-        match.groupValues.drop(1).firstOrNull { it.isNotEmpty() } ?: ""
-    }.filter { it.isNotEmpty() }.toList()
-
-    return tokens + file.absolutePath
-}
-
 private fun openWithSystemDefaultEditor(file: File) {
     if (!Desktop.isDesktopSupported() || !Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
         logger.error("Desktop open is not supported on this platform, unable to open file: ${file.absolutePath}")
@@ -41,16 +16,15 @@ private fun openWithSystemDefaultEditor(file: File) {
     Desktop.getDesktop().open(file)
 }
 
-fun Git.openFile(path: Path): Unit = try {
-    val file = this.repository.workTree.resolve(path.toFile())
-
-    when (val editor = getConfiguredEditor()) {
-        null -> openWithSystemDefaultEditor(file)
-        else -> {
-            ProcessBuilder(buildEditorCommand(editor, file)).start()
-            Unit
-        }
-    }
+/**
+ *  Always opens via the OS's default file handler. A configured git editor
+ *  (GIT_EDITOR/core.editor) is meant for git's own short-lived, terminal-attached
+ *  edits (commit messages, rebase todo) — spawning it here detached from any
+ *  terminal silently does nothing for common terminal editors (vim, nano, ...),
+ *  which is why "Open File" must not route through it.
+ */
+fun Git.openFile(path: Path, open: (File) -> Unit = ::openWithSystemDefaultEditor): Unit = try {
+    open(File(this.repository.workTree, path.toString()))
 } catch (e: Exception) {
     logger.error("An exception was thrown while opening file $path: ${e.message}")
 }
