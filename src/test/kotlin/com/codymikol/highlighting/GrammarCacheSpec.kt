@@ -157,6 +157,35 @@ class GrammarCacheSpec : DescribeSpec({
             totalCalls shouldBe 1
         }
 
+        it("serializes concurrent requests across extensions that share the same grammar repo") {
+            var concurrentCalls = 0
+            var maxConcurrentCalls = 0
+            var totalCalls = 0
+            val downloader = object : GrammarDownloader {
+                override suspend fun download(spec: GrammarSpec, destination: Path): Boolean {
+                    totalCalls++
+                    concurrentCalls++
+                    maxConcurrentCalls = maxOf(maxConcurrentCalls, concurrentCalls)
+                    delay(10)
+                    destination.toFile().apply { parentFile.mkdirs() }.writeText("grammar-bytes")
+                    concurrentCalls--
+                    return true
+                }
+            }
+            val cache = createCache(downloader)
+
+            // "kt" and "kts" both resolve to the tree-sitter-kotlin repo/destination file.
+            runBlocking {
+                coroutineScope {
+                    launch { cache.ensureGrammar("kt") }
+                    launch { cache.ensureGrammar("kts") }
+                }
+            }
+
+            maxConcurrentCalls shouldBe 1
+            totalCalls shouldBe 1
+        }
+
     }
 
 })

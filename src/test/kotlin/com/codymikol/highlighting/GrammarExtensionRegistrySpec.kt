@@ -18,6 +18,14 @@ class GrammarExtensionRegistrySpec : DescribeSpec({
             GrammarExtensionRegistry.forExtension("notarealextension") shouldBe null
         }
 
+        it("points markdown at its nested source directory, since the repo bundles two grammars") {
+            GrammarExtensionRegistry.forExtension("md")?.sourcePath shouldBe "tree-sitter-markdown/src"
+        }
+
+        it("points csv at its nested source directory, since the repo bundles csv/tsv/psv") {
+            GrammarExtensionRegistry.forExtension("csv")?.sourcePath shouldBe "csv/src"
+        }
+
     }
 
 })

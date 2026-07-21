@@ -129,6 +129,35 @@ class SourceCompilingGrammarDownloaderSpec : DescribeSpec({
             compiledSources?.map { it.name } shouldBe listOf("parser.c")
         }
 
+        it("fetches from the spec's sourcePath rather than assuming a top-level src/") {
+            val nestedSpec = GrammarSpec(
+                repo = "tree-sitter-markdown",
+                functionName = "tree_sitter_markdown",
+                sourcePath = "tree-sitter-markdown/src",
+            )
+            val fetcher = FakeGitHubRepositoryFetcher(
+                filesByPath = mapOf("https://example.com/parser.c" to "// parser".toByteArray()),
+                listingsByPath = mapOf(
+                    "tree-sitter-markdown/src" to listOf(
+                        GitHubEntry("parser.c", "file", "https://example.com/parser.c"),
+                    ),
+                ),
+            )
+            var compiledSources: List<Path>? = null
+            val downloader = SourceCompilingGrammarDownloader(fetcher, compile = { sources, _, dest ->
+                compiledSources = sources
+                Files.write(dest, "compiled".toByteArray())
+                true
+            })
+
+            val result = runBlocking {
+                downloader.download(nestedSpec, createTempDirectory("git-down-source-downloader-test-").resolve("out.so"))
+            }
+
+            result shouldBe true
+            compiledSources?.map { it.name } shouldBe listOf("parser.c")
+        }
+
     }
 
 })

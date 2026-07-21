@@ -31,7 +31,7 @@ class SourceCompilingGrammarDownloader(
         val buildDir = Files.createTempDirectory("git-down-grammar-build-")
         try {
             val srcDir = buildDir.resolve("src")
-            if (!fetchDirectory(spec.repo, "src", srcDir)) return@withContext false
+            if (!fetchDirectory(spec.repo, spec.sourcePath, srcDir)) return@withContext false
 
             val sourceFiles = Files.list(srcDir).use { it.toList() }
                 .filter { it.toString().substringAfterLast('.') in setOf("c", "cc", "cpp") }

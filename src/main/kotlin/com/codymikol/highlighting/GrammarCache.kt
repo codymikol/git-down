@@ -32,13 +32,15 @@ class GrammarCache(
         private val staleAfter: Duration = Duration.ofDays(7)
     }
 
-    // A diff view opens with every visible line hitting this at once for the same extension;
-    // without serializing per extension they'd race to (re)compile the same destination file.
-    private val locksByExtension = ConcurrentHashMap<String, Mutex>()
+    // A diff view opens with every visible line hitting this at once, and distinct extensions
+    // (kt/kts, hcl/tf) can share a repo/destination file - key the lock by repo, the destination
+    // file's actual identity, not by extension, or two extensions of one grammar would still
+    // race to (re)compile the same file under different locks.
+    private val locksByRepo = ConcurrentHashMap<String, Mutex>()
 
     suspend fun ensureGrammar(extension: String): Path? {
         val spec = GrammarExtensionRegistry.forExtension(extension) ?: return null
-        val lock = locksByExtension.getOrPut(extension) { Mutex() }
+        val lock = locksByRepo.getOrPut(spec.repo) { Mutex() }
         return lock.withLock {
             try {
                 val path = grammarPath(spec)
