@@ -16,7 +16,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Lazily fetches and caches tree-sitter grammars (as compiled shared libraries) under
- * git-down's managed data directory, keyed by file extension. Any failure to resolve, stat,
+ * git-down's managed data directory, keyed by grammar repo. Any failure to resolve, stat,
  * or download a grammar is caught and logged here so a broken grammar can never take down the
  * diff view - callers just get null back and fall back to unhighlighted text.
  */
@@ -38,8 +38,7 @@ class GrammarCache(
     // race to (re)compile the same file under different locks.
     private val locksByRepo = ConcurrentHashMap<String, Mutex>()
 
-    suspend fun ensureGrammar(extension: String): Path? {
-        val spec = GrammarExtensionRegistry.forExtension(extension) ?: return null
+    suspend fun ensureGrammar(spec: GrammarSpec): Path? {
         // computeIfAbsent, not the stdlib getOrPut - getOrPut is a plain get-then-put from
         // Kotlin's side and isn't made atomic just because the backing map is a
         // ConcurrentHashMap, so two callers can each win a race and get distinct Mutex
@@ -53,7 +52,7 @@ class GrammarCache(
                 else if (Files.exists(path)) path
                 else null
             } catch (e: Exception) {
-                logger.error("Failed to ensure grammar for extension '$extension'", e)
+                logger.error("Failed to ensure grammar '${spec.repo}'", e)
                 null
             }
         }

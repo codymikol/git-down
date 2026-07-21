@@ -38,26 +38,18 @@ class GrammarCacheSpec : DescribeSpec({
 
     describe("GrammarCache") {
 
+        val kotlinSpec = GrammarSpec(repo = "tree-sitter-kotlin", functionName = "tree_sitter_kotlin")
+
         fun createCache(downloader: GrammarDownloader) = GrammarCache(
             TestUserDirectoryRepository(createTempDirectory("git-down-grammar-cache-test-").toString()),
             downloader,
         )
 
-        it("returns null without downloading for an extension with no known grammar") {
-            val downloader = FakeGrammarDownloader()
-
-            val cache = createCache(downloader)
-            val result = runBlocking { cache.ensureGrammar("notarealextension") }
-
-            result shouldBe null
-            downloader.callCount shouldBe 0
-        }
-
         it("downloads the grammar on first request when nothing is cached") {
             val downloader = FakeGrammarDownloader()
 
             val cache = createCache(downloader)
-            val result = runBlocking { cache.ensureGrammar("kt") }
+            val result = runBlocking { cache.ensureGrammar(kotlinSpec) }
 
             result?.toFile()?.readText() shouldBe "grammar-bytes"
             downloader.callCount shouldBe 1
@@ -66,10 +58,10 @@ class GrammarCacheSpec : DescribeSpec({
         it("returns the cached path without downloading again when the file is fresh") {
             val downloader = FakeGrammarDownloader()
             val cache = createCache(downloader)
-            val firstResult = runBlocking { cache.ensureGrammar("kt") } // seed the cache
+            val firstResult = runBlocking { cache.ensureGrammar(kotlinSpec) } // seed the cache
             downloader.callCount shouldBe 1
 
-            val secondResult = runBlocking { cache.ensureGrammar("kt") }
+            val secondResult = runBlocking { cache.ensureGrammar(kotlinSpec) }
 
             secondResult shouldBe firstResult
             downloader.callCount shouldBe 1
@@ -81,11 +73,11 @@ class GrammarCacheSpec : DescribeSpec({
             val downloader = FakeGrammarDownloader()
             val cache = GrammarCache(TestUserDirectoryRepository(dir.toString()), downloader) { clock }
 
-            runBlocking { cache.ensureGrammar("kt") }
+            runBlocking { cache.ensureGrammar(kotlinSpec) }
             downloader.callCount shouldBe 1
 
             clock = clock.plus(Duration.ofDays(8))
-            runBlocking { cache.ensureGrammar("kt") }
+            runBlocking { cache.ensureGrammar(kotlinSpec) }
 
             downloader.callCount shouldBe 2
         }
@@ -101,11 +93,11 @@ class GrammarCacheSpec : DescribeSpec({
             }
             val cache = GrammarCache(TestUserDirectoryRepository(dir.toString()), flakyDownloader) { clock }
 
-            runBlocking { cache.ensureGrammar("kt") }
+            runBlocking { cache.ensureGrammar(kotlinSpec) }
             clock = clock.plus(Duration.ofDays(8))
             succeed = false
 
-            val result = runBlocking { cache.ensureGrammar("kt") }
+            val result = runBlocking { cache.ensureGrammar(kotlinSpec) }
 
             result?.toFile()?.readText() shouldBe "grammar-bytes"
         }
@@ -114,7 +106,7 @@ class GrammarCacheSpec : DescribeSpec({
             val downloader = FakeGrammarDownloader(result = false)
 
             val cache = createCache(downloader)
-            val result = runBlocking { cache.ensureGrammar("kt") }
+            val result = runBlocking { cache.ensureGrammar(kotlinSpec) }
 
             result shouldBe null
         }
@@ -127,12 +119,12 @@ class GrammarCacheSpec : DescribeSpec({
             }
 
             val cache = createCache(downloader)
-            val result = runBlocking { cache.ensureGrammar("kt") }
+            val result = runBlocking { cache.ensureGrammar(kotlinSpec) }
 
             result shouldBe null
         }
 
-        it("serializes concurrent requests for the same extension so only one download happens") {
+        it("serializes concurrent requests for the same grammar so only one download happens") {
             val concurrentCalls = AtomicInteger(0)
             val maxConcurrentCalls = AtomicInteger(0)
             val totalCalls = AtomicInteger(0)
@@ -152,7 +144,7 @@ class GrammarCacheSpec : DescribeSpec({
             // required to exercise the ConcurrentHashMap.computeIfAbsent race this guards.
             runBlocking(Dispatchers.Default) {
                 coroutineScope {
-                    repeat(50) { launch { cache.ensureGrammar("kt") } }
+                    repeat(50) { launch { cache.ensureGrammar(kotlinSpec) } }
                 }
             }
 
@@ -160,7 +152,7 @@ class GrammarCacheSpec : DescribeSpec({
             totalCalls.get() shouldBe 1
         }
 
-        it("serializes concurrent requests across extensions that share the same grammar repo") {
+        it("serializes concurrent requests for specs that share the same grammar repo") {
             val concurrentCalls = AtomicInteger(0)
             val maxConcurrentCalls = AtomicInteger(0)
             val totalCalls = AtomicInteger(0)
@@ -176,11 +168,13 @@ class GrammarCacheSpec : DescribeSpec({
             }
             val cache = createCache(downloader)
 
-            // "kt" and "kts" both resolve to the tree-sitter-kotlin repo/destination file.
+            // "kt" and "kts" both resolve to a GrammarSpec with the same repo/destination file.
+            val ktSpec = GrammarSpec(repo = "tree-sitter-kotlin", functionName = "tree_sitter_kotlin")
+            val ktsSpec = GrammarSpec(repo = "tree-sitter-kotlin", functionName = "tree_sitter_kotlin")
             runBlocking(Dispatchers.Default) {
                 coroutineScope {
-                    repeat(25) { launch { cache.ensureGrammar("kt") } }
-                    repeat(25) { launch { cache.ensureGrammar("kts") } }
+                    repeat(25) { launch { cache.ensureGrammar(ktSpec) } }
+                    repeat(25) { launch { cache.ensureGrammar(ktsSpec) } }
                 }
             }
 

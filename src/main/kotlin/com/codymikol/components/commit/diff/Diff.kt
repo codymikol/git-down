@@ -186,7 +186,7 @@ private fun DiffLine(lineNode: LineNode) {
 
 private suspend fun highlightLine(extension: String, text: String): AnnotatedString? {
     val spec = GrammarExtensionRegistry.forExtension(extension) ?: return null
-    val grammarPath = grammarCache.ensureGrammar(extension) ?: return null
+    val grammarPath = grammarCache.ensureGrammar(spec) ?: return null
     val language = GrammarLanguageLoader.load(grammarPath, spec.functionName) ?: return null
     val tokens = GrammarParser.parse(language, text)
     return SyntaxHighlighter.highlight(text, tokens)
