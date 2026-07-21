@@ -34,6 +34,7 @@ dependencies {
     testImplementation(libs.koin.test)
     testImplementation(libs.kotest.runner.junit5)
     testImplementation(libs.kotest.assertions.core)
+    testImplementation(libs.tree.sitter.json)
 }
 
 

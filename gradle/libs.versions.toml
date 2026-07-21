@@ -10,6 +10,7 @@ appdirs = "1.2.1"
 jgit = "7.0.0.202409031743-r"
 kotest = "5.7.2"
 tree-sitter = "0.26.6"
+tree-sitter-json = "0.24.8"
 
 
 [libraries]
@@ -26,6 +27,7 @@ jgit = { group = "org.eclipse.jgit", name = "org.eclipse.jgit", version.ref = "j
 kotest-runner-junit5 = { group = "io.kotest", name = "kotest-runner-junit5", version.ref = "kotest" }
 kotest-assertions-core = { group = "io.kotest", name = "kotest-assertions-core", version.ref = "kotest" }
 tree-sitter = { group = "io.github.bonede", name = "tree-sitter", version.ref = "tree-sitter" }
+tree-sitter-json = { group = "io.github.bonede", name = "tree-sitter-json", version.ref = "tree-sitter-json" }
 shadow-jar = { group = "com.gradleup.shadow", name = "shadow-gradle-plugin", version.ref = "shadow" }
 compose-components-resources = { group = "org.jetbrains.compose.components", name = "components-resources", version.ref = "compose" }
 
