@@ -7,13 +7,14 @@ import androidx.compose.ui.text.SpanStyle
 /**
  * Turns the token types produced by [GrammarParser] into an [AnnotatedString] the diff view can
  * render. This has no dependency on the native tree-sitter binding, so it is fully testable
- * without a real compiled grammar.
+ * without a real compiled grammar. Tokens with no recognized category are left unstyled, so the
+ * caller's own base text color (set via `Text(..., color = ...)`) shows through unchanged.
  */
 object SyntaxHighlighter {
 
     private val keywordPattern = Regex("^[a-zA-Z_][a-zA-Z0-9_]*$")
 
-    fun highlight(text: String, tokens: List<SyntaxToken>, baseColor: Color): AnnotatedString =
+    fun highlight(text: String, tokens: List<SyntaxToken>): AnnotatedString =
         AnnotatedString.Builder(text).apply {
             tokens.forEach { token ->
                 val color = colorFor(token) ?: return@forEach
