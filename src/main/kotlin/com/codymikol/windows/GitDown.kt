@@ -4,7 +4,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.foundation.LocalScrollbarStyle
 import androidx.compose.foundation.ScrollbarStyle
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.window.WindowDraggableArea
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
@@ -12,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -54,6 +57,8 @@ import java.awt.Dimension
 
 private val windowSizeService: WindowSizeService by inject(WindowSizeService::class.java)
 
+val WindowCornerRadius = 8.dp
+
 @Preview
 @Composable
 fun GitDown(applicationScope: ApplicationScope) {
@@ -84,6 +89,7 @@ fun GitDown(applicationScope: ApplicationScope) {
         title = GitDownState.projectName.value,
         icon = painterResource(Res.drawable.icon),
         undecorated = true,
+        transparent = true,
         state = rememberWindowState(
             width = defaultWindowSize.width.dp,
             height = defaultWindowSize.height.dp,
@@ -109,7 +115,13 @@ fun GitDown(applicationScope: ApplicationScope) {
                 hoverColor = MaterialTheme.colors.onSurface.copy(alpha = 0.50f)
             )
         ) {
-            Column(modifier = Modifier.fillMaxSize().background(color = Colors.DarkGrayBackground)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .border(width = 1.dp, color = Color.Black, shape = RoundedCornerShape(WindowCornerRadius))
+                    .clip(RoundedCornerShape(WindowCornerRadius))
+                    .background(color = Colors.DarkGrayBackground)
+            ) {
                 Row(
                     modifier = Modifier.requiredHeight(48.dp).fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
