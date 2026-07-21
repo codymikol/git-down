@@ -3,6 +3,7 @@ package com.codymikol.highlighting
 import com.codymikol.repositories.UserDirectoryRepository
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -10,6 +11,7 @@ import kotlinx.coroutines.runBlocking
 import java.nio.file.Path
 import java.time.Duration
 import java.time.Instant
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.io.path.createTempDirectory
 
 private class TestUserDirectoryRepository(private val dir: String) : UserDirectoryRepository() {
@@ -131,59 +133,59 @@ class GrammarCacheSpec : DescribeSpec({
         }
 
         it("serializes concurrent requests for the same extension so only one download happens") {
-            var concurrentCalls = 0
-            var maxConcurrentCalls = 0
-            var totalCalls = 0
+            val concurrentCalls = AtomicInteger(0)
+            val maxConcurrentCalls = AtomicInteger(0)
+            val totalCalls = AtomicInteger(0)
             val downloader = object : GrammarDownloader {
                 override suspend fun download(spec: GrammarSpec, destination: Path): Boolean {
-                    totalCalls++
-                    concurrentCalls++
-                    maxConcurrentCalls = maxOf(maxConcurrentCalls, concurrentCalls)
+                    totalCalls.incrementAndGet()
+                    maxConcurrentCalls.updateAndGet { maxOf(it, concurrentCalls.incrementAndGet()) }
                     delay(10)
                     destination.toFile().apply { parentFile.mkdirs() }.writeText("grammar-bytes")
-                    concurrentCalls--
+                    concurrentCalls.decrementAndGet()
                     return true
                 }
             }
             val cache = createCache(downloader)
 
-            runBlocking {
+            // Real OS-thread parallelism (not just single-threaded coroutine interleaving) is
+            // required to exercise the ConcurrentHashMap.computeIfAbsent race this guards.
+            runBlocking(Dispatchers.Default) {
                 coroutineScope {
-                    repeat(5) { launch { cache.ensureGrammar("kt") } }
+                    repeat(50) { launch { cache.ensureGrammar("kt") } }
                 }
             }
 
-            maxConcurrentCalls shouldBe 1
-            totalCalls shouldBe 1
+            maxConcurrentCalls.get() shouldBe 1
+            totalCalls.get() shouldBe 1
         }
 
         it("serializes concurrent requests across extensions that share the same grammar repo") {
-            var concurrentCalls = 0
-            var maxConcurrentCalls = 0
-            var totalCalls = 0
+            val concurrentCalls = AtomicInteger(0)
+            val maxConcurrentCalls = AtomicInteger(0)
+            val totalCalls = AtomicInteger(0)
             val downloader = object : GrammarDownloader {
                 override suspend fun download(spec: GrammarSpec, destination: Path): Boolean {
-                    totalCalls++
-                    concurrentCalls++
-                    maxConcurrentCalls = maxOf(maxConcurrentCalls, concurrentCalls)
+                    totalCalls.incrementAndGet()
+                    maxConcurrentCalls.updateAndGet { maxOf(it, concurrentCalls.incrementAndGet()) }
                     delay(10)
                     destination.toFile().apply { parentFile.mkdirs() }.writeText("grammar-bytes")
-                    concurrentCalls--
+                    concurrentCalls.decrementAndGet()
                     return true
                 }
             }
             val cache = createCache(downloader)
 
             // "kt" and "kts" both resolve to the tree-sitter-kotlin repo/destination file.
-            runBlocking {
+            runBlocking(Dispatchers.Default) {
                 coroutineScope {
-                    launch { cache.ensureGrammar("kt") }
-                    launch { cache.ensureGrammar("kts") }
+                    repeat(25) { launch { cache.ensureGrammar("kt") } }
+                    repeat(25) { launch { cache.ensureGrammar("kts") } }
                 }
             }
 
-            maxConcurrentCalls shouldBe 1
-            totalCalls shouldBe 1
+            maxConcurrentCalls.get() shouldBe 1
+            totalCalls.get() shouldBe 1
         }
 
     }

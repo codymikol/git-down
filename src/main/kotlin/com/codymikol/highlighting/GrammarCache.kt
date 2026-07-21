@@ -40,7 +40,11 @@ class GrammarCache(
 
     suspend fun ensureGrammar(extension: String): Path? {
         val spec = GrammarExtensionRegistry.forExtension(extension) ?: return null
-        val lock = locksByRepo.getOrPut(spec.repo) { Mutex() }
+        // computeIfAbsent, not the stdlib getOrPut - getOrPut is a plain get-then-put from
+        // Kotlin's side and isn't made atomic just because the backing map is a
+        // ConcurrentHashMap, so two callers can each win a race and get distinct Mutex
+        // instances for the same repo, defeating the lock this is here to provide.
+        val lock = locksByRepo.computeIfAbsent(spec.repo) { Mutex() }
         return lock.withLock {
             try {
                 val path = grammarPath(spec)
