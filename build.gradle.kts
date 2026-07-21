@@ -27,6 +27,7 @@ dependencies {
     implementation(libs.jackson.core)
     implementation(libs.jackson.databind)
     implementation(libs.jgit)
+    implementation(libs.tree.sitter)
     implementation(libs.shadow.jar)
     implementation(compose.desktop.currentOs)
     implementation(libs.compose.components.resources)
