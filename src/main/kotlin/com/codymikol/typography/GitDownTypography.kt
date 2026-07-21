@@ -8,6 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -83,6 +84,26 @@ object GitDownTypography {
                 // Oh no, Cody here from 2024, what is this shit?
 
                 listOf(-20f,-56f).forEach {
+                    drawLine(
+                        Color(whiteLevel, whiteLevel, whiteLevel),
+                        Offset(it, 0f),
+                        Offset(it, size.height),
+                        1f
+                    )
+                }
+            },
+            color = color,
+            fontFamily = jetbrainsMono(),
+            fontSize = 12.sp
+        )
+    }
+
+    @Composable
+    fun DiffContent(value: AnnotatedString, color: Color) {
+        Text(
+            value,
+            modifier = Modifier.drawBehind {
+                listOf(-20f, -56f).forEach {
                     drawLine(
                         Color(whiteLevel, whiteLevel, whiteLevel),
                         Offset(it, 0f),
