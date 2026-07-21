@@ -162,15 +162,15 @@ private fun DiffLine(lineNode: LineNode) {
             ModificationTypeGutter(lineNode)
 
             val displayLine = lineNode.line.value.replace("\t", "  ")
-            val extension = remember(lineNode) { lineNode.parent.parent.getPath().substringAfterLast('.', "") }
             var highlighted by remember(lineNode) { mutableStateOf<AnnotatedString?>(null) }
 
             LaunchedEffect(lineNode) {
-                if (extension.isEmpty()) return@LaunchedEffect
                 try {
+                    val extension = lineNode.parent.parent.getPath().substringAfterLast('.', "")
+                    if (extension.isEmpty()) return@LaunchedEffect
                     highlighted = withContext(Dispatchers.IO) { highlightLine(extension, displayLine) }
                 } catch (e: Exception) {
-                    logger.error("Failed to apply syntax highlighting for '.$extension'", e)
+                    logger.error("Failed to apply syntax highlighting for line", e)
                 }
             }
 

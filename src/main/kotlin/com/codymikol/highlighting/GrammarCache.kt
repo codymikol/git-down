@@ -1,6 +1,8 @@
 package com.codymikol.highlighting
 
 import com.codymikol.repositories.UserDirectoryRepository
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.koin.core.annotation.Single
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -10,6 +12,7 @@ import java.nio.file.Paths
 import java.nio.file.attribute.FileTime
 import java.time.Duration
 import java.time.Instant
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Lazily fetches and caches tree-sitter grammars (as compiled shared libraries) under
@@ -29,17 +32,24 @@ class GrammarCache(
         private val staleAfter: Duration = Duration.ofDays(7)
     }
 
+    // A diff view opens with every visible line hitting this at once for the same extension;
+    // without serializing per extension they'd race to (re)compile the same destination file.
+    private val locksByExtension = ConcurrentHashMap<String, Mutex>()
+
     suspend fun ensureGrammar(extension: String): Path? {
         val spec = GrammarExtensionRegistry.forExtension(extension) ?: return null
-        return try {
-            val path = grammarPath(spec)
-            if (Files.exists(path) && !isStale(path)) return path
-            if (attemptDownload(spec, path)) path
-            else if (Files.exists(path)) path
-            else null
-        } catch (e: Exception) {
-            logger.error("Failed to ensure grammar for extension '$extension'", e)
-            null
+        val lock = locksByExtension.getOrPut(extension) { Mutex() }
+        return lock.withLock {
+            try {
+                val path = grammarPath(spec)
+                if (Files.exists(path) && !isStale(path)) return@withLock path
+                if (attemptDownload(spec, path)) path
+                else if (Files.exists(path)) path
+                else null
+            } catch (e: Exception) {
+                logger.error("Failed to ensure grammar for extension '$extension'", e)
+                null
+            }
         }
     }
 
@@ -61,7 +71,7 @@ class GrammarCache(
     private fun grammarPath(spec: GrammarSpec): Path = Paths.get(
         requireNotNull(userDirectoryRepository.getUserDataDir()),
         "grammars",
-        "${spec.repo}.so",
+        "${spec.repo}.${NativeCompiler.sharedLibraryExtension()}",
     )
 
 }

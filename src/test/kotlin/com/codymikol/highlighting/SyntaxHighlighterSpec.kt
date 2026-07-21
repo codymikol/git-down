@@ -73,6 +73,18 @@ class SyntaxHighlighterSpec : DescribeSpec({
             result.spanStyles shouldBe emptyList()
         }
 
+        it("maps UTF-8 byte offsets from a multi-byte character onto the correct UTF-16 char range") {
+            // "é" is 1 UTF-16 char but 2 UTF-8 bytes, so "1"'s tree-sitter byte range (3..4)
+            // must map to char range (2..3), not be read as literal char indices.
+            val text = "é=1"
+            val tokens = listOf(SyntaxToken(type = "number_literal", startByte = 3, endByte = 4, isNamed = true))
+
+            val result = SyntaxHighlighter.highlight(text, tokens)
+
+            result.spanStyles.single().start shouldBe 2
+            result.spanStyles.single().end shouldBe 3
+        }
+
     }
 
 })

@@ -3,6 +3,9 @@ package com.codymikol.highlighting
 import com.codymikol.repositories.UserDirectoryRepository
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.nio.file.Path
 import java.time.Duration
@@ -125,6 +128,33 @@ class GrammarCacheSpec : DescribeSpec({
             val result = runBlocking { cache.ensureGrammar("kt") }
 
             result shouldBe null
+        }
+
+        it("serializes concurrent requests for the same extension so only one download happens") {
+            var concurrentCalls = 0
+            var maxConcurrentCalls = 0
+            var totalCalls = 0
+            val downloader = object : GrammarDownloader {
+                override suspend fun download(spec: GrammarSpec, destination: Path): Boolean {
+                    totalCalls++
+                    concurrentCalls++
+                    maxConcurrentCalls = maxOf(maxConcurrentCalls, concurrentCalls)
+                    delay(10)
+                    destination.toFile().apply { parentFile.mkdirs() }.writeText("grammar-bytes")
+                    concurrentCalls--
+                    return true
+                }
+            }
+            val cache = createCache(downloader)
+
+            runBlocking {
+                coroutineScope {
+                    repeat(5) { launch { cache.ensureGrammar("kt") } }
+                }
+            }
+
+            maxConcurrentCalls shouldBe 1
+            totalCalls shouldBe 1
         }
 
     }

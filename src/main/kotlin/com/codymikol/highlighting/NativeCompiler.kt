@@ -23,10 +23,16 @@ object NativeCompiler {
         else -> "so"
     }
 
-    fun compile(sourceFiles: List<Path>, includeDir: Path, destination: Path): Boolean {
+    fun compile(
+        sourceFiles: List<Path>,
+        includeDir: Path,
+        destination: Path,
+        cCandidates: List<String> = cCompilerCandidates,
+        cppCandidates: List<String> = cppCompilerCandidates,
+    ): Boolean {
         if (sourceFiles.isEmpty()) return false
         val isCpp = sourceFiles.any { it.toString().endsWith(".cc") || it.toString().endsWith(".cpp") }
-        val compiler = findCompiler(if (isCpp) cppCompilerCandidates else cCompilerCandidates) ?: run {
+        val compiler = findCompiler(if (isCpp) cppCandidates else cCandidates) ?: run {
             logger.warn("No C compiler found on PATH; cannot build grammar $destination")
             return false
         }

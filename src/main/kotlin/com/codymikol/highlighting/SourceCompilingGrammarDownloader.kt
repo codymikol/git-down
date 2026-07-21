@@ -1,16 +1,10 @@
 package com.codymikol.highlighting
 
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.ObjectMapper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.koin.core.annotation.Single
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import java.net.URI
-import java.net.http.HttpClient
-import java.net.http.HttpRequest
-import java.net.http.HttpResponse
 import java.nio.file.Files
 import java.nio.file.Path
 
@@ -24,8 +18,8 @@ import java.nio.file.Path
  */
 @Single
 class SourceCompilingGrammarDownloader(
-    private val httpClient: HttpClient = HttpClient.newHttpClient(),
-    private val objectMapper: ObjectMapper = ObjectMapper(),
+    private val fetcher: GitHubRepositoryFetcher = HttpGitHubRepositoryFetcher(),
+    private val compile: (List<Path>, Path, Path) -> Boolean = NativeCompiler::compile,
 ) : GrammarDownloader {
 
     companion object {
@@ -46,49 +40,31 @@ class SourceCompilingGrammarDownloader(
                 return@withContext false
             }
 
-            NativeCompiler.compile(sourceFiles, srcDir, destination)
+            compile(sourceFiles, srcDir, destination)
         } finally {
             buildDir.toFile().deleteRecursively()
         }
     }
 
     private fun fetchDirectory(repo: String, path: String, destination: Path): Boolean {
-        val listing = fetchJson("https://api.github.com/repos/$ORG/$repo/contents/$path") ?: return false
+        val listing = fetcher.listDirectory(ORG, repo, path) ?: return false
         Files.createDirectories(destination)
         for (entry in listing) {
-            val name = entry["name"].asText()
-            when (entry["type"].asText()) {
+            // GitHub-supplied names, defensively rejected in case a compromised/malicious
+            // response ever tried to escape the build directory.
+            if (entry.name.contains('/') || entry.name.contains('\\') || entry.name == "..") {
+                logger.warn("Skipping suspicious entry name '${entry.name}' in $repo/$path")
+                continue
+            }
+            when (entry.type) {
                 "file" -> {
-                    val downloadUrl = entry["download_url"]?.takeIf { !it.isNull }?.asText() ?: continue
-                    val bytes = fetchBytes(downloadUrl) ?: return false
-                    Files.write(destination.resolve(name), bytes)
+                    val bytes = fetcher.fetchBytes(entry.downloadUrl ?: continue) ?: return false
+                    Files.write(destination.resolve(entry.name), bytes)
                 }
-                "dir" -> if (!fetchDirectory(repo, "$path/$name", destination.resolve(name))) return false
+                "dir" -> if (!fetchDirectory(repo, "$path/${entry.name}", destination.resolve(entry.name))) return false
             }
         }
         return true
-    }
-
-    private fun fetchJson(url: String): JsonNode? = try {
-        val request = HttpRequest.newBuilder(URI.create(url))
-            .header("Accept", "application/vnd.github+json")
-            .header("User-Agent", "git-down")
-            .GET()
-            .build()
-        val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
-        if (response.statusCode() != 200) null else objectMapper.readTree(response.body())
-    } catch (e: Exception) {
-        logger.error("Failed to fetch $url", e)
-        null
-    }
-
-    private fun fetchBytes(url: String): ByteArray? = try {
-        val request = HttpRequest.newBuilder(URI.create(url)).header("User-Agent", "git-down").GET().build()
-        val response = httpClient.send(request, HttpResponse.BodyHandlers.ofByteArray())
-        if (response.statusCode() != 200) null else response.body()
-    } catch (e: Exception) {
-        logger.error("Failed to download $url", e)
-        null
     }
 
 }

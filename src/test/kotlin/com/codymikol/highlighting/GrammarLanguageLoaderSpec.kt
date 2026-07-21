@@ -25,6 +25,15 @@ class GrammarLanguageLoaderSpec : DescribeSpec({
             result shouldBe null
         }
 
+        it("reuses the same loaded language instance for the same grammar file, so it isn't reloaded on every diff line") {
+            val grammarFile = BundledJsonGrammarFixture.extract()
+
+            val first = GrammarLanguageLoader.load(grammarFile, BundledJsonGrammarFixture.FUNCTION_NAME)
+            val second = GrammarLanguageLoader.load(grammarFile, BundledJsonGrammarFixture.FUNCTION_NAME)
+
+            first shouldBe second
+        }
+
     }
 
 })
