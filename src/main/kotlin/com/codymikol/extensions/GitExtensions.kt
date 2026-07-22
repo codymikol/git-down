@@ -7,6 +7,7 @@ import com.codymikol.data.diff.LineType
 import com.codymikol.data.file.FileDelta
 import com.codymikol.data.file.Stash
 import com.codymikol.data.file.WorkingDirectory
+import com.codymikol.data.stash.StashListItem
 import com.codymikol.state.GitDownState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -572,6 +573,23 @@ suspend fun Git.saveStash(message: String, includeUntrackedFiles: Boolean) = com
         .setIncludeUntracked(includeUntrackedFiles)
         .call()
         ?.also { logger.info("Saving stash") }
+}
+
+suspend fun Git.dropStash(stash: StashListItem) = command {
+    // StashDropCommand.setStashRef() takes the 0-based position of the stash within
+    // the reflog (stash@{0} = most recent), not a sha or ref string, so the stash's
+    // position must be resolved from the current stash list first.
+    this@dropStash
+        .getStashes()
+        .indexOfFirst { it.name == stash.sha }
+        .takeIf { it >= 0 }
+        ?.let { index ->
+            logger.info("Dropping stash ${stash.sha}")
+            // stashDrop().call() returns null when the dropped entry was the last
+            // stash, so logging must happen before the call rather than chained
+            // off its result.
+            this@dropStash.stashDrop().setStashRef(index).call()
+        }
 }
 
 private fun <C> MutableState<Set<C>>.assignWhenDifferent(new: Set<C>) {
