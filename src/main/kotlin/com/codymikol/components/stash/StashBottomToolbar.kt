@@ -28,11 +28,11 @@ fun StashBottomToolbar() {
             .background(Colors.MediumGrayBackground)
             .padding(horizontal = 8.dp)
     ) {
-        SlimButton("Apply", onClick = { stashToolbarButtonClicked("Apply") })
-
         Row(verticalAlignment = Alignment.CenterVertically) {
             SlimButton("+", modifier = Modifier.padding(end = 8.dp), onClick = { stashToolbarButtonClicked("+") })
             SlimButton("-", onClick = { stashToolbarButtonClicked("-") })
         }
+
+        SlimButton("Apply", onClick = { stashToolbarButtonClicked("Apply") })
     }
 }
