@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import kotlin.math.hypot
 import com.codymikol.components.commit.diff.file.header.FileHeader
@@ -20,8 +21,20 @@ import com.codymikol.data.diff.FileDeltaNode
 import com.codymikol.data.diff.Hunk
 import com.codymikol.data.diff.LineNode
 import com.codymikol.extensions.*
+import com.codymikol.highlighting.GrammarCache
+import com.codymikol.highlighting.GrammarExtensionRegistry
+import com.codymikol.highlighting.GrammarLanguageLoader
+import com.codymikol.highlighting.GrammarParser
+import com.codymikol.highlighting.SyntaxHighlighter
 import com.codymikol.state.Keys
 import com.codymikol.typography.GitDownTypography
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.koin.java.KoinJavaComponent.inject
+import org.slf4j.LoggerFactory
+
+private val grammarCache: GrammarCache by inject(GrammarCache::class.java)
+private val logger = LoggerFactory.getLogger("com.codymikol.components.commit.diff.Diff")
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -149,10 +162,34 @@ private fun DiffLine(lineNode: LineNode) {
             ModificationTypeGutter(lineNode)
 
             val displayLine = lineNode.line.value.replace("\t", "  ")
+            var highlighted by remember(lineNode) { mutableStateOf<AnnotatedString?>(null) }
 
-            GitDownTypography.DiffContent(displayLine, lineNode.line.getTextColor())
+            LaunchedEffect(lineNode) {
+                try {
+                    val extension = lineNode.parent.parent.getPath().substringAfterLast('.', "")
+                    if (extension.isEmpty()) return@LaunchedEffect
+                    highlighted = withContext(Dispatchers.IO) { highlightLine(extension, displayLine) }
+                } catch (e: Exception) {
+                    logger.error("Failed to apply syntax highlighting for line", e)
+                }
+            }
+
+            val annotatedLine = highlighted
+            if (annotatedLine != null) {
+                GitDownTypography.DiffContent(annotatedLine, lineNode.line.getTextColor())
+            } else {
+                GitDownTypography.DiffContent(displayLine, lineNode.line.getTextColor())
+            }
         }
     }
+}
+
+private suspend fun highlightLine(extension: String, text: String): AnnotatedString? {
+    val spec = GrammarExtensionRegistry.forExtension(extension) ?: return null
+    val grammarPath = grammarCache.ensureGrammar(spec) ?: return null
+    val language = GrammarLanguageLoader.load(grammarPath, spec.functionName) ?: return null
+    val tokens = GrammarParser.parse(language, text)
+    return SyntaxHighlighter.highlight(text, tokens)
 }
 
 @Composable
