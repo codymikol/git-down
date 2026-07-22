@@ -13,10 +13,12 @@ import java.nio.file.Path
  * source and a WASM build, but not a prebuilt native binary per platform. To end up with the
  * ".so" the issue calls for, this downloads the grammar's `src/` directory from GitHub and
  * compiles it locally with whatever C compiler is on the host's PATH (see [NativeCompiler]).
- * Missing compiler, network failure, or a bad build all just make this return false - the
- * caller ([GrammarCache]) treats that exactly like any other unavailable grammar.
+ * Missing compiler, network failure, or a bad build all just make this return false -
+ * [CompositeGrammarDownloader] treats that exactly like any other unavailable grammar. Only
+ * reached as a fallback, for the few grammars upstream doesn't publish a prepackaged
+ * io.github.bonede artifact for (see [PrepackagedGrammarDownloader]).
  */
-@Single
+@Single(binds = [SourceCompilingGrammarDownloader::class])
 class SourceCompilingGrammarDownloader(
     private val fetcher: GitHubRepositoryFetcher = HttpGitHubRepositoryFetcher(),
     private val compile: (List<Path>, Path, Path) -> Boolean = NativeCompiler::compile,
