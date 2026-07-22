@@ -1,13 +1,24 @@
 package com.codymikol.services
 
+import com.codymikol.repository.TestRepository
 import com.codymikol.repository.TestRepository.Companion.createTestRepository
 import com.codymikol.state.GitDownState
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldNotContain
 import io.kotest.matchers.shouldBe
+import java.io.File
 
 class StashServiceSpec : DescribeSpec({
+
+    suspend fun repositoryWithAStash(): TestRepository =
+    createTestRepository()
+        .addFile("foo.txt", "one\n")
+        .stageAll()
+        .commitAll("init")
+        .appendToFile("foo.txt", "two\n")
+        .stashCreate("my stash")
+        .transferIntoGitDownState()
 
     describe("StashService.saveStash") {
 
@@ -69,6 +80,30 @@ class StashServiceSpec : DescribeSpec({
             StashService().saveStash("with untracked", includeUntrackedFiles = true)
 
             GitDownState.untracked.value shouldNotContain "untracked.txt"
+        }
+
+    }
+    
+    
+    describe("StashService.applyStash") {
+
+        it("restores the stashed changes to the working directory") {
+            val repository = repositoryWithAStash()
+            autoClose(repository)
+
+            StashService().applyStash(GitDownState.stashes.value.single())
+
+            File(repository.dir.toString() + "/foo.txt").readText() shouldBe "one\ntwo\n"
+        }
+
+        it("leaves the applied stash in the stash list") {
+            val repository = repositoryWithAStash()
+            autoClose(repository)
+
+            val stash = GitDownState.stashes.value.single()
+            StashService().applyStash(stash)
+
+            GitDownState.stashes.value.single().sha shouldBe stash.sha
         }
 
     }
