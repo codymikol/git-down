@@ -5,7 +5,6 @@ import com.codymikol.data.diff.Line
 import com.codymikol.data.diff.LineType
 import com.codymikol.data.file.FileDelta
 import org.treesitter.TSLanguage
-import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Highlights a single diff line using a parse of the *whole file* it belongs to, so tree-sitter
@@ -16,7 +15,10 @@ import java.util.concurrent.ConcurrentHashMap
  */
 object FullFileLineHighlighter {
 
-    private val cache = ConcurrentHashMap<Pair<String, String>, ParsedFile>()
+    // Bounded, not a plain unbounded map: every distinct (path, content) version viewed in a
+    // session would otherwise be its own key that's never evicted.
+    private const val MAX_CACHED_FILES = 32
+    private val cache = BoundedCache<Pair<String, String>, ParsedFile>(MAX_CACHED_FILES)
 
     fun highlight(fileDelta: FileDelta, line: Line, displayLine: String, language: TSLanguage?): AnnotatedString? {
         val lineNumber = (if (line.type == LineType.Removed) line.originalLineNumber else line.newLineNumber)
