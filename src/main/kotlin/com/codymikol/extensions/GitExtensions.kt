@@ -558,6 +558,22 @@ suspend fun Git.amendAll(message: String) = command {
         .unit()
 }
 
+suspend fun Git.saveStash(message: String, includeUntrackedFiles: Boolean) = command {
+    // stashCreate().call() returns null when there is nothing to stash (e.g. only
+    // untracked files exist and includeUntrackedFiles is false), mirroring plain
+    // `git stash`'s no-op behavior; .unit() would NPE on that null receiver.
+    //
+    // setWorkingDirectoryMessage() treats its whole argument as a MessageFormat
+    // pattern, so message is quoted to keep apostrophes and literal { } braces
+    // from being interpreted as format syntax.
+    this@saveStash
+        .stashCreate()
+        .setWorkingDirectoryMessage("On {0}: '${message.replace("'", "''")}'")
+        .setIncludeUntracked(includeUntrackedFiles)
+        .call()
+        ?.also { logger.info("Saving stash") }
+}
+
 private fun <C> MutableState<Set<C>>.assignWhenDifferent(new: Set<C>) {
     if (!this.value.equals(new)) this.value = new
 }
