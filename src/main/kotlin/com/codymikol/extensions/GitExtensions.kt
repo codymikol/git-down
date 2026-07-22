@@ -216,37 +216,43 @@ private data class FileContent(
     val endsWithNewline: Boolean,
 )
 
-private fun readIndexFileContent(repo: Repository, path: String): FileContent? {
+/**
+ * Reads a path's raw blob text from the index (staged content). Shared with
+ * [com.codymikol.data.file.FileDelta.getFullContent], which needs the same blob but as a whole
+ * string rather than split into lines.
+ */
+internal fun readIndexBlobText(repo: Repository, path: String): String? {
     val entry = repo.readDirCache().getEntry(path) ?: return null
-    val loader = repo.open(entry.objectId)
-    val text = loader.bytes.toString(Charsets.UTF_8)
-    val endsWithNewline = text.endsWith("\n")
+    return repo.open(entry.objectId).bytes.toString(Charsets.UTF_8)
+}
+
+/** Reads a path's raw blob text from HEAD. See [readIndexBlobText] for why this is shared. */
+internal fun readHeadBlobText(repo: Repository, path: String): String? {
+    val headTree = repo.resolve("HEAD^{tree}") ?: return null
+    return TreeWalk(repo).use { treeWalk ->
+        treeWalk.addTree(headTree)
+        treeWalk.isRecursive = true
+        treeWalk.filter = PathFilter.create(path)
+        if (!treeWalk.next()) null
+        else repo.open(treeWalk.getObjectId(0)).bytes.toString(Charsets.UTF_8)
+    }
+}
+
+private fun String.toFileContent(): FileContent {
+    val endsWithNewline = this.endsWith("\n")
     val lines = when {
-        text.isEmpty() -> emptyList()
-        endsWithNewline -> text.dropLast(1).split("\n")
-        else -> text.split("\n")
+        this.isEmpty() -> emptyList()
+        endsWithNewline -> this.dropLast(1).split("\n")
+        else -> this.split("\n")
     }
     return FileContent(lines, endsWithNewline)
 }
 
-private fun readHeadFileContent(repo: Repository, path: String): FileContent {
-    val headTree = repo.resolve("HEAD^{tree}") ?: return FileContent(emptyList(), false)
-    TreeWalk(repo).use { treeWalk ->
-        treeWalk.addTree(headTree)
-        treeWalk.isRecursive = true
-        treeWalk.filter = PathFilter.create(path)
-        if (!treeWalk.next()) return FileContent(emptyList(), false)
-        val loader = repo.open(treeWalk.getObjectId(0))
-        val text = loader.bytes.toString(Charsets.UTF_8)
-        val endsWithNewline = text.endsWith("\n")
-        val lines = when {
-            text.isEmpty() -> emptyList()
-            endsWithNewline -> text.dropLast(1).split("\n")
-            else -> text.split("\n")
-        }
-        return FileContent(lines, endsWithNewline)
-    }
-}
+private fun readIndexFileContent(repo: Repository, path: String): FileContent? =
+    readIndexBlobText(repo, path)?.toFileContent()
+
+private fun readHeadFileContent(repo: Repository, path: String): FileContent =
+    readHeadBlobText(repo, path)?.toFileContent() ?: FileContent(emptyList(), false)
 
 private fun buildPatchedLines(
     fileDeltaNode: FileDeltaNode,

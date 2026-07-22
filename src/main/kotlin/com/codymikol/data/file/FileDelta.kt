@@ -3,14 +3,20 @@ package com.codymikol.data.file
 import androidx.compose.ui.graphics.Color
 import com.codymikol.data.diff.Line
 import com.codymikol.data.diff.LineType
+import com.codymikol.extensions.readHeadBlobText
+import com.codymikol.extensions.readIndexBlobText
 import com.codymikol.state.GitDownState
-import org.eclipse.jgit.treewalk.TreeWalk
 import org.eclipse.jgit.treewalk.filter.PathFilter
+import org.slf4j.LoggerFactory
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.nio.file.Path
 
 interface FileDelta {
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(FileDelta::class.java)
+    }
 
     val letter: String
     val color: Color
@@ -25,24 +31,6 @@ interface FileDelta {
         return if (file.isFile) file.readText() else null
     }
 
-    private fun readIndexContent(): String? {
-        val repo = GitDownState.repo.value
-        val entry = repo.readDirCache().getEntry(getPath()) ?: return null
-        return repo.open(entry.objectId).bytes.toString(Charsets.UTF_8)
-    }
-
-    private fun readHeadContent(): String? {
-        val repo = GitDownState.repo.value
-        val headTree = repo.resolve("HEAD^{tree}") ?: return null
-        return TreeWalk(repo).use { treeWalk ->
-            treeWalk.addTree(headTree)
-            treeWalk.isRecursive = true
-            treeWalk.filter = PathFilter.create(getPath())
-            if (!treeWalk.next()) null
-            else repo.open(treeWalk.getObjectId(0)).bytes.toString(Charsets.UTF_8)
-        }
-    }
-
     /**
      * The full available content of the side of the diff [line] belongs to (working tree/index
      * for unstaged changes, index/HEAD for staged changes), for parsing with cross-line grammar
@@ -50,12 +38,16 @@ interface FileDelta {
      * callers can fall back to per-line parsing.
      */
     fun getFullContent(line: Line): String? = try {
+        val repo = GitDownState.repo.value
         when (this.type) {
-            Status.WORKING_DIRECTORY -> if (line.type == LineType.Removed) readIndexContent() else readWorkingTreeContent()
-            Status.INDEX -> if (line.type == LineType.Removed) readHeadContent() else readIndexContent()
+            Status.WORKING_DIRECTORY ->
+                if (line.type == LineType.Removed) readIndexBlobText(repo, getPath()) else readWorkingTreeContent()
+            Status.INDEX ->
+                if (line.type == LineType.Removed) readHeadBlobText(repo, getPath()) else readIndexBlobText(repo, getPath())
             Status.STASH -> null
         }
     } catch (e: Exception) {
+        logger.error("Failed to read full content for ${getPath()}", e)
         null
     }
     private fun loadWorkingDirectoryDiff(stream: ByteArrayOutputStream) = GitDownState
