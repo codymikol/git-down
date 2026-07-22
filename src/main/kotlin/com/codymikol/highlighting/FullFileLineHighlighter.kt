@@ -20,10 +20,15 @@ object FullFileLineHighlighter {
     private const val MAX_CACHED_FILES = 32
     private val cache = BoundedCache<Pair<String, String>, ParsedFile>(MAX_CACHED_FILES)
 
+    // A full-file tree-sitter parse is proportional to the whole file's size, not just the
+    // rendered line - an implausibly large file falls back to per-line parsing instead.
+    private const val MAX_FULL_FILE_CHARS = 2_000_000
+
     fun highlight(fileDelta: FileDelta, line: Line, displayLine: String, language: TSLanguage?): AnnotatedString? {
         val lineNumber = (if (line.type == LineType.Removed) line.originalLineNumber else line.newLineNumber)
             ?: return null
         val fullContent = fileDelta.getFullContent(line) ?: return null
+        if (fullContent.length > MAX_FULL_FILE_CHARS) return null
 
         val tabReplaced = fullContent.replace("\t", "  ")
         val lines = tabReplaced.split("\n")

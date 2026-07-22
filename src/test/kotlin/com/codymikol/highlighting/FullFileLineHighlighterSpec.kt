@@ -1,9 +1,12 @@
 package com.codymikol.highlighting
 
+import androidx.compose.ui.graphics.Color
 import com.codymikol.data.diff.FileDeltaNode
 import com.codymikol.data.diff.Line
 import com.codymikol.data.diff.LineType
+import com.codymikol.data.file.FileDelta
 import com.codymikol.data.file.Stash
+import com.codymikol.data.file.Status
 import com.codymikol.extensions.commitAll
 import com.codymikol.extensions.stageAll
 import com.codymikol.repository.TestRepository.Companion.createTestRepository
@@ -69,6 +72,29 @@ class FullFileLineHighlighterSpec : DescribeSpec({
             // "2" is a bare number_literal token; tree-sitter-json reports its byte range
             // relative to the diff line's own text once sliced from the full-file parse.
             highlighted.spanStyles.map { it.start to it.end } shouldContain (2 to 3)
+        }
+
+        it("returns null instead of parsing a file whose full content is implausibly large") {
+            // The line the diff points at genuinely matches the full content's first line, so
+            // this exercises the size guard specifically, not the line-mismatch fallback.
+            val hugeContent = "a\n" + "b".repeat(10_000_000)
+            val fileDelta = object : FileDelta {
+                override val letter = "M"
+                override val color = Color.White
+                override val borderColor = Color.White
+                override val location = Path.of("huge.json")
+                override val type = Status.WORKING_DIRECTORY
+                override fun getFullContent(line: Line): String = hugeContent
+            }
+            val line = Line(
+                type = LineType.Added,
+                value = "a",
+                symbol = "+",
+                originalLineNumber = null,
+                newLineNumber = 1u,
+            )
+
+            FullFileLineHighlighter.highlight(fileDelta, line, "a", null).shouldBeNull()
         }
 
     }
