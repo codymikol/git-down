@@ -14,7 +14,7 @@ import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.io.path.createTempDirectory
 
-private class TestUserDirectoryRepository(private val dir: String) : UserDirectoryRepository() {
+private class GrammarCacheUserDirectoryRepository(private val dir: String) : UserDirectoryRepository() {
     override fun getUserDataDir(): String = dir
 }
 
@@ -41,7 +41,7 @@ class GrammarCacheSpec : DescribeSpec({
         val kotlinSpec = GrammarSpec(repo = "tree-sitter-kotlin", functionName = "tree_sitter_kotlin")
 
         fun createCache(downloader: GrammarDownloader) = GrammarCache(
-            TestUserDirectoryRepository(createTempDirectory("git-down-grammar-cache-test-").toString()),
+            GrammarCacheUserDirectoryRepository(createTempDirectory("git-down-grammar-cache-test-").toString()),
             downloader,
         )
 
@@ -71,7 +71,7 @@ class GrammarCacheSpec : DescribeSpec({
             val dir = createTempDirectory("git-down-grammar-cache-test-")
             var clock = Instant.parse("2026-01-01T00:00:00Z")
             val downloader = FakeGrammarDownloader()
-            val cache = GrammarCache(TestUserDirectoryRepository(dir.toString()), downloader) { clock }
+            val cache = GrammarCache(GrammarCacheUserDirectoryRepository(dir.toString()), downloader) { clock }
 
             runBlocking { cache.ensureGrammar(kotlinSpec) }
             downloader.callCount shouldBe 1
@@ -91,7 +91,7 @@ class GrammarCacheSpec : DescribeSpec({
                 override suspend fun download(spec: GrammarSpec, destination: Path): Boolean =
                     if (succeed) downloader.download(spec, destination) else false
             }
-            val cache = GrammarCache(TestUserDirectoryRepository(dir.toString()), flakyDownloader) { clock }
+            val cache = GrammarCache(GrammarCacheUserDirectoryRepository(dir.toString()), flakyDownloader) { clock }
 
             runBlocking { cache.ensureGrammar(kotlinSpec) }
             clock = clock.plus(Duration.ofDays(8))
