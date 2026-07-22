@@ -11,6 +11,17 @@ jgit = "7.0.0.202409031743-r"
 kotest = "5.7.2"
 tree-sitter = "0.26.6"
 tree-sitter-json = "0.24.8"
+tree-sitter-kotlin = "0.3.8.1"
+tree-sitter-toml = "0.5.1a"
+tree-sitter-markdown = "0.7.1a"
+tree-sitter-lua = "2.1.3a"
+tree-sitter-hcl = "1.1.0a"
+tree-sitter-julia = "0.23.1"
+tree-sitter-haskell = "0.23.1"
+tree-sitter-scss = "1.0.0a"
+tree-sitter-svelte = "0.11.0a"
+tree-sitter-vue = "0.2.1a"
+tree-sitter-thrift = "0.5.0a"
 
 
 [libraries]
@@ -28,6 +39,17 @@ kotest-runner-junit5 = { group = "io.kotest", name = "kotest-runner-junit5", ver
 kotest-assertions-core = { group = "io.kotest", name = "kotest-assertions-core", version.ref = "kotest" }
 tree-sitter = { group = "io.github.bonede", name = "tree-sitter", version.ref = "tree-sitter" }
 tree-sitter-json = { group = "io.github.bonede", name = "tree-sitter-json", version.ref = "tree-sitter-json" }
+tree-sitter-kotlin = { group = "io.github.bonede", name = "tree-sitter-kotlin", version.ref = "tree-sitter-kotlin" }
+tree-sitter-toml = { group = "io.github.bonede", name = "tree-sitter-toml", version.ref = "tree-sitter-toml" }
+tree-sitter-markdown = { group = "io.github.bonede", name = "tree-sitter-markdown", version.ref = "tree-sitter-markdown" }
+tree-sitter-lua = { group = "io.github.bonede", name = "tree-sitter-lua", version.ref = "tree-sitter-lua" }
+tree-sitter-hcl = { group = "io.github.bonede", name = "tree-sitter-hcl", version.ref = "tree-sitter-hcl" }
+tree-sitter-julia = { group = "io.github.bonede", name = "tree-sitter-julia", version.ref = "tree-sitter-julia" }
+tree-sitter-haskell = { group = "io.github.bonede", name = "tree-sitter-haskell", version.ref = "tree-sitter-haskell" }
+tree-sitter-scss = { group = "io.github.bonede", name = "tree-sitter-scss", version.ref = "tree-sitter-scss" }
+tree-sitter-svelte = { group = "io.github.bonede", name = "tree-sitter-svelte", version.ref = "tree-sitter-svelte" }
+tree-sitter-vue = { group = "io.github.bonede", name = "tree-sitter-vue", version.ref = "tree-sitter-vue" }
+tree-sitter-thrift = { group = "io.github.bonede", name = "tree-sitter-thrift", version.ref = "tree-sitter-thrift" }
 shadow-jar = { group = "com.gradleup.shadow", name = "shadow-gradle-plugin", version.ref = "shadow" }
 compose-components-resources = { group = "org.jetbrains.compose.components", name = "components-resources", version.ref = "compose" }
 
