@@ -7,9 +7,10 @@ import org.treesitter.TSNode
 import org.treesitter.TSParser
 
 /**
- * Walks the tree-sitter parse tree for a single line of text into a flat list of leaf tokens
- * for [SyntaxHighlighter]. Parsing untrusted/foreign grammar code is inherently unsafe, so every
- * failure here is caught and turned into an empty (unhighlighted) token list.
+ * Walks the tree-sitter parse tree for a piece of text (a single diff line, or a whole file when
+ * called via [FullFileTokens]) into a flat list of leaf tokens for [SyntaxHighlighter]. Parsing
+ * untrusted/foreign grammar code is inherently unsafe, so every failure here is caught and turned
+ * into an empty (unhighlighted) token list.
  */
 object GrammarParser {
 

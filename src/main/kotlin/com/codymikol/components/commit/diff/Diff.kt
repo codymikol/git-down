@@ -21,6 +21,7 @@ import com.codymikol.data.diff.FileDeltaNode
 import com.codymikol.data.diff.Hunk
 import com.codymikol.data.diff.LineNode
 import com.codymikol.extensions.*
+import com.codymikol.highlighting.FullFileLineHighlighter
 import com.codymikol.highlighting.GrammarCache
 import com.codymikol.highlighting.GrammarExtensionRegistry
 import com.codymikol.highlighting.GrammarLanguageLoader
@@ -32,6 +33,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.koin.java.KoinJavaComponent.inject
 import org.slf4j.LoggerFactory
+import org.treesitter.TSLanguage
 
 private val grammarCache: GrammarCache by inject(GrammarCache::class.java)
 private val logger = LoggerFactory.getLogger("com.codymikol.components.commit.diff.Diff")
@@ -168,7 +170,10 @@ private fun DiffLine(lineNode: LineNode) {
                 try {
                     val extension = lineNode.parent.parent.getPath().substringAfterLast('.', "")
                     if (extension.isEmpty()) return@LaunchedEffect
-                    highlighted = withContext(Dispatchers.IO) { highlightLine(extension, displayLine) }
+                    highlighted = withContext(Dispatchers.IO) {
+                        val language = resolveLanguage(extension)
+                        highlightLineFromFullFile(lineNode, displayLine, language) ?: highlightLine(language, displayLine)
+                    }
                 } catch (e: Exception) {
                     logger.error("Failed to apply syntax highlighting for line", e)
                 }
@@ -184,12 +189,23 @@ private fun DiffLine(lineNode: LineNode) {
     }
 }
 
-private suspend fun highlightLine(extension: String, text: String): AnnotatedString? {
+private suspend fun resolveLanguage(extension: String): TSLanguage? {
     val spec = GrammarExtensionRegistry.forExtension(extension) ?: return null
     val grammarPath = grammarCache.ensureGrammar(spec) ?: return null
-    val language = GrammarLanguageLoader.load(grammarPath, spec.functionName) ?: return null
+    return GrammarLanguageLoader.load(grammarPath, spec.functionName)
+}
+
+private fun highlightLine(language: TSLanguage?, text: String): AnnotatedString {
     val tokens = GrammarParser.parse(language, text)
     return SyntaxHighlighter.highlight(text, tokens)
+}
+
+// Parses the line's whole file once (so tree-sitter has cross-line context, e.g. for block
+// comments) instead of the line in isolation. Returns null - falling back to highlightLine -
+// whenever the full file's content can't be read or placed against this diff line.
+private fun highlightLineFromFullFile(lineNode: LineNode, displayLine: String, language: TSLanguage?): AnnotatedString? {
+    val fileDeltaNode = lineNode.parent.parent
+    return FullFileLineHighlighter.highlight(fileDeltaNode.fileDelta, lineNode.line, displayLine, language)
 }
 
 @Composable
