@@ -1,6 +1,7 @@
 package com.codymikol.highlighting
 
 import org.treesitter.TSLanguage
+import org.treesitter.TSQuery
 
 /**
  * The result of parsing a whole file's text once: the tokens (with byte offsets relative to the
@@ -14,8 +15,8 @@ data class ParsedFile(
 
 object FullFileTokens {
 
-    fun parse(language: TSLanguage?, text: String): ParsedFile {
-        val tokens = GrammarParser.parse(language, text)
+    fun parse(language: TSLanguage?, text: String, query: TSQuery? = null): ParsedFile {
+        val tokens = GrammarParser.parse(language, text, query)
         val lineByteRanges = mutableListOf<IntRange>()
         var byteOffset = 0
         text.split("\n").forEach { line ->

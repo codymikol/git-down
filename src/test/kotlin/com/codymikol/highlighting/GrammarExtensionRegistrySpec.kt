@@ -11,6 +11,7 @@ class GrammarExtensionRegistrySpec : DescribeSpec({
             GrammarExtensionRegistry.forExtension("kt") shouldBe GrammarSpec(
                 repo = "tree-sitter-kotlin",
                 functionName = "tree_sitter_kotlin",
+                queriesPath = null,
             )
         }
 
@@ -24,6 +25,29 @@ class GrammarExtensionRegistrySpec : DescribeSpec({
 
         it("points csv at its nested source directory, since the repo bundles csv/tsv/psv") {
             GrammarExtensionRegistry.forExtension("csv")?.sourcePath shouldBe "csv/src"
+        }
+
+        it("defaults queriesPath to the repo's top-level queries directory") {
+            GrammarExtensionRegistry.forExtension("toml")?.queriesPath shouldBe "queries"
+        }
+
+        it("points markdown's queries at its nested directory, matching its nested source") {
+            GrammarExtensionRegistry.forExtension("md")?.queriesPath shouldBe "tree-sitter-markdown/queries"
+        }
+
+        it("points csv's queries at its nested directory, matching its nested source") {
+            GrammarExtensionRegistry.forExtension("csv")?.queriesPath shouldBe "csv/queries"
+        }
+
+        it("points vim/vue/tcl's queries at their per-language nested directory") {
+            GrammarExtensionRegistry.forExtension("vim")?.queriesPath shouldBe "queries/vim"
+            GrammarExtensionRegistry.forExtension("vue")?.queriesPath shouldBe "queries/vue"
+            GrammarExtensionRegistry.forExtension("tcl")?.queriesPath shouldBe "queries/tcl"
+        }
+
+        it("has no queriesPath for grammars whose upstream repo ships no queries directory") {
+            GrammarExtensionRegistry.forExtension("kt")?.queriesPath shouldBe null
+            GrammarExtensionRegistry.forExtension("hcl")?.queriesPath shouldBe null
         }
 
     }

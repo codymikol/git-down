@@ -8,7 +8,7 @@ import java.nio.file.Path
 import kotlin.io.path.createTempDirectory
 import kotlin.io.path.name
 
-private class FakeGitHubRepositoryFetcher(
+private class FakeCountingGitHubRepositoryFetcher(
     private val filesByPath: Map<String, ByteArray>,
     private val listingsByPath: Map<String, List<GitHubEntry>>,
 ) : GitHubRepositoryFetcher {
@@ -31,7 +31,7 @@ class SourceCompilingGrammarDownloaderSpec : DescribeSpec({
         val spec = GrammarSpec(repo = "tree-sitter-fake", functionName = "tree_sitter_fake")
 
         it("fetches the src/ tree, compiles it, and writes the result to destination") {
-            val fetcher = FakeGitHubRepositoryFetcher(
+            val fetcher = FakeCountingGitHubRepositoryFetcher(
                 filesByPath = mapOf(
                     "https://example.com/parser.c" to "// parser".toByteArray(),
                     "https://example.com/parser.h" to "// header".toByteArray(),
@@ -62,7 +62,7 @@ class SourceCompilingGrammarDownloaderSpec : DescribeSpec({
         }
 
         it("returns false when the top-level directory listing fails") {
-            val fetcher = FakeGitHubRepositoryFetcher(emptyMap(), emptyMap())
+            val fetcher = FakeCountingGitHubRepositoryFetcher(emptyMap(), emptyMap())
             val downloader = SourceCompilingGrammarDownloader(fetcher, compile = { _, _, _ -> true })
 
             val result = runBlocking {
@@ -73,7 +73,7 @@ class SourceCompilingGrammarDownloaderSpec : DescribeSpec({
         }
 
         it("returns false without compiling when no .c/.cc/.cpp sources are found") {
-            val fetcher = FakeGitHubRepositoryFetcher(
+            val fetcher = FakeCountingGitHubRepositoryFetcher(
                 filesByPath = emptyMap(),
                 listingsByPath = mapOf("src" to listOf(GitHubEntry("README.md", "file", null))),
             )
@@ -89,7 +89,7 @@ class SourceCompilingGrammarDownloaderSpec : DescribeSpec({
         }
 
         it("returns false when fetching a file's bytes fails partway through") {
-            val fetcher = FakeGitHubRepositoryFetcher(
+            val fetcher = FakeCountingGitHubRepositoryFetcher(
                 filesByPath = emptyMap(), // parser.c has a download URL but no bytes registered -> fetchBytes returns null
                 listingsByPath = mapOf(
                     "src" to listOf(GitHubEntry("parser.c", "file", "https://example.com/parser.c")),
@@ -105,7 +105,7 @@ class SourceCompilingGrammarDownloaderSpec : DescribeSpec({
         }
 
         it("skips a file entry with a suspicious path-escaping name") {
-            val fetcher = FakeGitHubRepositoryFetcher(
+            val fetcher = FakeCountingGitHubRepositoryFetcher(
                 filesByPath = mapOf("https://example.com/parser.c" to "// parser".toByteArray()),
                 listingsByPath = mapOf(
                     "src" to listOf(
@@ -135,7 +135,7 @@ class SourceCompilingGrammarDownloaderSpec : DescribeSpec({
                 functionName = "tree_sitter_markdown",
                 sourcePath = "tree-sitter-markdown/src",
             )
-            val fetcher = FakeGitHubRepositoryFetcher(
+            val fetcher = FakeCountingGitHubRepositoryFetcher(
                 filesByPath = mapOf("https://example.com/parser.c" to "// parser".toByteArray()),
                 listingsByPath = mapOf(
                     "tree-sitter-markdown/src" to listOf(

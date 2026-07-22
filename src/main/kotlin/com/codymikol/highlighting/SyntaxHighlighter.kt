@@ -47,11 +47,18 @@ object SyntaxHighlighter {
     private fun charIndexFor(byteToCharIndexMap: IntArray, byteOffset: Int): Int =
         byteToCharIndexMap[byteOffset.coerceIn(0, byteToCharIndexMap.size - 1)]
 
-    private fun colorFor(token: SyntaxToken): Color? = when {
-        "comment" in token.type -> Color(106, 153, 85)
-        "string" in token.type || "char" in token.type -> Color(206, 145, 120)
-        "number" in token.type || "integer" in token.type || "float" in token.type -> Color(181, 206, 168)
-        !token.isNamed && keywordPattern.matches(token.type) -> Color(86, 156, 214)
+    private fun colorFor(token: SyntaxToken): Color? {
+        token.captureName?.let { HighlightTheme.colorFor(it)?.let { color -> return color } }
+        return heuristicColorFor(token)
+    }
+
+    // Falls back to matching the raw grammar node type when a token has no capture name (no
+    // highlights.scm was available for the grammar) or the capture name isn't in the baked theme.
+    private fun heuristicColorFor(token: SyntaxToken): Color? = when {
+        "comment" in token.type -> HighlightTheme.comment
+        "string" in token.type || "char" in token.type -> HighlightTheme.string
+        "number" in token.type || "integer" in token.type || "float" in token.type -> HighlightTheme.number
+        !token.isNamed && keywordPattern.matches(token.type) -> HighlightTheme.keyword
         else -> null
     }
 

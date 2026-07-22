@@ -26,6 +26,8 @@ import com.codymikol.highlighting.GrammarCache
 import com.codymikol.highlighting.GrammarExtensionRegistry
 import com.codymikol.highlighting.GrammarLanguageLoader
 import com.codymikol.highlighting.GrammarParser
+import com.codymikol.highlighting.QueryCache
+import com.codymikol.highlighting.QueryLoader
 import com.codymikol.highlighting.SyntaxHighlighter
 import com.codymikol.state.Keys
 import com.codymikol.typography.GitDownTypography
@@ -34,8 +36,10 @@ import kotlinx.coroutines.withContext
 import org.koin.java.KoinJavaComponent.inject
 import org.slf4j.LoggerFactory
 import org.treesitter.TSLanguage
+import org.treesitter.TSQuery
 
 private val grammarCache: GrammarCache by inject(GrammarCache::class.java)
+private val queryCache: QueryCache by inject(QueryCache::class.java)
 private val logger = LoggerFactory.getLogger("com.codymikol.components.commit.diff.Diff")
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -171,8 +175,9 @@ private fun DiffLine(lineNode: LineNode) {
                     val extension = lineNode.parent.parent.getPath().substringAfterLast('.', "")
                     if (extension.isEmpty()) return@LaunchedEffect
                     highlighted = withContext(Dispatchers.IO) {
-                        val language = resolveLanguage(extension)
-                        highlightLineFromFullFile(lineNode, displayLine, language) ?: highlightLine(language, displayLine)
+                        val grammar = resolveGrammar(extension)
+                        highlightLineFromFullFile(lineNode, displayLine, grammar.language, grammar.query)
+                            ?: highlightLine(grammar.language, grammar.query, displayLine)
                     }
                 } catch (e: Exception) {
                     logger.error("Failed to apply syntax highlighting for line", e)
@@ -189,23 +194,39 @@ private fun DiffLine(lineNode: LineNode) {
     }
 }
 
-private suspend fun resolveLanguage(extension: String): TSLanguage? {
-    val spec = GrammarExtensionRegistry.forExtension(extension) ?: return null
-    val grammarPath = grammarCache.ensureGrammar(spec) ?: return null
-    return GrammarLanguageLoader.load(grammarPath, spec.functionName)
+private data class ResolvedGrammar(val language: TSLanguage?, val query: TSQuery?)
+
+private val NO_GRAMMAR = ResolvedGrammar(null, null)
+
+// Resolves both the compiled grammar and (if the grammar has one, and it can be fetched/cached)
+// its highlights.scm query for an extension in one pass, since the query is only meaningful
+// once the language it's compiled against is already resolved. Either half missing propagates
+// all the way through to plain leaf-node highlighting rather than blocking it.
+private suspend fun resolveGrammar(extension: String): ResolvedGrammar {
+    val spec = GrammarExtensionRegistry.forExtension(extension) ?: return NO_GRAMMAR
+    val grammarPath = grammarCache.ensureGrammar(spec) ?: return NO_GRAMMAR
+    val language = GrammarLanguageLoader.load(grammarPath, spec.functionName) ?: return NO_GRAMMAR
+    val queriesPath = queryCache.ensureQueries(spec)
+    val query = queriesPath?.let { QueryLoader.load(language, it) }
+    return ResolvedGrammar(language, query)
 }
 
-private fun highlightLine(language: TSLanguage?, text: String): AnnotatedString {
-    val tokens = GrammarParser.parse(language, text)
+private fun highlightLine(language: TSLanguage?, query: TSQuery?, text: String): AnnotatedString {
+    val tokens = GrammarParser.parse(language, text, query)
     return SyntaxHighlighter.highlight(text, tokens)
 }
 
 // Parses the line's whole file once (so tree-sitter has cross-line context, e.g. for block
 // comments) instead of the line in isolation. Returns null - falling back to highlightLine -
 // whenever the full file's content can't be read or placed against this diff line.
-private fun highlightLineFromFullFile(lineNode: LineNode, displayLine: String, language: TSLanguage?): AnnotatedString? {
+private fun highlightLineFromFullFile(
+    lineNode: LineNode,
+    displayLine: String,
+    language: TSLanguage?,
+    query: TSQuery?,
+): AnnotatedString? {
     val fileDeltaNode = lineNode.parent.parent
-    return FullFileLineHighlighter.highlight(fileDeltaNode.fileDelta, lineNode.line, displayLine, language)
+    return FullFileLineHighlighter.highlight(fileDeltaNode.fileDelta, lineNode.line, displayLine, language, query)
 }
 
 @Composable

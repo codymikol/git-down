@@ -73,6 +73,40 @@ class SyntaxHighlighterSpec : DescribeSpec({
             result.spanStyles shouldBe emptyList()
         }
 
+        it("colors a token by its capture name using the baked highlight theme") {
+            val tokens = listOf(SyntaxToken(type = "identifier", startByte = 0, endByte = 3, isNamed = true, captureName = "keyword"))
+
+            val result = SyntaxHighlighter.highlight("fun", tokens)
+
+            result.spanStyles.single().item.color shouldBe Color(86, 156, 214)
+        }
+
+        it("prefers the capture name over the node type heuristic when both are present") {
+            // type would heuristically read as a keyword (unnamed, alphabetic), but the capture
+            // name says otherwise and must win.
+            val tokens = listOf(SyntaxToken(type = "val", startByte = 0, endByte = 3, isNamed = false, captureName = "comment"))
+
+            val result = SyntaxHighlighter.highlight("val", tokens)
+
+            result.spanStyles.single().item.color shouldBe Color(106, 153, 85)
+        }
+
+        it("resolves a dotted capture name by trying progressively shorter prefixes") {
+            val tokens = listOf(SyntaxToken(type = "identifier", startByte = 0, endByte = 3, isNamed = true, captureName = "function.builtin"))
+
+            val result = SyntaxHighlighter.highlight("abc", tokens)
+
+            result.spanStyles.single().item.color shouldBe Color(220, 220, 170)
+        }
+
+        it("falls back to the node type heuristic when the capture name has no theme entry") {
+            val tokens = listOf(SyntaxToken(type = "line_comment", startByte = 0, endByte = 8, isNamed = true, captureName = "totally.unknown"))
+
+            val result = SyntaxHighlighter.highlight("// hello", tokens)
+
+            result.spanStyles.single().item.color shouldBe Color(106, 153, 85)
+        }
+
         it("maps UTF-8 byte offsets from a multi-byte character onto the correct UTF-16 char range") {
             // "é" is 1 UTF-16 char but 2 UTF-8 bytes, so "1"'s tree-sitter byte range (3..4)
             // must map to char range (2..3), not be read as literal char indices.
