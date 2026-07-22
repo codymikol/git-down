@@ -14,25 +14,10 @@ object BundledJsonGrammarFixture {
 
     const val FUNCTION_NAME = "tree_sitter_json"
 
-    private val platformTag: String = run {
-        val arch = if (System.getProperty("os.arch").contains("aarch64")) "aarch64" else "x86_64"
-        val os = System.getProperty("os.name").lowercase()
-        val osTag = when {
-            "mac" in os -> "macos"
-            "win" in os -> "windows"
-            else -> "linux-gnu"
-        }
-        "$arch-$osTag"
-    }
-
-    private val extension: String = when {
-        "windows" in platformTag -> "dll"
-        "macos" in platformTag -> "dylib"
-        else -> "so"
-    }
+    private val extension: String = NativeCompiler.sharedLibraryExtension()
 
     fun extract(): Path {
-        val resourcePath = "/lib/$platformTag-tree-sitter-json.$extension"
+        val resourcePath = "/lib/${GrammarPlatform.tag}-tree-sitter-json.$extension"
         val resource = javaClass.getResourceAsStream(resourcePath)
             ?: error("Test fixture not found on classpath: $resourcePath")
 
