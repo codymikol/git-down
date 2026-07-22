@@ -16,8 +16,10 @@ class Hunk(
 
             val header = HunkHeader.make(delimiter)
 
+            // Removed/Unchanged lines are numbered against the from-file, Added/Unchanged
+            // against the to-file - each incrementer must seed from that same file's start.
             var originalLineNumberIncrementer = header.fromFileLineNumbersStart
-            var newLineNumberIncrementer = header.fromFileLineNumbersStart
+            var newLineNumberIncrementer = header.toFileLineNumbersStart
 
             val lines = hunkLines.drop(1).map {
 

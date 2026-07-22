@@ -176,6 +176,11 @@ private fun DiffLine(lineNode: LineNode) {
                     if (extension.isEmpty()) return@LaunchedEffect
                     highlighted = withContext(Dispatchers.IO) {
                         val grammar = resolveGrammar(extension)
+                        // highlightLine stays as the fallback deliberately: highlightLineFromFullFile
+                        // legitimately returns null for content it can't place against this diff line
+                        // (a stash entry, an implausibly large file) - see FullFileLineHighlighter's own
+                        // doc comment. #238's "always falls back" symptom was Hunk.make mis-numbering
+                        // every line after a hunk's first (fixed in Hunk.kt), not this fallback itself.
                         highlightLineFromFullFile(lineNode, displayLine, grammar.language, grammar.query)
                             ?: highlightLine(grammar.language, grammar.query, displayLine)
                     }
