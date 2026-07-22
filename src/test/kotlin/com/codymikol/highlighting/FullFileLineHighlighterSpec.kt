@@ -15,6 +15,7 @@ import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
+import org.treesitter.TSQuery
 import java.nio.file.Path
 
 private fun content(lines: List<String>) = lines.joinToString("\n", postfix = "\n")
@@ -72,6 +73,40 @@ class FullFileLineHighlighterSpec : DescribeSpec({
             // "2" is a bare number_literal token; tree-sitter-json reports its byte range
             // relative to the diff line's own text once sliced from the full-file parse.
             highlighted.spanStyles.map { it.start to it.end } shouldContain (2 to 3)
+        }
+
+        it("forwards a given highlights.scm query so its captures drive the line's coloring") {
+            val grammarFile = BundledJsonGrammarFixture.extract()
+            val language = GrammarLanguageLoader.load(grammarFile, BundledJsonGrammarFixture.FUNCTION_NAME)
+            requireNotNull(language) { "Expected the bundled tree-sitter-json fixture to load" }
+            // Deliberately captures the number node as @string: the heuristic would color a
+            // "number" node type as a number, so only seeing the string color proves this
+            // came from the query's capture, not a heuristic fallback that happens to agree.
+            val query = TSQuery(language, "(number) @string")
+
+            autoClose(
+                createTestRepository()
+                    .addFile("bar.json", content(listOf("[", "  1", "]")))
+                    .stageAll()
+                    .commitAll("base")
+                    .addFile("bar.json", content(listOf("[", "  1,", "  2", "]")))
+                    .transferIntoGitDownState()
+            )
+
+            val workingNode = workingDirectoryNodeFor("bar.json")
+            val addedLine = workingNode.hunkNodes.flatMap { it.lineNodes }
+                .first { it.line.type == LineType.Added && it.line.value == "  2" }
+
+            val highlighted = FullFileLineHighlighter.highlight(
+                workingNode.fileDelta,
+                addedLine.line,
+                addedLine.line.value,
+                language,
+                query,
+            )
+
+            highlighted.shouldNotBeNull()
+            highlighted.spanStyles.map { it.item.color } shouldContain Color(206, 145, 120)
         }
 
         it("returns null instead of parsing a file whose full content is implausibly large") {

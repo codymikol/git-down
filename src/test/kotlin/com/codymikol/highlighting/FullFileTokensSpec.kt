@@ -2,6 +2,7 @@ package com.codymikol.highlighting
 
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
+import org.treesitter.TSQuery
 
 class FullFileTokensSpec : DescribeSpec({
 
@@ -55,6 +56,18 @@ class FullFileTokensSpec : DescribeSpec({
             val parsedFile = FullFileTokens.parse(null, "é=1\nb")
 
             parsedFile.lineByteRanges shouldBe listOf(0 until 4, 5 until 6)
+        }
+
+        it("forwards a given highlights.scm query to the parse, so its captures come back on the tokens") {
+            val language = GrammarLanguageLoader.load(
+                BundledJsonGrammarFixture.extract(),
+                BundledJsonGrammarFixture.FUNCTION_NAME,
+            )!!
+            val query = TSQuery(language, "(number) @number")
+
+            val parsedFile = FullFileTokens.parse(language, "{\"key\": 1}", query)
+
+            parsedFile.tokens.single().captureName shouldBe "number"
         }
 
     }
