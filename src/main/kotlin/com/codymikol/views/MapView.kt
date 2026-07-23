@@ -6,14 +6,15 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.Text
@@ -39,7 +40,7 @@ import org.eclipse.jgit.lib.Ref
 private val LaneWidth = 260.dp
 private val NodeRadius = 5.dp
 private val GutterX = 20.dp
-private const val LoadMoreThreshold = 5
+private val RowHeight = 48.dp
 
 @Composable
 @Preview
@@ -50,14 +51,22 @@ fun MapView() {
     }
 
     val branches = MapState.branches.value
+    val rowCount = MapState.maxLoadedRowCount.value
+
+    // All lanes render against this one vertical LazyListState, rather than each owning
+    // its own, so scrolling any lane scrolls every lane's commit nodes in lock-step. Every
+    // lane also renders the same rowCount (see BranchLane), which is what makes sharing
+    // this state safe across lanes with different numbers of loaded commits.
+    val verticalScrollState = rememberLazyListState()
+    val horizontalScrollState = rememberLazyListState()
 
     when (branches.isEmpty()) {
         true -> MapEmptyState()
         false -> LazyRow(
-            state = rememberLazyListState(),
+            state = horizontalScrollState,
             modifier = Modifier.fillMaxWidth().fillMaxHeight().background(Colors.DarkGrayBackground)
         ) {
-            items(branches, key = { it.name }) { branch -> BranchLane(branch) }
+            items(branches, key = { it.name }) { branch -> BranchLane(branch, verticalScrollState, rowCount) }
         }
     }
 }
@@ -78,11 +87,10 @@ private fun MapEmptyState() {
 }
 
 @Composable
-private fun BranchLane(branch: Ref) {
+private fun BranchLane(branch: Ref, verticalScrollState: LazyListState, rowCount: Int) {
     val branchName = branch.name.removePrefix("refs/heads/")
     val commits = MapState.commitsByBranch[branch.name] ?: emptyList()
     val hasMore = MapState.hasMoreByBranch[branch.name] ?: true
-    val listState = rememberLazyListState()
 
     // Loading this lane's first page only happens once it's actually composed,
     // which LazyRow only does once the lane scrolls into view - this is what
@@ -94,10 +102,9 @@ private fun BranchLane(branch: Ref) {
     }
 
     LaunchedEffect(branch.name, commits.size, hasMore) {
-        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
+        snapshotFlow { verticalScrollState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
             .collect { lastVisibleIndex ->
-                val nearBottom = lastVisibleIndex != null && lastVisibleIndex >= commits.size - LoadMoreThreshold
-                if (hasMore && nearBottom) {
+                if (lastVisibleIndex != null && MapState.shouldLoadMore(branch.name, lastVisibleIndex)) {
                     MapState.loadMore(branch)
                 }
             }
@@ -110,13 +117,17 @@ private fun BranchLane(branch: Ref) {
             .border(width = 1.dp, color = Color.Black)
     ) {
         Subheader(branchName)
-        LazyColumn(state = listState, modifier = Modifier.fillMaxWidth().fillMaxHeight()) {
-            itemsIndexed(commits, key = { _, commit -> commit.sha }) { index, commit ->
-                CommitNode(
-                    commit = commit,
-                    showLeadingGuideline = index != 0,
-                    showTrailingGuideline = index != commits.lastIndex || hasMore,
-                )
+        LazyColumn(state = verticalScrollState, modifier = Modifier.fillMaxWidth().fillMaxHeight()) {
+            items(rowCount, key = { index -> commits.getOrNull(index)?.sha ?: "blank-$index" }) { index ->
+                val commit = commits.getOrNull(index)
+                when (commit) {
+                    null -> Spacer(modifier = Modifier.fillMaxWidth().height(RowHeight))
+                    else -> CommitNode(
+                        commit = commit,
+                        showLeadingGuideline = index != 0,
+                        showTrailingGuideline = index != commits.lastIndex || hasMore,
+                    )
+                }
             }
         }
     }
@@ -127,7 +138,7 @@ private fun CommitNode(commit: CommitGraphNode, showLeadingGuideline: Boolean, s
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(48.dp)
+            .height(RowHeight)
             .drawBehind { drawCommitNode(commit, showLeadingGuideline, showTrailingGuideline) }
             .padding(start = 40.dp, top = 4.dp, end = 8.dp, bottom = 4.dp)
     ) {
