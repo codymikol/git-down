@@ -559,6 +559,15 @@ suspend fun Git.amendAll(message: String) = command {
         .unit()
 }
 
+suspend fun Git.applyStash(stash: StashListItem) = command {
+    this@applyStash
+        .stashApply()
+        .setStashRef(stash.sha)
+        .call()
+        .also { logger.info("Applying stash ${stash.sha}") }
+        .unit()
+}
+
 suspend fun Git.saveStash(message: String, includeUntrackedFiles: Boolean) = command {
     // stashCreate().call() returns null when there is nothing to stash (e.g. only
     // untracked files exist and includeUntrackedFiles is false), mirroring plain
