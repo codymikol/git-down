@@ -20,7 +20,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -51,7 +50,7 @@ fun MapView() {
     }
 
     val branches = MapState.branches.value
-    val rowCount = MapState.maxLoadedRowCount.value
+    val rowCount = MapState.maxRowCount.value
 
     // All lanes render against this one vertical LazyListState, rather than each owning
     // its own, so scrolling any lane scrolls every lane's commit nodes in lock-step. Every
@@ -90,24 +89,12 @@ private fun MapEmptyState() {
 private fun BranchLane(branch: Ref, verticalScrollState: LazyListState, rowCount: Int) {
     val branchName = branch.name.removePrefix("refs/heads/")
     val commits = MapState.commitsByBranch[branch.name] ?: emptyList()
-    val hasMore = MapState.hasMoreByBranch[branch.name] ?: true
 
-    // Loading this lane's first page only happens once it's actually composed,
-    // which LazyRow only does once the lane scrolls into view - this is what
-    // lazily loads branches horizontally.
+    // A lane's commits load in full as soon as it composes - LazyRow only composes
+    // a lane once it scrolls into view, but there is no further lazy loading past
+    // that; every graph, once shown, holds its entire history.
     LaunchedEffect(branch.name) {
-        if (MapState.commitsByBranch[branch.name] == null) {
-            MapState.loadMore(branch)
-        }
-    }
-
-    LaunchedEffect(branch.name, commits.size, hasMore) {
-        snapshotFlow { verticalScrollState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
-            .collect { lastVisibleIndex ->
-                if (lastVisibleIndex != null && MapState.shouldLoadMore(branch.name, lastVisibleIndex)) {
-                    MapState.loadMore(branch)
-                }
-            }
+        MapState.load(branch)
     }
 
     Column(
@@ -125,7 +112,7 @@ private fun BranchLane(branch: Ref, verticalScrollState: LazyListState, rowCount
                     else -> CommitNode(
                         commit = commit,
                         showLeadingGuideline = index != 0,
-                        showTrailingGuideline = index != commits.lastIndex || hasMore,
+                        showTrailingGuideline = index != commits.lastIndex,
                     )
                 }
             }
