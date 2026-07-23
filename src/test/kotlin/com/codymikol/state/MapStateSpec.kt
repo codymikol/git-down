@@ -1,9 +1,11 @@
 package com.codymikol.state
 
+import com.codymikol.data.map.CommitGraphNode
 import com.codymikol.repository.TestRepository.Companion.createTestRepository
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
+import java.util.Date
 
 class MapStateSpec : DescribeSpec({
 
@@ -65,5 +67,33 @@ class MapStateSpec : DescribeSpec({
                 MapState.hasMoreByBranch.isEmpty() shouldBe true
             }
         }
+
+        describe("maxLoadedRowCount") {
+
+            it("should return zero when nothing has loaded") {
+                MapState.reset()
+
+                MapState.maxLoadedRowCount.value shouldBe 0
+            }
+
+            it("should return the largest loaded commit count across branches") {
+                MapState.reset()
+                MapState.commitsByBranch["refs/heads/main"] = dummyCommits(4)
+                MapState.commitsByBranch["refs/heads/feature"] = dummyCommits(30)
+
+                MapState.maxLoadedRowCount.value shouldBe 30
+            }
+        }
     }
 })
+
+private fun dummyCommits(count: Int) = (1..count).map {
+    CommitGraphNode(
+        sha = "sha$it",
+        shortSha = "sha$it",
+        shortMessage = "commit $it",
+        authorName = "author",
+        date = Date(),
+        parentShas = emptyList(),
+    )
+}.toMutableList()

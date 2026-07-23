@@ -27,6 +27,17 @@ object MapState {
         GitDownState.git.value.listLocalBranches().sortedBy { it.name }
     }
 
+    /**
+     * Every lane's LazyColumn renders exactly this many rows (padding shorter branches
+     * with blank rows past their own commits) so all lanes share the same item count.
+     * That's what makes it safe for every lane to render against one shared
+     * LazyListState (see MapView) - a shared state clamps to whichever lane's item
+     * count last measured, so mismatched counts would fight over the scroll position.
+     */
+    val maxLoadedRowCount = derivedStateOf {
+        commitsByBranch.values.maxOfOrNull { it.size } ?: 0
+    }
+
     fun loadMore(branch: Ref) {
         if (hasMoreByBranch[branch.name] == false) return
 
