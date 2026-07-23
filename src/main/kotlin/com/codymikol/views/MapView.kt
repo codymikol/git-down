@@ -18,16 +18,21 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -40,11 +45,33 @@ import com.codymikol.typography.GitDownTypography
 import org.eclipse.jgit.lib.Ref
 import kotlin.math.roundToInt
 
-private val LaneWidth = 260.dp
+// Narrower than a horizontal title would need, since titles are now rotated
+// diagonally and take up far less width per lane.
+private val LaneWidth = 180.dp
 private val NodeRadius = 5.dp
 private val GutterX = 20.dp
 private val RowHeight = 48.dp
-private val LaneHeaderHeight = 32.dp
+
+// Every lane's title sits in a fixed-height box so all lanes' graphs start at the
+// same y-offset below the titles, regardless of how long each branch name is.
+private val TitleHeight = 110.dp
+
+// Positive (clockwise) so, pivoting on the text's own top-start corner below,
+// the label sweeps down-and-right into the box rather than up and out of it.
+private val TitleRotation = 45f
+private val TitleFontSize = 12.sp
+private val TitleTextStartPadding = 12.dp
+private val TitleTextTopPadding = 4.dp
+private val TitleTextLineHeight = 16.sp
+
+// Text is capped to this width before rotating, so its rotated footprint is
+// bounded: rotated 45 degrees around its own top-start corner, its deepest
+// point is (TitleTextMaxWidth + ~TitleTextLineHeight) * sin(45deg) below the
+// pivot, i.e. below the top of the box, which is ~89dp at default font scale
+// for the values here - comfortably under TitleHeight (110dp) with margin
+// for TitleTextTopPadding. clip(RectangleShape) below is still a hard
+// backstop against any overflow (e.g. from a larger system font scale).
+private val TitleTextMaxWidth = 110.dp
 
 @Composable
 @Preview
@@ -67,10 +94,10 @@ fun MapView() {
 private fun Map(branches: List<Ref>) {
 
     val rowHeightPx = with(LocalDensity.current) { RowHeight.toPx() }
-    val headerHeightPx = with(LocalDensity.current) { LaneHeaderHeight.toPx() }
+    val headerHeightPx = with(LocalDensity.current) { TitleHeight.toPx() }
     var viewportHeightPx by remember { mutableStateOf(0f) }
 
-    // Every lane's own row viewport sits below its LaneHeaderHeight header, so windowing
+    // Every lane's own row viewport sits below its TitleHeight header, so windowing
     // and the scroll bound are both computed against that shrunk height, not the raw
     // container height - otherwise the last loaded row of the tallest lane clips.
     val laneContentHeightPx = (viewportHeightPx - headerHeightPx).coerceAtLeast(0f)
@@ -152,12 +179,7 @@ private fun BranchLane(branch: Ref, rowHeightPx: Float, viewportHeightPx: Float)
             .width(LaneWidth)
             .fillMaxHeight()
     ) {
-        Text(
-            style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 12.sp),
-            modifier = Modifier.height(LaneHeaderHeight).padding(8.dp).fillMaxWidth(),
-            color = Color.White,
-            text = branchName,
-        )
+        MapLaneTitle(branchName)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -185,6 +207,43 @@ private fun BranchLane(branch: Ref, rowHeightPx: Float, viewportHeightPx: Float)
     }
 }
 
+
+@Composable
+private fun MapLaneTitle(branchName: String) {
+    // The map's own background already shows through here (BranchLane's Column
+    // paints no background of its own), so the title needs no fill of its own
+    // to satisfy "same background color as the map".
+    //
+    // The text's own top-start corner is pinned as the rotation pivot (rather
+    // than the default center), so it stays fixed at the top of the box and
+    // the rest of the label sweeps down/across into the title box's own
+    // reserved height rather than toward the graph below; clipping to the box
+    // is a hard backstop against any residual overflow so a rotated title can
+    // never bleed into the graph.
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .requiredHeight(TitleHeight)
+            .clip(RectangleShape),
+        contentAlignment = Alignment.TopStart
+    ) {
+        Text(
+            text = branchName,
+            style = TextStyle(
+                fontWeight = FontWeight.Bold,
+                fontSize = TitleFontSize,
+                lineHeight = TitleTextLineHeight
+            ),
+            color = Color.White,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .padding(start = TitleTextStartPadding, top = TitleTextTopPadding)
+                .width(TitleTextMaxWidth)
+                .graphicsLayer(rotationZ = TitleRotation, transformOrigin = TransformOrigin(0f, 0f))
+        )
+    }
+}
 
 @Composable
 private fun CommitNode(
