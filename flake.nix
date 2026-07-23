@@ -22,6 +22,9 @@
               gitUserName = "bot";
               gitUserEmail = "hi@codymikol.com";
             };
+            branches = {
+              mergeMode = "immediate";
+            };
             concurrency = { maxParallel = 1; };
           };
         }; 
