@@ -37,19 +37,12 @@ class CommitHistoryWalkerSpec : DescribeSpec({
 
             val branch = GitDownState.git.value.listLocalBranches().single()
 
-            it("should page through history newest first") {
+            it("should load every commit newest first in one call") {
                 val walker = CommitHistoryWalker(GitDownState.git.value, branch)
 
-                val firstPage = walker.nextPage(3)
-                firstPage.map { it.shortMessage } shouldBe listOf("commit 5", "commit 4", "commit 3")
-                walker.hasMore shouldBe true
+                val all = walker.loadAll()
 
-                val secondPage = walker.nextPage(3)
-                secondPage.map { it.shortMessage } shouldBe listOf("commit 2", "commit 1")
-                walker.hasMore shouldBe false
-
-                val thirdPage = walker.nextPage(3)
-                thirdPage shouldHaveSize 0
+                all.map { it.shortMessage } shouldBe listOf("commit 5", "commit 4", "commit 3", "commit 2", "commit 1")
 
                 walker.close()
             }
@@ -81,9 +74,9 @@ class CommitHistoryWalkerSpec : DescribeSpec({
                     .first { it.name.endsWith(defaultBranchName) }
 
                 val walker = CommitHistoryWalker(GitDownState.git.value, branch)
-                val page = walker.nextPage(10)
+                val commits = walker.loadAll()
 
-                val mergeCommits = page.filter { it.isMergeCommit }
+                val mergeCommits = commits.filter { it.isMergeCommit }
                 mergeCommits shouldHaveSize 1
                 mergeCommits.single().parentShas shouldHaveSize 2
 
