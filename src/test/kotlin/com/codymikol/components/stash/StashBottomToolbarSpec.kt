@@ -2,23 +2,23 @@ package com.codymikol.components.stash
 
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
-import java.io.ByteArrayOutputStream
-import java.io.PrintStream
 
 class StashBottomToolbarSpec : DescribeSpec({
 
-    describe("stashToolbarButtonClicked") {
+    describe("dropStashConfirmationMessage") {
 
-        it("prints the button text to the console") {
-            val originalOut = System.out
-            val captured = ByteArrayOutputStream()
-            try {
-                System.setOut(PrintStream(captured))
-                stashToolbarButtonClicked("Apply")
-            } finally {
-                System.setOut(originalOut)
-            }
-            captured.toString().trim() shouldBe "Apply"
+        it("names the stash being dropped") {
+            dropStashConfirmationMessage("WIP on main: my stash") shouldBe
+                "This will permanently delete the stash \"WIP on main: my stash\", are you sure?"
+        }
+
+    }
+
+    describe("applyStashConfirmationMessage") {
+
+        it("names the stash being applied") {
+            applyStashConfirmationMessage("WIP on main: my stash") shouldBe
+                "This will apply the stash \"WIP on main: my stash\" to your working directory, are you sure?"
         }
 
     }
