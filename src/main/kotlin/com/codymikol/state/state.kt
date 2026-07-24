@@ -1,6 +1,7 @@
 package com.codymikol.state
 
 import androidx.compose.runtime.*
+import com.codymikol.data.settings.AppSettings
 import com.codymikol.data.diff.DiffTree
 import com.codymikol.data.file.FileDelta
 import com.codymikol.data.file.Index
@@ -19,7 +20,15 @@ import java.nio.file.Path
 
 object GitDownState {
 
+    const val TEXT_SIZE_STEP = 2
+    const val MIN_TEXT_SIZE = 8
+    const val MAX_TEXT_SIZE = 40
+
     val currentTab: MutableState<Tab> = mutableStateOf(Tab.Commit)
+
+    val headerTextSize = mutableStateOf(AppSettings.DEFAULT_HEADER_TEXT_SIZE)
+
+    val bodyTextSize = mutableStateOf(AppSettings.DEFAULT_BODY_TEXT_SIZE)
 
     val gitDirectory = mutableStateOf("")
 
@@ -172,6 +181,15 @@ object GitDownState {
 
     //todo(mikol): this is not ideal, work out a better way to manage this...
     val lastRequestedUpdateTimestamp = mutableStateOf(System.currentTimeMillis())
+
+    fun increaseTextSize() = adjustTextSize(TEXT_SIZE_STEP)
+
+    fun decreaseTextSize() = adjustTextSize(-TEXT_SIZE_STEP)
+
+    private fun adjustTextSize(delta: Int) {
+        headerTextSize.value = (headerTextSize.value + delta).coerceIn(MIN_TEXT_SIZE, MAX_TEXT_SIZE)
+        bodyTextSize.value = (bodyTextSize.value + delta).coerceIn(MIN_TEXT_SIZE, MAX_TEXT_SIZE)
+    }
 
     fun selectTab(tab: Tab) {
         currentTab.value = tab

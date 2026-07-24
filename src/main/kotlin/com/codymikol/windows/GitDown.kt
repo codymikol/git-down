@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
@@ -40,9 +41,12 @@ import com.codymikol.gitdown.generated.resources.map
 import com.codymikol.gitdown.generated.resources.map_white
 import com.codymikol.gitdown.generated.resources.stash
 import com.codymikol.gitdown.generated.resources.stash_white
+import com.codymikol.data.settings.AppSettings
+import com.codymikol.repositories.SettingsRepository
 import com.codymikol.services.WindowSizeService
 import com.codymikol.state.GitDownState
 import com.codymikol.state.Keys
+import com.codymikol.state.TextSizeShortcut
 import com.codymikol.tabs.Tab
 import com.codymikol.views.CommitView
 import com.codymikol.views.isCommitMessageFocused
@@ -53,6 +57,16 @@ import org.koin.java.KoinJavaComponent.inject
 import java.awt.Dimension
 
 private val windowSizeService: WindowSizeService by inject(WindowSizeService::class.java)
+private val settingsRepository: SettingsRepository by inject(SettingsRepository::class.java)
+
+private fun persistTextSize() {
+    settingsRepository.setSettings(
+        AppSettings(
+            headerTextSize = GitDownState.headerTextSize.value,
+            bodyTextSize = GitDownState.bodyTextSize.value,
+        )
+    )
+}
 
 @Preview
 @Composable
@@ -71,11 +85,28 @@ fun GitDown(applicationScope: ApplicationScope) {
                 !isCommitMessageFocused.value &&
                 GitDownState.selectedFiles.size == 1
 
-            if (isFileSelectionArrow) {
-                GitDownState.selectAdjacentFile(if (it.key == Key.DirectionUp) -1 else 1)
-                true
-            } else {
-                false
+            val isShortcutModifierPressed = TextSizeShortcut.isShortcutModifierPressed(it.isCtrlPressed, it.isMetaPressed)
+            val isTextSizeIncrease = it.type == KeyEventType.KeyDown &&
+                TextSizeShortcut.isIncrease(it.key, isShortcutModifierPressed)
+            val isTextSizeDecrease = it.type == KeyEventType.KeyDown &&
+                TextSizeShortcut.isDecrease(it.key, isShortcutModifierPressed)
+
+            when {
+                isFileSelectionArrow -> {
+                    GitDownState.selectAdjacentFile(if (it.key == Key.DirectionUp) -1 else 1)
+                    true
+                }
+                isTextSizeIncrease -> {
+                    GitDownState.increaseTextSize()
+                    persistTextSize()
+                    true
+                }
+                isTextSizeDecrease -> {
+                    GitDownState.decreaseTextSize()
+                    persistTextSize()
+                    true
+                }
+                else -> false
             }
         },
         onCloseRequest = {
