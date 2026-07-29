@@ -1,6 +1,8 @@
 package com.codymikol.views
 
 import androidx.compose.desktop.ui.tooling.preview.Preview
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.PointerMatcher
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
@@ -9,8 +11,10 @@ import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.onClick
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.Divider
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -31,6 +35,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerButton
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
@@ -41,8 +46,12 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import com.codymikol.components.menu.MenuColors
+import com.codymikol.components.menu.ThemedDropdownMenu
+import com.codymikol.components.menu.ThemedDropdownMenuItem
 import com.codymikol.data.Colors
 import com.codymikol.data.map.CommitCard
+import com.codymikol.data.map.CommitContextMenu as CommitContextMenuModel
 import com.codymikol.data.map.CommitGraphNode
 import com.codymikol.state.GitDownState
 import com.codymikol.state.MapScrollState
@@ -263,6 +272,7 @@ private fun MapLaneTitle(branchName: String) {
 // The sha and commit message are hidden by default to preserve space (#252); the
 // node itself is the whole clickable target and its detail card only appears while
 // this node is selected.
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun CommitNode(
     commit: CommitGraphNode,
@@ -272,6 +282,8 @@ private fun CommitNode(
     showTrailingGuideline: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    var menuExpanded by remember { mutableStateOf(false) }
+
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -280,6 +292,12 @@ private fun CommitNode(
             // than one row, floats over the neighbouring nodes rather than under them.
             .zIndex(if (isSelected) 1f else 0f)
             .clickable { onClick() }
+            // Right-clicking opens the context menu and always leaves this node
+            // selected (see issue #253) - selectNode, not the click toggle.
+            .onClick(matcher = PointerMatcher.mouse(PointerButton.Secondary)) {
+                MapState.selectNode(commit.sha)
+                menuExpanded = true
+            }
             .drawBehind { drawCommitNode(commit, showLeadingGuideline, showTrailingGuideline) }
     ) {
         if (isSelected) {
@@ -290,6 +308,36 @@ private fun CommitNode(
                     .align(Alignment.CenterStart)
                     .padding(start = GutterX - CardTabSize / 2)
             )
+        }
+
+        CommitContextMenu(
+            expanded = menuExpanded,
+            onDismiss = { menuExpanded = false },
+        )
+    }
+}
+
+// The right-click context menu for a commit node (#253). Its actions are grouped
+// by CommitContextMenu, with a divider drawn between each group; concrete
+// behaviours are wired up in follow-up issues, so items only dismiss for now.
+@Composable
+private fun CommitContextMenu(
+    expanded: Boolean,
+    onDismiss: () -> Unit,
+) {
+    ThemedDropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismiss,
+    ) {
+        CommitContextMenuModel.groups.forEachIndexed { index, group ->
+            if (index > 0) Divider(color = MenuColors.Divider)
+            group.forEach { action ->
+                ThemedDropdownMenuItem(
+                    label = action.label,
+                    shortcut = action.shortcut,
+                    onClick = onDismiss,
+                )
+            }
         }
     }
 }
