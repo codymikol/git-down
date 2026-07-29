@@ -2,12 +2,15 @@ package com.codymikol.views
 
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.rememberScrollableState
 import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -31,18 +34,21 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import com.codymikol.data.Colors
+import com.codymikol.data.map.CommitCard
 import com.codymikol.data.map.CommitGraphNode
 import com.codymikol.state.GitDownState
 import com.codymikol.state.MapScrollState
 import com.codymikol.state.MapState
-import com.codymikol.typography.GitDownTypography
 import org.eclipse.jgit.lib.Ref
+import java.util.Date
 import kotlin.math.roundToInt
 
 // Narrower than a horizontal title would need, since titles are now rotated
@@ -51,6 +57,13 @@ private val LaneWidth = 180.dp
 private val NodeRadius = 5.dp
 private val GutterX = 20.dp
 private val RowHeight = 48.dp
+
+// The dog-tag detail card shown when a node is clicked (#252): a rounded-rectangle
+// body with a protruding round tab holding a punched hole, sitting over the node.
+private val CardTabSize = 22.dp
+private val CardHoleSize = 8.dp
+private val CardCorner = 10.dp
+private val CardMaxWidth = 150.dp
 
 // Every lane's title sits in a fixed-height box so all lanes' graphs start at the
 // same y-offset below the titles, regardless of how long each branch name is.
@@ -196,6 +209,8 @@ private fun BranchLane(branch: Ref, rowHeightPx: Float, viewportHeightPx: Float)
                 key(commit.sha) {
                     CommitNode(
                         commit = commit,
+                        isSelected = MapState.selectedNodeSha.value == commit.sha,
+                        onClick = { MapState.toggleSelectedNode(commit.sha) },
                         showLeadingGuideline = false,
                         showTrailingGuideline = false,
                         modifier = Modifier.offset { IntOffset(0, yOffsetPx) },
@@ -245,26 +260,100 @@ private fun MapLaneTitle(branchName: String) {
     }
 }
 
+// The sha and commit message are hidden by default to preserve space (#252); the
+// node itself is the whole clickable target and its detail card only appears while
+// this node is selected.
 @Composable
 private fun CommitNode(
     commit: CommitGraphNode,
+    isSelected: Boolean,
+    onClick: () -> Unit,
     showLeadingGuideline: Boolean,
     showTrailingGuideline: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    Row(
+    Box(
         modifier = modifier
             .fillMaxWidth()
             .height(RowHeight)
+            // The selected node draws above its siblings so its card, which is taller
+            // than one row, floats over the neighbouring nodes rather than under them.
+            .zIndex(if (isSelected) 1f else 0f)
+            .clickable { onClick() }
             .drawBehind { drawCommitNode(commit, showLeadingGuideline, showTrailingGuideline) }
-            .padding(start = 40.dp, top = 4.dp, end = 8.dp, bottom = 4.dp)
     ) {
-        Column {
-            GitDownTypography.CommitSha(commit.shortSha)
-            GitDownTypography.CommitSubject(commit.shortMessage)
+        if (isSelected) {
+            CommitDetailCard(
+                commit = commit,
+                color = nodeColor(commit),
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = GutterX - CardTabSize / 2)
+            )
         }
     }
 }
+
+// The floating dog-tag card: a round tab holding a punched hole sits over the node
+// and sticks out a little farther than the rounded-rectangle body, which extends to
+// the right with the commit's details. Coloured the same as the node it describes.
+@Composable
+private fun CommitDetailCard(
+    commit: CommitGraphNode,
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
+    val now = remember(commit.sha) { Date() }
+
+    Row(
+        modifier = modifier.widthIn(max = CardMaxWidth),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(CardTabSize)
+                .clip(CircleShape)
+                .background(color),
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(CardHoleSize)
+                    .clip(CircleShape)
+                    .background(Colors.DarkGrayBackground)
+            )
+        }
+
+        // Tucked left under the tab so the tab's hole end protrudes past the body.
+        Column(
+            modifier = Modifier
+                .offset(x = -CardCorner)
+                .clip(RoundedCornerShape(CardCorner))
+                .background(color)
+                .padding(start = CardCorner + 6.dp, top = 6.dp, end = 10.dp, bottom = 6.dp),
+        ) {
+            CardLine(CommitCard.title(commit), FontWeight.Bold)
+            CardLine(CommitCard.author(commit), FontWeight.Normal)
+            CardLine(CommitCard.date(commit.date, now), FontWeight.Normal)
+        }
+    }
+}
+
+@Composable
+private fun CardLine(text: String, fontWeight: FontWeight) {
+    Text(
+        text = text,
+        color = Color.White,
+        fontSize = 10.sp,
+        fontWeight = fontWeight,
+        fontFamily = FontFamily.Monospace,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+    )
+}
+
+private fun nodeColor(commit: CommitGraphNode): Color =
+    if (commit.isMergeCommit) Colors.FileModified else Colors.FileAdded
 
 private fun DrawScope.drawCommitNode(
     commit: CommitGraphNode,
@@ -288,8 +377,8 @@ private fun DrawScope.drawCommitNode(
     }
 
     when (commit.isMergeCommit) {
-        true -> drawDiamond(center = Offset(x, centerY), radius = NodeRadius.toPx(), color = Colors.FileModified)
-        false -> drawCircle(color = Colors.FileAdded, radius = NodeRadius.toPx(), center = Offset(x, centerY))
+        true -> drawDiamond(center = Offset(x, centerY), radius = NodeRadius.toPx(), color = nodeColor(commit))
+        false -> drawCircle(color = nodeColor(commit), radius = NodeRadius.toPx(), center = Offset(x, centerY))
     }
 }
 
