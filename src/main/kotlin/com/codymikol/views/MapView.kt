@@ -1,10 +1,15 @@
 package com.codymikol.views
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.PointerMatcher
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.rememberScrollableState
 import androidx.compose.foundation.gestures.scrollable
@@ -73,6 +78,12 @@ private val CardTabSize = 22.dp
 private val CardHoleSize = 8.dp
 private val CardCorner = 10.dp
 private val CardMaxWidth = 150.dp
+
+// The node itself signals interaction (#263): it grows a little while hovered and
+// shrinks below its resting size while pressed, instead of a background wash. Both
+// ends are driven through animateFloatAsState so the change is animated.
+private const val HoveredNodeScale = 1.4f
+private const val PressedNodeScale = 0.7f
 
 // Every lane's title sits in a fixed-height box so all lanes' graphs start at the
 // same y-offset below the titles, regardless of how long each branch name is.
@@ -286,6 +297,18 @@ private fun CommitNode(
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
 
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val nodeScale by animateFloatAsState(
+        targetValue = when {
+            isPressed -> PressedNodeScale
+            isHovered -> HoveredNodeScale
+            else -> 1f
+        },
+        label = "commitNodeScale",
+    )
+
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -293,14 +316,18 @@ private fun CommitNode(
             // The selected node draws above its siblings so its card, which is taller
             // than one row, floats over the neighbouring nodes rather than under them.
             .zIndex(if (isSelected) 1f else 0f)
-            .clickable { onClick() }
+            .hoverable(interactionSource)
+            // indication = null drops the default ripple/hover background wash so only
+            // the node graphic reacts to hover and press (see issue #263); the scale is
+            // applied when the node is drawn, below.
+            .clickable(interactionSource = interactionSource, indication = null) { onClick() }
             // Right-clicking opens the context menu and always leaves this node
             // selected (see issue #253) - selectNode, not the click toggle.
             .onClick(matcher = PointerMatcher.mouse(PointerButton.Secondary)) {
                 MapState.selectNode(branchName, commit.sha)
                 menuExpanded = true
             }
-            .drawBehind { drawCommitNode(commit, showLeadingGuideline, showTrailingGuideline) }
+            .drawBehind { drawCommitNode(commit, nodeScale, showLeadingGuideline, showTrailingGuideline) }
     ) {
         if (isSelected) {
             CommitDetailCard(
@@ -407,6 +434,7 @@ private fun nodeColor(commit: CommitGraphNode): Color =
 
 private fun DrawScope.drawCommitNode(
     commit: CommitGraphNode,
+    scale: Float,
     showLeadingGuideline: Boolean,
     showTrailingGuideline: Boolean,
 ) {
@@ -426,9 +454,13 @@ private fun DrawScope.drawCommitNode(
         )
     }
 
+    // Only the node graphic scales with hover/press, so the row's click target and
+    // any detail card stay put while the node itself grows or shrinks (see issue #263).
+    val radius = NodeRadius.toPx() * scale
+
     when (commit.isMergeCommit) {
-        true -> drawDiamond(center = Offset(x, centerY), radius = NodeRadius.toPx(), color = nodeColor(commit))
-        false -> drawCircle(color = nodeColor(commit), radius = NodeRadius.toPx(), center = Offset(x, centerY))
+        true -> drawDiamond(center = Offset(x, centerY), radius = radius, color = nodeColor(commit))
+        false -> drawCircle(color = nodeColor(commit), radius = radius, center = Offset(x, centerY))
     }
 }
 
