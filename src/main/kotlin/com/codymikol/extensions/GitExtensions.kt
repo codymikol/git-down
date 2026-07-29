@@ -23,6 +23,7 @@ import org.eclipse.jgit.dircache.DirCacheEditor
 import org.eclipse.jgit.dircache.DirCacheEntry
 import org.eclipse.jgit.dircache.DirCacheIterator
 import org.eclipse.jgit.errors.LockFailedException
+import org.eclipse.jgit.lib.AnyObjectId
 import org.eclipse.jgit.lib.Constants.OBJ_BLOB
 import org.eclipse.jgit.lib.FileMode
 import org.eclipse.jgit.lib.Ref
@@ -77,9 +78,28 @@ fun Git.listLocalBranches(): List<Ref> = try {
     emptyList()
 }
 
-fun Git.getStashDiff(stash: RevCommit): List<FileDelta> = try {
+fun Git.getStashDiff(stash: RevCommit): List<FileDelta> = diffAgainstFirstParent(stash)
+
+/**
+ * The file deltas a commit introduces relative to its first parent, resolved from
+ * [sha] (any ref or object-id string jgit can resolve). Backs the quick view (see
+ * issue #254). An unresolvable or parentless commit yields an empty diff.
+ */
+fun Git.getCommitDiff(sha: String): List<FileDelta> {
+    val id = this.repository.resolve(sha) ?: return emptyList()
+    return diffAgainstFirstParent(id)
+}
+
+/**
+ * The file deltas introduced by [id] relative to its first parent, each carrying
+ * pre-formatted diff text. The read-only Stash.File* carriers are reused since a
+ * committed diff has no working-tree or index backing to stage against - exactly
+ * the shape Status.STASH already models. A parentless (root) commit yields no
+ * deltas.
+ */
+private fun Git.diffAgainstFirstParent(id: AnyObjectId): List<FileDelta> = try {
     RevWalk(this.repository).use { walk ->
-        val commit = walk.parseCommit(stash)
+        val commit = walk.parseCommit(id)
 
         when (commit.parentCount > 0) {
             false -> emptyList()
@@ -112,7 +132,7 @@ fun Git.getStashDiff(stash: RevCommit): List<FileDelta> = try {
         }
     }
 } catch (e: Exception) {
-    logger.error("An exception was thrown while diffing a stash: ${e.message}")
+    logger.error("An exception was thrown while diffing against the first parent: ${e.message}")
     emptyList()
 }
 
