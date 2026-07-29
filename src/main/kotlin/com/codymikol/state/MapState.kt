@@ -36,6 +36,16 @@ object MapState {
         selectedNodeSha.value = if (selectedNodeSha.value == sha) null else sha
     }
 
+    /**
+     * Selects a node outright, without the toggle-to-clear behaviour of
+     * toggleSelectedNode. Right-clicking a node opens its context menu and must
+     * always leave that node selected (see issue #253), even when it was already
+     * the selected node.
+     */
+    fun selectNode(sha: String) {
+        selectedNodeSha.value = sha
+    }
+
     val branches = derivedStateOf {
         GitDownState.git.value.listLocalBranches().sortedBy { it.name }
     }

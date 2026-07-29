@@ -150,6 +150,32 @@ class MapStateSpec : DescribeSpec({
 
                 MapState.selectedNodeSha.value shouldBe null
             }
+
+            it("selects a node when explicitly selected") {
+                MapState.reset()
+
+                MapState.selectNode("sha1")
+
+                MapState.selectedNodeSha.value shouldBe "sha1"
+            }
+
+            it("keeps a node selected when it is selected again") {
+                MapState.reset()
+                MapState.selectNode("sha1")
+
+                MapState.selectNode("sha1")
+
+                MapState.selectedNodeSha.value shouldBe "sha1"
+            }
+
+            it("replaces the selection when a different node is selected") {
+                MapState.reset()
+                MapState.selectNode("sha1")
+
+                MapState.selectNode("sha2")
+
+                MapState.selectedNodeSha.value shouldBe "sha2"
+            }
         }
 
         describe("a branch with more commits than one page") {
