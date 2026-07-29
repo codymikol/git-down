@@ -46,6 +46,17 @@ object MapState {
         selectedNodeSha.value = sha
     }
 
+    /**
+     * The full node for the currently selected sha, looked up across every loaded
+     * branch, or null when nothing is selected (or the node has scrolled out of the
+     * loaded window). Used to launch the quick view (see issue #254) for the node
+     * the user selected in the map.
+     */
+    fun selectedNode(): CommitGraphNode? {
+        val sha = selectedNodeSha.value ?: return null
+        return commitsByBranch.values.asSequence().flatten().firstOrNull { it.sha == sha }
+    }
+
     val branches = derivedStateOf {
         GitDownState.git.value.listLocalBranches().sortedBy { it.name }
     }
