@@ -6,7 +6,9 @@ import com.codymikol.data.file.FileDelta
 import com.codymikol.data.file.Index
 import com.codymikol.data.file.Status
 import com.codymikol.data.file.WorkingDirectory
+import com.codymikol.data.map.CommitGraphNode
 import com.codymikol.data.stash.StashListItem
+import com.codymikol.extensions.getCommitDiff
 import com.codymikol.extensions.getCurrentRefCommitCount
 import com.codymikol.extensions.getStashDiff
 import com.codymikol.extensions.getStashes
@@ -77,6 +79,19 @@ object GitDownState {
     }
 
     val selectedStash = mutableStateOf<StashListItem?>(null)
+
+    // The commit the quick view (see issue #254) is launched against, or null when
+    // the quick view is closed. Held here rather than read from MapState so the view
+    // survives the map scrolling or resetting out from under it.
+    val quickViewCommit = mutableStateOf<CommitGraphNode?>(null)
+
+    val quickViewDiffTree = derivedStateOf {
+        DiffTree.make(quickViewCommit.value?.let { git.value.getCommitDiff(it.sha) } ?: emptyList())
+    }
+
+    // The tab to return to when the quick view is dismissed. Only captured on the way
+    // in so reopening the quick view for a different commit keeps the original.
+    private var tabBeforeQuickView: Tab = Tab.Map
 
     val stashDiffTree = derivedStateOf {
         DiffTree.make(selectedStash.value?.let { git.value.getStashDiff(it.revCommit) } ?: emptyList())
@@ -184,6 +199,22 @@ object GitDownState {
             val firstFile = workingDirectory.value.firstOrNull() ?: index.value.firstOrNull()
             firstFile?.let { selectedFiles.add(it) }
         }
+    }
+
+    /**
+     * Launches the quick view (see issue #254) against [commit], remembering the tab
+     * to return to on close.
+     */
+    fun openQuickView(commit: CommitGraphNode) {
+        if (currentTab.value != Tab.QuickView) tabBeforeQuickView = currentTab.value
+        quickViewCommit.value = commit
+        selectTab(Tab.QuickView)
+    }
+
+    /** Closes the quick view, clearing its commit and restoring the prior tab. */
+    fun closeQuickView() {
+        quickViewCommit.value = null
+        selectTab(tabBeforeQuickView)
     }
 
     fun selectAdjacentFile(offset: Int) {
