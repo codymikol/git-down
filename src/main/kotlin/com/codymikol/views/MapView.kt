@@ -311,6 +311,7 @@ private fun CommitNode(
         }
 
         CommitContextMenu(
+            commit = commit,
             expanded = menuExpanded,
             onDismiss = { menuExpanded = false },
         )
@@ -318,10 +319,12 @@ private fun CommitNode(
 }
 
 // The right-click context menu for a commit node (#253). Its actions are grouped
-// by CommitContextMenu, with a divider drawn between each group; concrete
-// behaviours are wired up in follow-up issues, so items only dismiss for now.
+// by CommitContextMenu, with a divider drawn between each group. Quick View (#254)
+// launches the quick view for this commit; the remaining behaviours are wired up
+// in follow-up issues, so those items only dismiss for now.
 @Composable
 private fun CommitContextMenu(
+    commit: CommitGraphNode,
     expanded: Boolean,
     onDismiss: () -> Unit,
 ) {
@@ -335,7 +338,12 @@ private fun CommitContextMenu(
                 ThemedDropdownMenuItem(
                     label = action.label,
                     shortcut = action.shortcut,
-                    onClick = onDismiss,
+                    onClick = when (action.label) {
+                        "Quick View" -> {
+                            { GitDownState.openQuickView(commit); onDismiss() }
+                        }
+                        else -> onDismiss
+                    },
                 )
             }
         }
