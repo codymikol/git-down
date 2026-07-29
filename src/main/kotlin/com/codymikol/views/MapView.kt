@@ -218,8 +218,9 @@ private fun BranchLane(branch: Ref, rowHeightPx: Float, viewportHeightPx: Float)
                 key(commit.sha) {
                     CommitNode(
                         commit = commit,
-                        isSelected = MapState.selectedNodeSha.value == commit.sha,
-                        onClick = { MapState.toggleSelectedNode(commit.sha) },
+                        branchName = branch.name,
+                        isSelected = MapState.isNodeSelected(branch.name, commit.sha),
+                        onClick = { MapState.toggleSelectedNode(branch.name, commit.sha) },
                         showLeadingGuideline = false,
                         showTrailingGuideline = false,
                         modifier = Modifier.offset { IntOffset(0, yOffsetPx) },
@@ -276,6 +277,7 @@ private fun MapLaneTitle(branchName: String) {
 @Composable
 private fun CommitNode(
     commit: CommitGraphNode,
+    branchName: String,
     isSelected: Boolean,
     onClick: () -> Unit,
     showLeadingGuideline: Boolean,
@@ -295,7 +297,7 @@ private fun CommitNode(
             // Right-clicking opens the context menu and always leaves this node
             // selected (see issue #253) - selectNode, not the click toggle.
             .onClick(matcher = PointerMatcher.mouse(PointerButton.Secondary)) {
-                MapState.selectNode(commit.sha)
+                MapState.selectNode(branchName, commit.sha)
                 menuExpanded = true
             }
             .drawBehind { drawCommitNode(commit, showLeadingGuideline, showTrailingGuideline) }

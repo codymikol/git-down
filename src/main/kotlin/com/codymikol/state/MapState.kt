@@ -26,14 +26,20 @@ object MapState {
     val hasMoreByBranch = mutableStateMapOf<String, Boolean>()
 
     /**
-     * Sha of the commit node whose detail card is currently shown, or null when no
-     * node is selected. Node sha/message text is hidden in the map until a node is
-     * clicked (see issue #252); clicking toggles this selection.
+     * The commit node whose detail card is currently shown, or null when no node is
+     * selected. Node sha/message text is hidden in the map until a node is clicked
+     * (see issue #252); clicking toggles this selection.
+     *
+     * Identity is (branchName, sha), not sha alone: a commit reachable from several
+     * branches is drawn once per lane, so keying selection on sha lit every lane's
+     * copy at once. Keying on the lane too means only the clicked node's card shows -
+     * never more than one at a time (see issue #263).
      */
-    val selectedNodeSha = mutableStateOf<String?>(null)
+    val selectedNode = mutableStateOf<SelectedNode?>(null)
 
-    fun toggleSelectedNode(sha: String) {
-        selectedNodeSha.value = if (selectedNodeSha.value == sha) null else sha
+    fun toggleSelectedNode(branchName: String, sha: String) {
+        val target = SelectedNode(branchName, sha)
+        selectedNode.value = if (selectedNode.value == target) null else target
     }
 
     /**
@@ -42,9 +48,16 @@ object MapState {
      * always leave that node selected (see issue #253), even when it was already
      * the selected node.
      */
-    fun selectNode(sha: String) {
-        selectedNodeSha.value = sha
+    fun selectNode(branchName: String, sha: String) {
+        selectedNode.value = SelectedNode(branchName, sha)
     }
+
+    /**
+     * True only for the one rendered node matching the current selection's lane and
+     * sha, so lanes sharing a sha never light up together (see issue #263).
+     */
+    fun isNodeSelected(branchName: String, sha: String): Boolean =
+        selectedNode.value == SelectedNode(branchName, sha)
 
     val branches = derivedStateOf {
         GitDownState.git.value.listLocalBranches().sortedBy { it.name }
@@ -79,6 +92,13 @@ object MapState {
         walkers.clear()
         commitsByBranch.clear()
         hasMoreByBranch.clear()
-        selectedNodeSha.value = null
+        selectedNode.value = null
     }
 }
+
+/**
+ * Identity of a selected commit node: its lane (branchName) plus its sha. Two
+ * branches can hold the same commit, so the sha alone does not identify which
+ * rendered node is selected (see issue #263).
+ */
+data class SelectedNode(val branchName: String, val sha: String)

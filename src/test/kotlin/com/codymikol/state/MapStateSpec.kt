@@ -114,67 +114,96 @@ class MapStateSpec : DescribeSpec({
             it("starts with no node selected") {
                 MapState.reset()
 
-                MapState.selectedNodeSha.value shouldBe null
+                MapState.selectedNode.value shouldBe null
             }
 
             it("selects a node when toggled from empty") {
                 MapState.reset()
 
-                MapState.toggleSelectedNode("sha1")
+                MapState.toggleSelectedNode("refs/heads/main", "sha1")
 
-                MapState.selectedNodeSha.value shouldBe "sha1"
+                MapState.selectedNode.value shouldBe SelectedNode("refs/heads/main", "sha1")
             }
 
             it("clears the selection when the same node is toggled again") {
                 MapState.reset()
-                MapState.toggleSelectedNode("sha1")
+                MapState.toggleSelectedNode("refs/heads/main", "sha1")
 
-                MapState.toggleSelectedNode("sha1")
+                MapState.toggleSelectedNode("refs/heads/main", "sha1")
 
-                MapState.selectedNodeSha.value shouldBe null
+                MapState.selectedNode.value shouldBe null
             }
 
             it("replaces the selection when a different node is toggled") {
                 MapState.reset()
-                MapState.toggleSelectedNode("sha1")
+                MapState.toggleSelectedNode("refs/heads/main", "sha1")
 
-                MapState.toggleSelectedNode("sha2")
+                MapState.toggleSelectedNode("refs/heads/main", "sha2")
 
-                MapState.selectedNodeSha.value shouldBe "sha2"
+                MapState.selectedNode.value shouldBe SelectedNode("refs/heads/main", "sha2")
             }
 
             it("clears the selection on reset") {
-                MapState.toggleSelectedNode("sha1")
+                MapState.toggleSelectedNode("refs/heads/main", "sha1")
 
                 MapState.reset()
 
-                MapState.selectedNodeSha.value shouldBe null
+                MapState.selectedNode.value shouldBe null
             }
 
             it("selects a node when explicitly selected") {
                 MapState.reset()
 
-                MapState.selectNode("sha1")
+                MapState.selectNode("refs/heads/main", "sha1")
 
-                MapState.selectedNodeSha.value shouldBe "sha1"
+                MapState.selectedNode.value shouldBe SelectedNode("refs/heads/main", "sha1")
             }
 
             it("keeps a node selected when it is selected again") {
                 MapState.reset()
-                MapState.selectNode("sha1")
+                MapState.selectNode("refs/heads/main", "sha1")
 
-                MapState.selectNode("sha1")
+                MapState.selectNode("refs/heads/main", "sha1")
 
-                MapState.selectedNodeSha.value shouldBe "sha1"
+                MapState.selectedNode.value shouldBe SelectedNode("refs/heads/main", "sha1")
             }
 
             it("replaces the selection when a different node is selected") {
                 MapState.reset()
-                MapState.selectNode("sha1")
+                MapState.selectNode("refs/heads/main", "sha1")
 
-                MapState.selectNode("sha2")
+                MapState.selectNode("refs/heads/main", "sha2")
 
-                MapState.selectedNodeSha.value shouldBe "sha2"
+                MapState.selectedNode.value shouldBe SelectedNode("refs/heads/main", "sha2")
+            }
+
+            // Regression for #263: a commit reachable from two branches renders once
+            // per lane, but selection was keyed on sha alone, so clicking one lane's
+            // node lit every lane's copy. Identity must be per (branch, sha) so only
+            // the clicked node's preview shows - never more than one at a time.
+            it("selects only the clicked lane's node when two branches share a sha") {
+                MapState.reset()
+
+                MapState.selectNode("refs/heads/feature", "shared-sha")
+
+                MapState.isNodeSelected("refs/heads/feature", "shared-sha") shouldBe true
+                MapState.isNodeSelected("refs/heads/main", "shared-sha") shouldBe false
+            }
+
+            it("reports no node selected for isNodeSelected when selection is empty") {
+                MapState.reset()
+
+                MapState.isNodeSelected("refs/heads/main", "sha1") shouldBe false
+            }
+
+            it("toggling a same-sha node in another lane moves the selection across lanes") {
+                MapState.reset()
+                MapState.toggleSelectedNode("refs/heads/main", "shared-sha")
+
+                MapState.toggleSelectedNode("refs/heads/feature", "shared-sha")
+
+                MapState.isNodeSelected("refs/heads/main", "shared-sha") shouldBe false
+                MapState.isNodeSelected("refs/heads/feature", "shared-sha") shouldBe true
             }
         }
 
