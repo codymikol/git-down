@@ -109,6 +109,49 @@ class MapStateSpec : DescribeSpec({
             }
         }
 
+        describe("node selection") {
+
+            it("starts with no node selected") {
+                MapState.reset()
+
+                MapState.selectedNodeSha.value shouldBe null
+            }
+
+            it("selects a node when toggled from empty") {
+                MapState.reset()
+
+                MapState.toggleSelectedNode("sha1")
+
+                MapState.selectedNodeSha.value shouldBe "sha1"
+            }
+
+            it("clears the selection when the same node is toggled again") {
+                MapState.reset()
+                MapState.toggleSelectedNode("sha1")
+
+                MapState.toggleSelectedNode("sha1")
+
+                MapState.selectedNodeSha.value shouldBe null
+            }
+
+            it("replaces the selection when a different node is toggled") {
+                MapState.reset()
+                MapState.toggleSelectedNode("sha1")
+
+                MapState.toggleSelectedNode("sha2")
+
+                MapState.selectedNodeSha.value shouldBe "sha2"
+            }
+
+            it("clears the selection on reset") {
+                MapState.toggleSelectedNode("sha1")
+
+                MapState.reset()
+
+                MapState.selectedNodeSha.value shouldBe null
+            }
+        }
+
         describe("a branch with more commits than one page") {
 
             val repo = createTestRepository().addFile("a.txt", "0").stageAll().commitAll("commit 0")
@@ -149,6 +192,7 @@ private fun dummyCommits(count: Int) = (1..count).map {
         shortSha = "sha$it",
         shortMessage = "commit $it",
         authorName = "author",
+        authorEmail = "author@example.com",
         date = Date(),
         parentShas = emptyList(),
     )
