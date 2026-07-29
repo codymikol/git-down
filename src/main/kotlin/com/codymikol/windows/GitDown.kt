@@ -43,10 +43,12 @@ import com.codymikol.gitdown.generated.resources.stash_white
 import com.codymikol.services.WindowSizeService
 import com.codymikol.state.GitDownState
 import com.codymikol.state.Keys
+import com.codymikol.state.MapState
 import com.codymikol.tabs.Tab
 import com.codymikol.views.CommitView
 import com.codymikol.views.isCommitMessageFocused
 import com.codymikol.views.MapView
+import com.codymikol.views.QuickView
 import com.codymikol.views.StashView
 import org.jetbrains.compose.resources.painterResource
 import org.koin.java.KoinJavaComponent.inject
@@ -65,17 +67,38 @@ fun GitDown(applicationScope: ApplicationScope) {
             Keys.isShiftPressed.value = it.isShiftPressed
             Keys.isCtrlPressed.value = it.isCtrlPressed
 
-            val isFileSelectionArrow = it.type == KeyEventType.KeyDown &&
+            val isDown = it.type == KeyEventType.KeyDown
+            val tab = GitDownState.currentTab.value
+
+            val isFileSelectionArrow = isDown &&
                 (it.key == Key.DirectionUp || it.key == Key.DirectionDown) &&
-                GitDownState.currentTab.value == Tab.Commit &&
+                tab == Tab.Commit &&
                 !isCommitMessageFocused.value &&
                 GitDownState.selectedFiles.size == 1
 
-            if (isFileSelectionArrow) {
-                GitDownState.selectAdjacentFile(if (it.key == Key.DirectionUp) -1 else 1)
-                true
-            } else {
-                false
+            // Space on the map with a node selected launches the quick view (#254)
+            // against that node.
+            val quickViewTarget = if (isDown && it.key == Key.Spacebar && tab == Tab.Map)
+                MapState.selectedNode() else null
+
+            // Space or Escape closes the quick view while it is open.
+            val shouldCloseQuickView = isDown && tab == Tab.QuickView &&
+                (it.key == Key.Spacebar || it.key == Key.Escape)
+
+            when {
+                isFileSelectionArrow -> {
+                    GitDownState.selectAdjacentFile(if (it.key == Key.DirectionUp) -1 else 1)
+                    true
+                }
+                shouldCloseQuickView -> {
+                    GitDownState.closeQuickView()
+                    true
+                }
+                quickViewTarget != null -> {
+                    GitDownState.openQuickView(quickViewTarget)
+                    true
+                }
+                else -> false
             }
         },
         onCloseRequest = {
@@ -168,6 +191,7 @@ fun GitDown(applicationScope: ApplicationScope) {
                         Tab.Commit -> CommitView()
                         Tab.Map -> MapView()
                         Tab.Stash -> StashView()
+                        Tab.QuickView -> QuickView()
                     }
                 }
             }
