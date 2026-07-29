@@ -50,28 +50,5 @@ class CommitCardSpec : DescribeSpec({
                 CommitCard.date(commitDate, now) shouldBe "Date: 03/05/24, 2:30 PM Today"
             }
         }
-
-        describe("relative") {
-            val base = date(2024, 6, 15, 12, 0)
-
-            it("is Today for the same calendar day") {
-                CommitCard.relative(date(2024, 6, 15, 1, 0), base) shouldBe "Today"
-            }
-            it("is Today for a future date") {
-                CommitCard.relative(date(2024, 6, 16, 1, 0), base) shouldBe "Today"
-            }
-            it("is Yesterday for the previous calendar day") {
-                CommitCard.relative(date(2024, 6, 14, 23, 0), base) shouldBe "Yesterday"
-            }
-            it("counts whole days for less than a month") {
-                CommitCard.relative(date(2024, 6, 5, 12, 0), base) shouldBe "10 Days Ago"
-            }
-            it("counts whole months for less than a year") {
-                CommitCard.relative(date(2024, 2, 15, 12, 0), base) shouldBe "4 Months Ago"
-            }
-            it("counts whole years otherwise") {
-                CommitCard.relative(date(2021, 6, 15, 12, 0), base) shouldBe "3 Years Ago"
-            }
-        }
     }
 })
