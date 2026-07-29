@@ -8,6 +8,7 @@ data class CommitGraphNode(
     val shortSha: String,
     val shortMessage: String,
     val authorName: String,
+    val authorEmail: String,
     val date: Date,
     val parentShas: List<String>,
 ) {
@@ -21,6 +22,7 @@ data class CommitGraphNode(
             shortSha = revCommit.name.take(7),
             shortMessage = revCommit.shortMessage,
             authorName = revCommit.authorIdent?.name ?: "",
+            authorEmail = revCommit.authorIdent?.emailAddress ?: "",
             date = Date(revCommit.commitTime.toLong() * 1000),
             parentShas = revCommit.parents.map { it.name },
         )
