@@ -3,6 +3,7 @@ package com.codymikol.state
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
 import com.codymikol.data.map.CommitGraphNode
 import com.codymikol.data.map.CommitHistoryWalker
 import com.codymikol.extensions.listLocalBranches
@@ -23,6 +24,17 @@ object MapState {
     val commitsByBranch = mutableStateMapOf<String, MutableList<CommitGraphNode>>()
 
     val hasMoreByBranch = mutableStateMapOf<String, Boolean>()
+
+    /**
+     * Sha of the commit node whose detail card is currently shown, or null when no
+     * node is selected. Node sha/message text is hidden in the map until a node is
+     * clicked (see issue #252); clicking toggles this selection.
+     */
+    val selectedNodeSha = mutableStateOf<String?>(null)
+
+    fun toggleSelectedNode(sha: String) {
+        selectedNodeSha.value = if (selectedNodeSha.value == sha) null else sha
+    }
 
     val branches = derivedStateOf {
         GitDownState.git.value.listLocalBranches().sortedBy { it.name }
@@ -57,5 +69,6 @@ object MapState {
         walkers.clear()
         commitsByBranch.clear()
         hasMoreByBranch.clear()
+        selectedNodeSha.value = null
     }
 }
