@@ -176,6 +176,29 @@ class MapStateSpec : DescribeSpec({
 
                 MapState.selectedNodeSha.value shouldBe "sha2"
             }
+
+            it("resolves the selected node from the loaded commits") {
+                MapState.reset()
+                MapState.commitsByBranch["refs/heads/main"] = dummyCommits(3)
+                MapState.selectNode("sha2")
+
+                MapState.selectedNode()?.shortMessage shouldBe "commit 2"
+            }
+
+            it("resolves to null when nothing is selected") {
+                MapState.reset()
+                MapState.commitsByBranch["refs/heads/main"] = dummyCommits(3)
+
+                MapState.selectedNode() shouldBe null
+            }
+
+            it("resolves to null when the selected sha is not loaded") {
+                MapState.reset()
+                MapState.commitsByBranch["refs/heads/main"] = dummyCommits(3)
+                MapState.selectNode("sha-missing")
+
+                MapState.selectedNode() shouldBe null
+            }
         }
 
         describe("a branch with more commits than one page") {
