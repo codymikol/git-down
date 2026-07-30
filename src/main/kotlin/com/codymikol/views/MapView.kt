@@ -5,11 +5,8 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.PointerMatcher
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.rememberScrollableState
-import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.onClick
 import androidx.compose.foundation.shape.CircleShape
@@ -18,27 +15,23 @@ import androidx.compose.material.Divider
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.PointerButton
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -50,11 +43,8 @@ import com.codymikol.data.map.CommitCard
 import com.codymikol.data.map.CommitContextMenu as CommitContextMenuModel
 import com.codymikol.data.map.CommitGraphNode
 import com.codymikol.state.GitDownState
-import com.codymikol.state.MapScrollState
 import com.codymikol.state.MapState
-import org.eclipse.jgit.lib.Ref
 import java.util.Date
-import kotlin.math.roundToInt
 
 private val LaneWidth = 180.dp
 private val NodeRadius = 5.dp
@@ -76,74 +66,59 @@ private val PillSpacing = 4.dp
 private val PillEndPadding = 12.dp
 private val PillMaxWidth = 80.dp
 
-// Reserves the same header height the old per-column branch name title used to
-// fill (see BranchLane and Map()'s headerHeightPx), so lane content still starts
-// at a consistent y-offset now that the name itself lives on the tip pill (#272).
-private val TitleHeight = 110.dp
-
 @Composable
 @Preview
 fun MapView() {
 
     LaunchedEffect(GitDownState.gitDirectory.value) {
         MapState.reset()
-        MapScrollState.reset()
     }
 
-    val branches = MapState.branches.value
-
-    when (branches.isEmpty()) {
+    when (MapState.branches.value.isEmpty()) {
         true -> MapEmptyState()
-        false -> Map(branches)
+        false -> Map()
     }
 }
 
 @Composable
-private fun Map(branches: List<Ref>) {
+private fun Map() {
+    val commits = MapState.commits
+    val lazyListState = rememberLazyListState()
 
-    val rowHeightPx = with(LocalDensity.current) { RowHeight.toPx() }
-    val headerHeightPx = with(LocalDensity.current) { TitleHeight.toPx() }
-    var viewportHeightPx by remember { mutableStateOf(0f) }
-
-    // Every lane's own row viewport sits below its TitleHeight header, so windowing
-    // and the scroll bound are both computed against that shrunk height, not the raw
-    // container height - otherwise the last loaded row of the tallest lane clips.
-    val laneContentHeightPx = (viewportHeightPx - headerHeightPx).coerceAtLeast(0f)
-
-    val maxLoadedRows = branches.maxOfOrNull { MapState.commitsByBranch[it.name]?.size ?: 0 } ?: 0
-    val maxOffsetPx = (maxLoadedRows * rowHeightPx - laneContentHeightPx).coerceAtLeast(0f)
-
-    // Every lane windows against MapScrollState's one shared offset (see BranchLane)
-    // instead of a LazyListState, so this is the single place that translates drag/wheel
-    // input into that offset - no lane ever owns or drives scrolling on its own.
-    val verticalScrollableState = rememberScrollableState { delta ->
-        val before = MapScrollState.offsetPx
-        MapScrollState.scrollBy(delta, maxOffsetPx)
-        MapScrollState.offsetPx - before
+    val lastVisibleIndex by remember {
+        derivedStateOf { lazyListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1 }
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-
-        val lazyHorizontalState = rememberLazyListState()
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight()
-                .onSizeChanged { viewportHeightPx = it.height.toFloat() }
-                .scrollable(orientation = Orientation.Vertical, state = verticalScrollableState)
-        ) {
-            LazyRow(
-                state = lazyHorizontalState,
-                modifier = Modifier.fillMaxWidth().fillMaxHeight().background(Colors.DarkGrayBackground)
-            ) {
-                items(branches.size, key = { branches[it].name }) {
-                    BranchLane(branch = branches[it], rowHeightPx = rowHeightPx, viewportHeightPx = laneContentHeightPx)
-                }
-            }
+    // shouldLoadMore() is true before anything has loaded, so this effect also covers
+    // the very first page - no separate initial-load effect needed. It's keyed on the
+    // scroll-derived lastVisibleIndex, never on commits.size or hasMore, which
+    // loadMore() mutates - keying an effect on a value it mutates is what caused the
+    // unbounded reload loop that froze the UI before (see #260 / #256). The while loop
+    // just lets one recomposition catch several pages up at once instead of one.
+    LaunchedEffect(lastVisibleIndex) {
+        while (MapState.shouldLoadMore(lastVisibleIndex)) {
+            MapState.loadMore()
         }
     }
 
+    LazyColumn(
+        state = lazyListState,
+        modifier = Modifier.fillMaxSize().background(Colors.DarkGrayBackground),
+    ) {
+        items(commits.size, key = { commits[it].sha }) { index ->
+            val commit = commits[index]
+            val lane = MapState.lanesBySha[commit.sha] ?: 0
+
+            CommitNode(
+                commit = commit,
+                isSelected = MapState.selectedNodeSha.value == commit.sha,
+                onClick = { MapState.toggleSelectedNode(commit.sha) },
+                showLeadingGuideline = false,
+                showTrailingGuideline = false,
+                modifier = Modifier.offset(x = LaneWidth * lane).width(LaneWidth),
+            )
+        }
+    }
 }
 
 @Composable
@@ -160,66 +135,6 @@ private fun MapEmptyState() {
         }
     }
 }
-
-@Composable
-private fun BranchLane(branch: Ref, rowHeightPx: Float, viewportHeightPx: Float) {
-    val commits = MapState.commitsByBranch[branch.name] ?: emptyList()
-
-    val firstVisibleIndex = MapScrollState.firstVisibleIndex(rowHeightPx)
-    val visibleRowCount = MapScrollState.visibleRowCount(viewportHeightPx, rowHeightPx)
-    val lastVisibleIndex = firstVisibleIndex + visibleRowCount - 1
-
-    // shouldLoadMore() is true before a branch has loaded anything, so this effect also
-    // covers the lane's first page - no separate initial-load effect needed. It's keyed
-    // on the scroll-derived lastVisibleIndex, never on commits.size or hasMore, which
-    // loadMore() mutates - keying an effect on a value it mutates is what caused the
-    // unbounded reload loop that froze the UI before (see #260 / #256). The while loop
-    // just lets one recomposition catch a lane up several pages instead of one.
-    LaunchedEffect(branch.name, lastVisibleIndex) {
-        while (MapState.shouldLoadMore(branch.name, lastVisibleIndex)) {
-            MapState.loadMore(branch)
-        }
-    }
-
-    Column(
-        modifier = Modifier
-            .width(LaneWidth)
-            .fillMaxHeight()
-    ) {
-        // Reserves the same TitleHeight the old per-column branch name header used
-        // to occupy (see Map()'s headerHeightPx), so lane content still starts at a
-        // consistent y-offset - the name itself now lives on the tip commit's pill
-        // instead (#272), rather than duplicated up here too.
-        Spacer(modifier = Modifier.fillMaxWidth().requiredHeight(TitleHeight))
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight()
-                .clipToBounds()
-        ) {
-            val visibleEnd = (firstVisibleIndex + visibleRowCount).coerceIn(0, commits.size)
-            val visibleStart = firstVisibleIndex.coerceIn(0, visibleEnd)
-
-            for (index in visibleStart until visibleEnd) {
-                val commit = commits[index]
-                val yOffsetPx = (index * rowHeightPx - MapScrollState.offsetPx).roundToInt()
-
-                key(commit.sha) {
-                    CommitNode(
-                        commit = commit,
-                        isSelected = MapState.selectedNodeSha.value == commit.sha,
-                        onClick = { MapState.toggleSelectedNode(commit.sha) },
-                        showLeadingGuideline = false,
-                        showTrailingGuideline = false,
-                        modifier = Modifier.offset { IntOffset(0, yOffsetPx) },
-                    )
-                }
-            }
-        }
-
-    }
-}
-
 
 // The sha and commit message are hidden by default to preserve space (#252); the
 // node itself is the whole clickable target and its detail card only appears while
