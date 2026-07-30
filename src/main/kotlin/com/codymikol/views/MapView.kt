@@ -31,14 +31,10 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerButton
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -60,8 +56,6 @@ import org.eclipse.jgit.lib.Ref
 import java.util.Date
 import kotlin.math.roundToInt
 
-// Narrower than a horizontal title would need, since titles are now rotated
-// diagonally and take up far less width per lane.
 private val LaneWidth = 180.dp
 private val NodeRadius = 5.dp
 private val GutterX = 20.dp
@@ -74,26 +68,18 @@ private val CardHoleSize = 8.dp
 private val CardCorner = 10.dp
 private val CardMaxWidth = 150.dp
 
-// Every lane's title sits in a fixed-height box so all lanes' graphs start at the
-// same y-offset below the titles, regardless of how long each branch name is.
+// Branch-name pills shown on tip commits (#272), colored the same as the node they
+// label so they read as an extension of it rather than an unrelated UI element.
+private val PillCorner = 8.dp
+private val PillFontSize = 10.sp
+private val PillSpacing = 4.dp
+private val PillEndPadding = 12.dp
+private val PillMaxWidth = 80.dp
+
+// Reserves the same header height the old per-column branch name title used to
+// fill (see BranchLane and Map()'s headerHeightPx), so lane content still starts
+// at a consistent y-offset now that the name itself lives on the tip pill (#272).
 private val TitleHeight = 110.dp
-
-// Positive (clockwise) so, pivoting on the text's own top-start corner below,
-// the label sweeps down-and-right into the box rather than up and out of it.
-private val TitleRotation = 45f
-private val TitleFontSize = 12.sp
-private val TitleTextStartPadding = 12.dp
-private val TitleTextTopPadding = 4.dp
-private val TitleTextLineHeight = 16.sp
-
-// Text is capped to this width before rotating, so its rotated footprint is
-// bounded: rotated 45 degrees around its own top-start corner, its deepest
-// point is (TitleTextMaxWidth + ~TitleTextLineHeight) * sin(45deg) below the
-// pivot, i.e. below the top of the box, which is ~89dp at default font scale
-// for the values here - comfortably under TitleHeight (110dp) with margin
-// for TitleTextTopPadding. clip(RectangleShape) below is still a hard
-// backstop against any overflow (e.g. from a larger system font scale).
-private val TitleTextMaxWidth = 110.dp
 
 @Composable
 @Preview
@@ -177,7 +163,6 @@ private fun MapEmptyState() {
 
 @Composable
 private fun BranchLane(branch: Ref, rowHeightPx: Float, viewportHeightPx: Float) {
-    val branchName = branch.name.removePrefix("refs/heads/")
     val commits = MapState.commitsByBranch[branch.name] ?: emptyList()
 
     val firstVisibleIndex = MapScrollState.firstVisibleIndex(rowHeightPx)
@@ -201,7 +186,11 @@ private fun BranchLane(branch: Ref, rowHeightPx: Float, viewportHeightPx: Float)
             .width(LaneWidth)
             .fillMaxHeight()
     ) {
-        MapLaneTitle(branchName)
+        // Reserves the same TitleHeight the old per-column branch name header used
+        // to occupy (see Map()'s headerHeightPx), so lane content still starts at a
+        // consistent y-offset - the name itself now lives on the tip commit's pill
+        // instead (#272), rather than duplicated up here too.
+        Spacer(modifier = Modifier.fillMaxWidth().requiredHeight(TitleHeight))
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -232,43 +221,6 @@ private fun BranchLane(branch: Ref, rowHeightPx: Float, viewportHeightPx: Float)
 }
 
 
-@Composable
-private fun MapLaneTitle(branchName: String) {
-    // The map's own background already shows through here (BranchLane's Column
-    // paints no background of its own), so the title needs no fill of its own
-    // to satisfy "same background color as the map".
-    //
-    // The text's own top-start corner is pinned as the rotation pivot (rather
-    // than the default center), so it stays fixed at the top of the box and
-    // the rest of the label sweeps down/across into the title box's own
-    // reserved height rather than toward the graph below; clipping to the box
-    // is a hard backstop against any residual overflow so a rotated title can
-    // never bleed into the graph.
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .requiredHeight(TitleHeight)
-            .clip(RectangleShape),
-        contentAlignment = Alignment.TopStart
-    ) {
-        Text(
-            text = branchName,
-            style = TextStyle(
-                fontWeight = FontWeight.Bold,
-                fontSize = TitleFontSize,
-                lineHeight = TitleTextLineHeight
-            ),
-            color = Color.White,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .padding(start = TitleTextStartPadding, top = TitleTextTopPadding)
-                .width(TitleTextMaxWidth)
-                .graphicsLayer(rotationZ = TitleRotation, transformOrigin = TransformOrigin(0f, 0f))
-        )
-    }
-}
-
 // The sha and commit message are hidden by default to preserve space (#252); the
 // node itself is the whole clickable target and its detail card only appears while
 // this node is selected.
@@ -283,6 +235,7 @@ private fun CommitNode(
     modifier: Modifier = Modifier,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
+    val tipBranches = MapState.branchTipsBySha.value[commit.sha] ?: emptyList()
 
     Box(
         modifier = modifier
@@ -310,10 +263,46 @@ private fun CommitNode(
             )
         }
 
+        // Hidden while the detail card is showing: the card (up to CardMaxWidth,
+        // leading) and a full row of pills (up to PillMaxWidth each, trailing) can
+        // together exceed LaneWidth, so they'd otherwise risk overlapping.
+        if (tipBranches.isNotEmpty() && !isSelected) {
+            Row(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = PillEndPadding),
+                horizontalArrangement = Arrangement.spacedBy(PillSpacing),
+            ) {
+                tipBranches.forEach { branchName -> BranchPill(branchName, nodeColor(commit)) }
+            }
+        }
+
         CommitContextMenu(
             commit = commit,
             expanded = menuExpanded,
             onDismiss = { menuExpanded = false },
+        )
+    }
+}
+
+// A small labeled pill naming a local branch whose tip is this commit (#272); shown
+// instead of the old per-column branch header now that it labels a node directly.
+@Composable
+private fun BranchPill(branchName: String, color: Color) {
+    Box(
+        modifier = Modifier
+            .widthIn(max = PillMaxWidth)
+            .clip(RoundedCornerShape(PillCorner))
+            .background(color)
+            .padding(horizontal = 6.dp, vertical = 2.dp),
+    ) {
+        Text(
+            text = branchName,
+            color = Color.White,
+            fontSize = PillFontSize,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }
