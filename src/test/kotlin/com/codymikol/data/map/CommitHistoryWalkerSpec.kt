@@ -38,7 +38,7 @@ class CommitHistoryWalkerSpec : DescribeSpec({
             val branch = GitDownState.git.value.listLocalBranches().single()
 
             it("should page through history newest first") {
-                val walker = CommitHistoryWalker(GitDownState.git.value, branch)
+                val walker = CommitHistoryWalker(GitDownState.git.value, listOf(branch))
 
                 val firstPage = walker.nextPage(3)
                 firstPage.map { it.shortMessage } shouldBe listOf("commit 5", "commit 4", "commit 3")
@@ -80,12 +80,40 @@ class CommitHistoryWalkerSpec : DescribeSpec({
                 val branch = GitDownState.git.value.listLocalBranches()
                     .first { it.name.endsWith(defaultBranchName) }
 
-                val walker = CommitHistoryWalker(GitDownState.git.value, branch)
+                val walker = CommitHistoryWalker(GitDownState.git.value, listOf(branch))
                 val commits = walker.nextPage(10)
 
                 val mergeCommits = commits.filter { it.isMergeCommit }
                 mergeCommits shouldHaveSize 1
                 mergeCommits.single().parentShas shouldHaveSize 2
+
+                walker.close()
+            }
+        }
+
+        describe("two branches sharing history") {
+
+            autoClose(
+                createTestRepository()
+                    .addFile("a.txt", "a")
+                    .stageAll()
+                    .commitAll("commit 1")
+                    .createBranch("feature")
+                    .appendToFile("a.txt", "b")
+                    .stageAll()
+                    .commitAll("commit 2")
+                    .transferIntoGitDownState()
+            )
+
+            it("should emit a commit reachable from multiple branches exactly once (#263)") {
+                val branches = GitDownState.git.value.listLocalBranches()
+                branches shouldHaveSize 2
+
+                val walker = CommitHistoryWalker(GitDownState.git.value, branches)
+                val commits = walker.nextPage(10)
+
+                commits.map { it.shortMessage } shouldBe listOf("commit 2", "commit 1")
+                walker.hasMore shouldBe false
 
                 walker.close()
             }
