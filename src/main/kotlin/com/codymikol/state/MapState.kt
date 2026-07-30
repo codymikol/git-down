@@ -7,23 +7,28 @@ import androidx.compose.runtime.mutableStateOf
 import com.codymikol.data.map.CommitGraphNode
 import com.codymikol.data.map.CommitHistoryWalker
 import com.codymikol.extensions.listLocalBranches
-import org.eclipse.jgit.lib.Ref
+import com.codymikol.services.LaneAssigner
 
 /**
- * Backs the Map view. Branch history is walked lazily - loadMore() only advances
- * a branch's RevWalk as far as the UI has actually scrolled, one CommitHistoryWalker
- * per branch, kept open across calls so re-walking from the start is never needed.
+ * Backs the Map view. Every local branch tip is walked in one merged RevWalk (see
+ * #270), so a commit reachable from more than one branch is loaded and rendered
+ * exactly once (#263) - loadMore() only advances that single walker as far as the
+ * UI has actually scrolled, kept open across calls so re-walking from the start is
+ * never needed.
  */
 object MapState {
 
     const val PAGE_SIZE = 30
     const val LOAD_MORE_THRESHOLD = 5
 
-    private val walkers = mutableMapOf<String, CommitHistoryWalker>()
+    private var walker: CommitHistoryWalker? = null
+    private var laneAssigner = LaneAssigner()
 
-    val commitsByBranch = mutableStateMapOf<String, MutableList<CommitGraphNode>>()
+    val commits = mutableStateListOf<CommitGraphNode>()
 
-    val hasMoreByBranch = mutableStateMapOf<String, Boolean>()
+    val lanesBySha = mutableStateMapOf<String, Int>()
+
+    var hasMore = true
 
     /**
      * Sha of the commit node whose detail card is currently shown, or null when no
@@ -48,13 +53,13 @@ object MapState {
 
     /**
      * The full node for the currently selected sha, looked up across every loaded
-     * branch, or null when nothing is selected (or the node has scrolled out of the
+     * commit, or null when nothing is selected (or the node has scrolled out of the
      * loaded window). Used to launch the quick view (see issue #254) for the node
      * the user selected in the map.
      */
     fun selectedNode(): CommitGraphNode? {
         val sha = selectedNodeSha.value ?: return null
-        return commitsByBranch.values.asSequence().flatten().firstOrNull { it.sha == sha }
+        return commits.firstOrNull { it.sha == sha }
     }
 
     val branches = derivedStateOf {
@@ -73,35 +78,34 @@ object MapState {
         )
     }
 
-    fun loadMore(branch: Ref) {
-        if (hasMoreByBranch[branch.name] == false) return
+    fun loadMore() {
+        if (!hasMore) return
 
-        val walker = walkers.getOrPut(branch.name) { CommitHistoryWalker(GitDownState.git.value, branch) }
+        val walker = walker ?: CommitHistoryWalker(GitDownState.git.value, branches.value).also { walker = it }
         val page = walker.nextPage(PAGE_SIZE)
 
-        commitsByBranch.getOrPut(branch.name) { mutableStateListOf() }.addAll(page)
-        hasMoreByBranch[branch.name] = walker.hasMore
+        page.forEach { lanesBySha[it.sha] = laneAssigner.assign(it) }
+        commits.addAll(page)
+        hasMore = walker.hasMore
     }
 
     /**
-     * Branches share a single vertical scroll position (see MapScrollState), so a
-     * branch's own loaded-commit count is checked against that shared position rather
-     * than a lane-local one. lastVisibleIndex must be the last (bottom-most) visible
-     * row, not the first - the first visible index stays well short of loadedCount
-     * whenever more than LOAD_MORE_THRESHOLD rows fit in the viewport, so it would
-     * never trigger paging.
+     * lastVisibleIndex must be the last (bottom-most) visible row, not the first -
+     * the first visible index stays well short of commits.size whenever more than
+     * LOAD_MORE_THRESHOLD rows fit in the viewport, so it would never trigger paging.
      */
-    fun shouldLoadMore(branchName: String, lastVisibleIndex: Int): Boolean {
-        if (hasMoreByBranch[branchName] == false) return false
-        val loadedCount = commitsByBranch[branchName]?.size ?: 0
-        return lastVisibleIndex >= loadedCount - LOAD_MORE_THRESHOLD
+    fun shouldLoadMore(lastVisibleIndex: Int): Boolean {
+        if (!hasMore) return false
+        return lastVisibleIndex >= commits.size - LOAD_MORE_THRESHOLD
     }
 
     fun reset() {
-        walkers.values.forEach { it.close() }
-        walkers.clear()
-        commitsByBranch.clear()
-        hasMoreByBranch.clear()
+        walker?.close()
+        walker = null
+        laneAssigner = LaneAssigner()
+        commits.clear()
+        lanesBySha.clear()
+        hasMore = true
         selectedNodeSha.value = null
     }
 }

@@ -40,73 +40,95 @@ class MapStateSpec : DescribeSpec({
                 MapState.branches.value shouldHaveSize 1
             }
 
-            it("should load every commit into commitsByBranch and mark the branch exhausted") {
-                val branch = MapState.branches.value.single()
+            it("should load every commit into commits and mark the walk exhausted") {
+                MapState.loadMore()
 
-                MapState.loadMore(branch)
-
-                (MapState.commitsByBranch[branch.name] ?: emptyList()) shouldHaveSize 4
-                MapState.hasMoreByBranch[branch.name] shouldBe false
+                MapState.commits shouldHaveSize 4
+                MapState.hasMore shouldBe false
             }
 
-            it("should not duplicate rows once a branch is exhausted") {
-                val branch = MapState.branches.value.single()
+            it("should not duplicate rows once the walk is exhausted") {
+                MapState.loadMore()
+                MapState.loadMore()
 
-                MapState.loadMore(branch)
-                MapState.loadMore(branch)
+                MapState.commits shouldHaveSize 4
+            }
 
-                (MapState.commitsByBranch[branch.name] ?: emptyList()) shouldHaveSize 4
+            it("should assign a lane to every loaded commit") {
+                MapState.loadMore()
+
+                MapState.commits.map { MapState.lanesBySha[it.sha] } shouldBe listOf(0, 0, 0, 0)
             }
 
             it("should clear loaded state on reset") {
-                val branch = MapState.branches.value.single()
-                MapState.loadMore(branch)
+                MapState.loadMore()
 
                 MapState.reset()
 
-                MapState.commitsByBranch.isEmpty() shouldBe true
-                MapState.hasMoreByBranch.isEmpty() shouldBe true
+                MapState.commits.isEmpty() shouldBe true
+                MapState.lanesBySha.isEmpty() shouldBe true
+                MapState.hasMore shouldBe true
+            }
+        }
+
+        describe("two branches sharing history") {
+
+            autoClose(
+                createTestRepository()
+                    .addFile("a.txt", "a")
+                    .stageAll()
+                    .commitAll("commit 1")
+                    .createBranch("feature")
+                    .appendToFile("a.txt", "b")
+                    .stageAll()
+                    .commitAll("commit 2")
+                    .transferIntoGitDownState()
+            )
+
+            it("should load a commit reachable from both branch tips exactly once (#263)") {
+                MapState.branches.value shouldHaveSize 2
+
+                MapState.loadMore()
+
+                MapState.commits.map { it.shortMessage } shouldBe listOf("commit 2", "commit 1")
             }
         }
 
         describe("shouldLoadMore") {
 
-            it("should return false once the branch has no more commits to load") {
+            it("should return false once the walk has no more commits to load") {
                 MapState.reset()
-                MapState.commitsByBranch["refs/heads/main"] = dummyCommits(4)
-                MapState.hasMoreByBranch["refs/heads/main"] = false
+                MapState.commits.addAll(dummyCommits(4))
+                MapState.hasMore = false
 
-                MapState.shouldLoadMore("refs/heads/main", 3) shouldBe false
+                MapState.shouldLoadMore(3) shouldBe false
             }
 
-            it("should return false when the shared last-visible index is far from this branch's loaded end") {
+            it("should return false when the last-visible index is far from the loaded end") {
                 MapState.reset()
-                MapState.commitsByBranch["refs/heads/main"] = dummyCommits(30)
-                MapState.hasMoreByBranch["refs/heads/main"] = true
+                MapState.commits.addAll(dummyCommits(30))
 
-                MapState.shouldLoadMore("refs/heads/main", 0) shouldBe false
+                MapState.shouldLoadMore(0) shouldBe false
             }
 
-            it("should return true when the shared last-visible index nears this branch's loaded end and more remain") {
+            it("should return true when the last-visible index nears the loaded end and more remain") {
                 MapState.reset()
-                MapState.commitsByBranch["refs/heads/main"] = dummyCommits(30)
-                MapState.hasMoreByBranch["refs/heads/main"] = true
+                MapState.commits.addAll(dummyCommits(30))
 
-                MapState.shouldLoadMore("refs/heads/main", 28) shouldBe true
+                MapState.shouldLoadMore(28) shouldBe true
             }
 
             it("should return true exactly at the load-more threshold boundary") {
                 MapState.reset()
-                MapState.commitsByBranch["refs/heads/main"] = dummyCommits(30)
-                MapState.hasMoreByBranch["refs/heads/main"] = true
+                MapState.commits.addAll(dummyCommits(30))
 
-                MapState.shouldLoadMore("refs/heads/main", 30 - MapState.LOAD_MORE_THRESHOLD) shouldBe true
+                MapState.shouldLoadMore(30 - MapState.LOAD_MORE_THRESHOLD) shouldBe true
             }
 
-            it("should return true when nothing has loaded yet for the branch and more is assumed available") {
+            it("should return true when nothing has loaded yet and more is assumed available") {
                 MapState.reset()
 
-                MapState.shouldLoadMore("refs/heads/main", 0) shouldBe true
+                MapState.shouldLoadMore(0) shouldBe true
             }
         }
 
@@ -180,7 +202,7 @@ class MapStateSpec : DescribeSpec({
 
             it("resolves the selected node from the loaded commits") {
                 MapState.reset()
-                MapState.commitsByBranch["refs/heads/main"] = dummyCommits(3)
+                MapState.commits.addAll(dummyCommits(3))
                 MapState.selectNode("sha2")
 
                 MapState.selectedNode()?.shortMessage shouldBe "commit 2"
@@ -188,14 +210,14 @@ class MapStateSpec : DescribeSpec({
 
             it("resolves to null when nothing is selected") {
                 MapState.reset()
-                MapState.commitsByBranch["refs/heads/main"] = dummyCommits(3)
+                MapState.commits.addAll(dummyCommits(3))
 
                 MapState.selectedNode() shouldBe null
             }
 
             it("resolves to null when the selected sha is not loaded") {
                 MapState.reset()
-                MapState.commitsByBranch["refs/heads/main"] = dummyCommits(3)
+                MapState.commits.addAll(dummyCommits(3))
                 MapState.selectNode("sha-missing")
 
                 MapState.selectedNode() shouldBe null
@@ -245,7 +267,7 @@ class MapStateSpec : DescribeSpec({
             }
         }
 
-        describe("a branch with more commits than one page") {
+        describe("more commits than one page") {
 
             val repo = createTestRepository().addFile("a.txt", "0").stageAll().commitAll("commit 0")
             repeat(64) { i ->
@@ -256,24 +278,23 @@ class MapStateSpec : DescribeSpec({
             autoClose(repo.transferIntoGitDownState())
 
             // Regression guard for #256: a loop driven by shouldLoadMore() (mirroring
-            // BranchLane's catch-up effect) must converge in a small, bounded number of
-            // iterations rather than spin forever - it must NOT be re-launched by a key
+            // the map screen's catch-up effect) must converge in a small, bounded number
+            // of iterations rather than spin forever - it must NOT be re-launched by a key
             // that loadMore() itself mutates (commits.size / hasMore), the mechanism that
             // previously froze the UI.
-            it("should catch a lane up to a deep scroll position in a bounded number of pages") {
-                val branch = MapState.branches.value.single()
+            it("should catch up to a deep scroll position in a bounded number of pages") {
                 val deepLastVisibleIndex = 60
 
                 var iterations = 0
-                while (MapState.shouldLoadMore(branch.name, deepLastVisibleIndex)) {
+                while (MapState.shouldLoadMore(deepLastVisibleIndex)) {
                     check(iterations < 10) { "loadMore loop did not converge - possible regression of #256" }
-                    MapState.loadMore(branch)
+                    MapState.loadMore()
                     iterations++
                 }
 
                 iterations shouldBe 3
-                MapState.hasMoreByBranch[branch.name] shouldBe false
-                (MapState.commitsByBranch[branch.name] ?: emptyList()) shouldHaveSize 65
+                MapState.hasMore shouldBe false
+                MapState.commits shouldHaveSize 65
             }
         }
     }
@@ -289,4 +310,4 @@ private fun dummyCommits(count: Int) = (1..count).map {
         date = Date(),
         parentShas = emptyList(),
     )
-}.toMutableList()
+}
