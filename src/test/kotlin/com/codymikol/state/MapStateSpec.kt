@@ -3,6 +3,7 @@ package com.codymikol.state
 import com.codymikol.data.map.CommitGraphNode
 import com.codymikol.repository.TestRepository.Companion.createTestRepository
 import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import java.util.Date
@@ -198,6 +199,49 @@ class MapStateSpec : DescribeSpec({
                 MapState.selectNode("sha-missing")
 
                 MapState.selectedNode() shouldBe null
+            }
+        }
+
+        describe("branchTipsBySha") {
+
+            autoClose(
+                createTestRepository()
+                    .addFile("a.txt", "a")
+                    .stageAll()
+                    .commitAll("commit 1")
+                    .transferIntoGitDownState()
+            )
+
+            it("maps a branch's tip commit sha to that branch's name") {
+                val branch = MapState.branches.value.single()
+                val tipSha = branch.objectId.name
+
+                MapState.branchTipsBySha.value[tipSha] shouldBe listOf(branch.name.removePrefix("refs/heads/"))
+            }
+
+            it("collects every branch name pointing at a shared tip commit") {
+                val original = MapState.branches.value.single()
+                val tipSha = original.objectId.name
+                GitDownState.git.value.branchCreate().setName("feature").call()
+                // branches/branchTipsBySha are derivedStateOf on GitDownState.git,
+                // which only recomputes off lastRequestedUpdateTimestamp (see
+                // GitDownState.git and Git.command in GitExtensions.kt) - bump it
+                // manually since branchCreate() above bypassed that command() wrapper.
+                // Incrementing (rather than re-reading the clock) guarantees a value
+                // change even if this runs within the same clock tick as the initial
+                // read, which mutableStateOf's equality check would otherwise ignore.
+                GitDownState.lastRequestedUpdateTimestamp.value += 1
+
+                val names = MapState.branchTipsBySha.value[tipSha]
+
+                names shouldContainExactlyInAnyOrder listOf(
+                    original.name.removePrefix("refs/heads/"),
+                    "feature",
+                )
+            }
+
+            it("has no entry for a commit that is nobody's branch tip") {
+                MapState.branchTipsBySha.value["not-a-real-sha"] shouldBe null
             }
         }
 
