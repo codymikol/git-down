@@ -94,6 +94,39 @@ class MapStateSpec : DescribeSpec({
             }
         }
 
+        describe("a branch with a merge commit") {
+
+            val initial = createTestRepository()
+                .addFile("a.txt", "a")
+                .stageAll()
+                .commitAll("init")
+
+            val defaultBranchName = initial.git.repository.branch
+
+            autoClose(
+                initial
+                    .createBranch("feature")
+                    .checkout("feature")
+                    .appendToFile("a.txt", "b")
+                    .stageAll()
+                    .commitAll("feature work")
+                    .checkout(defaultBranchName)
+                    .merge("feature", "merge feature")
+                    .transferIntoGitDownState()
+            )
+
+            it("should position the merge's side branch on a different lane than the mainline") {
+                MapState.loadMore()
+
+                val mainlineLanes = MapState.commits.filter { !it.isMergeCommit && it.shortMessage != "feature work" }
+                    .map { MapState.lanesBySha[it.sha] }
+                val sideLane = MapState.lanesBySha[MapState.commits.single { it.shortMessage == "feature work" }.sha]
+
+                mainlineLanes.toSet() shouldBe setOf(0)
+                sideLane shouldBe 1
+            }
+        }
+
         describe("shouldLoadMore") {
 
             it("should return false once the walk has no more commits to load") {
