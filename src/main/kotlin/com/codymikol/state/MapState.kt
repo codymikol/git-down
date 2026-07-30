@@ -61,6 +61,18 @@ object MapState {
         GitDownState.git.value.listLocalBranches().sortedBy { it.name }
     }
 
+    /**
+     * Every local branch's tip commit sha, mapped to the name(s) of the branch(es)
+     * pointing at it - a commit shared by multiple branch tips collects all of their
+     * names. Backs the branch-name pills shown on tip commits (see issue #272).
+     */
+    val branchTipsBySha = derivedStateOf {
+        branches.value.groupBy(
+            keySelector = { it.objectId.name },
+            valueTransform = { it.name.removePrefix("refs/heads/") }
+        )
+    }
+
     fun loadMore(branch: Ref) {
         if (hasMoreByBranch[branch.name] == false) return
 
