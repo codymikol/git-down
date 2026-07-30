@@ -1,12 +1,14 @@
 package com.codymikol.views
 
 import androidx.compose.desktop.ui.tooling.preview.Preview
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.PointerMatcher
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.onClick
 import androidx.compose.foundation.shape.CircleShape
@@ -42,6 +44,8 @@ import com.codymikol.data.Colors
 import com.codymikol.data.map.CommitCard
 import com.codymikol.data.map.CommitContextMenu as CommitContextMenuModel
 import com.codymikol.data.map.CommitGraphNode
+import com.codymikol.data.map.MapConnector
+import com.codymikol.services.MapConnectors
 import com.codymikol.state.GitDownState
 import com.codymikol.state.MapState
 import java.util.Date
@@ -50,6 +54,7 @@ private val LaneWidth = 180.dp
 private val NodeRadius = 5.dp
 private val GutterX = 20.dp
 private val RowHeight = 48.dp
+private const val ConnectorStrokeWidth = 2f
 
 // The dog-tag detail card shown when a node is clicked (#252): a rounded-rectangle
 // body with a protruding round tab holding a punched hole, sitting over the node.
@@ -101,23 +106,71 @@ private fun Map() {
         }
     }
 
-    LazyColumn(
-        state = lazyListState,
-        modifier = Modifier.fillMaxSize().background(Colors.DarkGrayBackground),
-    ) {
-        items(commits.size, key = { commits[it].sha }) { index ->
-            val commit = commits[index]
-            val lane = MapState.lanesBySha[commit.sha] ?: 0
+    // Recomputed only when commits/lanesBySha themselves change (i.e. on page load),
+    // not on every scroll frame - the Canvas below reads lazyListState directly during
+    // its own draw phase, so scrolling never triggers recomposition of this list.
+    val connectors by remember { derivedStateOf { MapConnectors.compute(commits, MapState.lanesBySha) } }
 
-            CommitNode(
-                commit = commit,
-                isSelected = MapState.selectedNodeSha.value == commit.sha,
-                onClick = { MapState.toggleSelectedNode(commit.sha) },
-                showLeadingGuideline = false,
-                showTrailingGuideline = false,
-                modifier = Modifier.offset(x = LaneWidth * lane).width(LaneWidth),
-            )
+    Box(modifier = Modifier.fillMaxSize().background(Colors.DarkGrayBackground)) {
+        // A single overlay pass over the currently-visible rows (#271): an individual
+        // commit row's own draw bounds are clipped to that row, so a diagonal line
+        // reaching into a neighbouring row/lane can only be drawn here, not per-node.
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            drawConnectors(connectors, lazyListState)
         }
+
+        LazyColumn(
+            state = lazyListState,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            items(commits.size, key = { commits[it].sha }) { index ->
+                val commit = commits[index]
+                val lane = MapState.lanesBySha[commit.sha] ?: 0
+
+                CommitNode(
+                    commit = commit,
+                    isSelected = MapState.selectedNodeSha.value == commit.sha,
+                    onClick = { MapState.toggleSelectedNode(commit.sha) },
+                    modifier = Modifier.offset(x = LaneWidth * lane).width(LaneWidth),
+                )
+            }
+        }
+    }
+}
+
+// Row height is fixed, so a row's on-screen y-offset is a straight formula from the
+// first visible row - true for every loaded row, not just the ones currently in
+// layoutInfo.visibleItemsInfo, which is what lets a connector reach into a
+// neighbouring row without that row needing to be measured this frame.
+private fun DrawScope.drawConnectors(connectors: List<MapConnector>, lazyListState: LazyListState) {
+    val rowHeightPx = RowHeight.toPx()
+    val gutterXPx = GutterX.toPx()
+    val laneWidthPx = LaneWidth.toPx()
+    val firstIndex = lazyListState.firstVisibleItemIndex
+    val firstOffset = lazyListState.firstVisibleItemScrollOffset
+
+    fun rowCenterY(index: Int) = (index - firstIndex) * rowHeightPx - firstOffset + rowHeightPx / 2f
+    fun laneCenterX(lane: Int) = gutterXPx + lane * laneWidthPx
+
+    val visibleTop = -rowHeightPx
+    val visibleBottom = size.height + rowHeightPx
+
+    connectors.forEach { connector ->
+        val childY = rowCenterY(connector.childIndex)
+        val parentY = rowCenterY(connector.parentIndex)
+        if (childY < visibleTop && parentY < visibleTop) return@forEach
+        if (childY > visibleBottom && parentY > visibleBottom) return@forEach
+
+        // Cross-lane connectors (merge splits, reconvergences) get the same blue as a
+        // merge node so the line reads as distinct from a same-lane continuation,
+        // rather than relying on the diagonal angle alone.
+        val sameLane = connector.childLane == connector.parentLane
+        drawLine(
+            color = if (sameLane) Colors.LightGrayText else Colors.FileModified,
+            start = Offset(laneCenterX(connector.childLane), childY),
+            end = Offset(laneCenterX(connector.parentLane), parentY),
+            strokeWidth = ConnectorStrokeWidth,
+        )
     }
 }
 
@@ -145,8 +198,6 @@ private fun CommitNode(
     commit: CommitGraphNode,
     isSelected: Boolean,
     onClick: () -> Unit,
-    showLeadingGuideline: Boolean,
-    showTrailingGuideline: Boolean,
     modifier: Modifier = Modifier,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
@@ -166,7 +217,7 @@ private fun CommitNode(
                 MapState.selectNode(commit.sha)
                 menuExpanded = true
             }
-            .drawBehind { drawCommitNode(commit, showLeadingGuideline, showTrailingGuideline) }
+            .drawBehind { drawCommitNode(commit) }
     ) {
         if (isSelected) {
             CommitDetailCard(
@@ -315,26 +366,9 @@ private fun CardLine(text: String, fontWeight: FontWeight) {
 private fun nodeColor(commit: CommitGraphNode): Color =
     if (commit.isMergeCommit) Colors.FileModified else Colors.FileAdded
 
-private fun DrawScope.drawCommitNode(
-    commit: CommitGraphNode,
-    showLeadingGuideline: Boolean,
-    showTrailingGuideline: Boolean,
-) {
+private fun DrawScope.drawCommitNode(commit: CommitGraphNode) {
     val x = GutterX.toPx()
     val centerY = size.height / 2f
-
-    if (showLeadingGuideline) {
-        drawLine(color = Colors.LightGrayText, start = Offset(x, 0f), end = Offset(x, centerY), strokeWidth = 2f)
-    }
-
-    if (showTrailingGuideline) {
-        drawLine(
-            color = Colors.LightGrayText,
-            start = Offset(x, centerY),
-            end = Offset(x, size.height),
-            strokeWidth = 2f
-        )
-    }
 
     when (commit.isMergeCommit) {
         true -> drawDiamond(center = Offset(x, centerY), radius = NodeRadius.toPx(), color = nodeColor(commit))
