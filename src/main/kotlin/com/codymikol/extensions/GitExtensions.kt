@@ -554,6 +554,21 @@ suspend fun Git.discardAllWorkingDirectory(): Git = command {
 
 }
 
+/**
+ * Detaches HEAD at the commit [sha] resolves to (any ref or object-id string jgit
+ * can resolve), backing the map view's "Checkout Detached HEAD" action (see issue
+ * #279). jgit's checkout detaches HEAD whenever the name is a commit-ish that is
+ * not a branch, so the working tree is moved to that commit without any branch ref
+ * being created or moved.
+ */
+suspend fun Git.checkoutDetachedHead(sha: String): Git = command {
+    this@checkoutDetachedHead
+        .checkout()
+        .setName(sha)
+        .call()
+        .also { logger.info("Checking out $sha as detached HEAD") }
+}
+
 suspend fun Git.stageFile(fileDeltaNode: FileDeltaNode): Git = command {
 
     val shouldSetUpdate = fileDeltaNode.fileDelta is WorkingDirectory.FileDeleted
