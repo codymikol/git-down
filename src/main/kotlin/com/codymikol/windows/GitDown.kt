@@ -44,6 +44,7 @@ import com.codymikol.gitdown.generated.resources.stash_white
 import com.codymikol.services.WindowSizeService
 import com.codymikol.state.GitDownState
 import com.codymikol.state.Keys
+import com.codymikol.state.MapDebugState
 import com.codymikol.state.MapState
 import com.codymikol.tabs.Tab
 import com.codymikol.views.CommitView
@@ -94,6 +95,11 @@ fun GitDown(applicationScope: ApplicationScope) {
             val checkoutDetachedTarget = if (isDown && it.key == Key.Enter && tab == Tab.Map)
                 MapState.selectedNode() else null
 
+            // Ctrl+Shift+D on the map toggles the debug menu that tunes the map's
+            // "magic number" dimensions live (#291).
+            val isMapDebugToggle = isDown && tab == Tab.Map &&
+                it.isCtrlPressed && it.isShiftPressed && it.key == Key.D
+
             // Space or Escape closes the quick view while it is open.
             val shouldCloseQuickView = isDown && tab == Tab.QuickView &&
                 (it.key == Key.Spacebar || it.key == Key.Escape)
@@ -103,6 +109,10 @@ fun GitDown(applicationScope: ApplicationScope) {
                 (it.key == Key.DirectionUp || it.key == Key.DirectionDown)
 
             when {
+                isMapDebugToggle -> {
+                    MapDebugState.toggle()
+                    true
+                }
                 isFileSelectionArrow -> {
                     GitDownState.selectAdjacentFile(if (it.key == Key.DirectionUp) -1 else 1)
                     true
