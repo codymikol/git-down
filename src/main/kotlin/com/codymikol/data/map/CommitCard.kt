@@ -8,7 +8,7 @@ import java.util.Date
  * Formats the three lines shown on the floating card that appears when a commit
  * node is clicked in the map view (see issue #252):
  *
- *   <short sha>: <commit message>
+ *   <short sha>: <first line of commit message>
  *   Author: <name> <<email>>
  *   Date: MM/DD/YY, h:mm AM/PM <relative>
  *
@@ -17,7 +17,9 @@ import java.util.Date
  */
 object CommitCard {
 
-    fun title(node: CommitGraphNode): String = "${node.shortSha}: ${node.shortMessage}"
+    fun title(node: CommitGraphNode): String = "${node.shortSha}: ${firstLine(node.shortMessage)}"
+
+    private fun firstLine(message: String): String = message.lineSequence().firstOrNull().orEmpty()
 
     fun author(node: CommitGraphNode): String = "Author: ${node.authorName} <${node.authorEmail}>"
 

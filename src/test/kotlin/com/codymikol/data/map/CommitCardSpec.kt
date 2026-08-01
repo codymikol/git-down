@@ -34,6 +34,11 @@ class CommitCardSpec : DescribeSpec({
             it("joins the short sha and the commit message") {
                 CommitCard.title(node(shortSha = "abc1234", shortMessage = "fix bug")) shouldBe "abc1234: fix bug"
             }
+
+            it("renders only the first line of a multi-line commit message") {
+                CommitCard.title(node(shortSha = "abc1234", shortMessage = "fix bug\n\nlong body here")) shouldBe
+                    "abc1234: fix bug"
+            }
         }
 
         describe("author") {
