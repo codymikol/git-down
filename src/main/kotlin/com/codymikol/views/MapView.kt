@@ -6,6 +6,8 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.PointerMatcher
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -46,6 +48,7 @@ import com.codymikol.data.map.CommitContextMenu as CommitContextMenuModel
 import com.codymikol.data.map.CommitGraphNode
 import com.codymikol.data.map.MapConnector
 import com.codymikol.services.MapConnectors
+import com.codymikol.services.OrderedBranchTip
 import com.codymikol.state.GitDownState
 import com.codymikol.state.MapState
 import java.util.Date
@@ -63,12 +66,11 @@ private val CardHoleSize = 8.dp
 private val CardCorner = 10.dp
 private val CardMaxWidth = 150.dp
 
-// Branch-name pills shown on tip commits (#272), colored the same as the node they
-// label so they read as an extension of it rather than an unrelated UI element.
+// Branch-name pills for each branch tip (#272), pinned to a row at the top of the
+// map (#277) and colored by the same rule as the node they label.
 private val PillCorner = 8.dp
 private val PillFontSize = 10.sp
 private val PillSpacing = 4.dp
-private val PillEndPadding = 12.dp
 private val PillMaxWidth = 80.dp
 
 @Composable
@@ -111,31 +113,68 @@ private fun Map() {
     // its own draw phase, so scrolling never triggers recomposition of this list.
     val connectors by remember { derivedStateOf { MapConnectors.compute(commits, MapState.lanesBySha) } }
 
-    Box(modifier = Modifier.fillMaxSize().background(Colors.DarkGrayBackground)) {
-        // A single overlay pass over the currently-visible rows (#271): an individual
-        // commit row's own draw bounds are clipped to that row, so a diagonal line
-        // reaching into a neighbouring row/lane can only be drawn here, not per-node.
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            drawConnectors(connectors, lazyListState)
-        }
+    Column(modifier = Modifier.fillMaxSize().background(Colors.DarkGrayBackground)) {
+        // Branch tips are pinned here at the top of the grid (#277), ordered
+        // left-to-right so the mainline everything merges into leads and the side
+        // branches follow by how soon they rejoin it - rather than scattered down
+        // the history at each tip commit's chronological row.
+        BranchPillRow(MapState.orderedBranchTips.value)
 
-        LazyColumn(
-            state = lazyListState,
-            modifier = Modifier.fillMaxSize(),
-        ) {
-            items(commits.size, key = { commits[it].sha }) { index ->
-                val commit = commits[index]
-                val lane = MapState.lanesBySha[commit.sha] ?: 0
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            // A single overlay pass over the currently-visible rows (#271): an individual
+            // commit row's own draw bounds are clipped to that row, so a diagonal line
+            // reaching into a neighbouring row/lane can only be drawn here, not per-node.
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                drawConnectors(connectors, lazyListState)
+            }
 
-                CommitNode(
-                    commit = commit,
-                    isSelected = MapState.selectedNodeSha.value == commit.sha,
-                    onClick = { MapState.toggleSelectedNode(commit.sha) },
-                    modifier = Modifier.offset(x = LaneWidth * lane).width(LaneWidth),
-                )
+            LazyColumn(
+                state = lazyListState,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                items(commits.size, key = { commits[it].sha }) { index ->
+                    val commit = commits[index]
+                    val lane = MapState.lanesBySha[commit.sha] ?: 0
+
+                    CommitNode(
+                        commit = commit,
+                        isSelected = MapState.selectedNodeSha.value == commit.sha,
+                        onClick = { MapState.toggleSelectedNode(commit.sha) },
+                        modifier = Modifier.offset(x = LaneWidth * lane).width(LaneWidth),
+                    )
+                }
             }
         }
     }
+}
+
+// The row of branch-name pills pinned to the top of the map (#277), one pill per
+// branch name in merge-proximity order. A tip shared by several branches lays its
+// names out together, and a merge-commit tip is blued to match its node.
+@Composable
+private fun BranchPillRow(tips: List<OrderedBranchTip>) {
+    if (tips.isEmpty()) return
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            // Scroll rather than wrap or clip: the tips stay on one top row even when
+            // there are more branches than fit across the map.
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = GutterX, vertical = PillSpacing * 2),
+        horizontalArrangement = Arrangement.spacedBy(PillSpacing),
+    ) {
+        tips.forEach { tip ->
+            tip.branchNames.forEach { branchName -> BranchPill(branchName, tipColor(tip)) }
+        }
+    }
+}
+
+// A tip pill takes the same colour rule as its node (nodeColor). The tip may not be
+// among the loaded commits yet, in which case it defaults to the non-merge colour.
+private fun tipColor(tip: OrderedBranchTip): Color {
+    val commit = MapState.commits.firstOrNull { it.sha == tip.sha } ?: return Colors.FileAdded
+    return nodeColor(commit)
 }
 
 // Row height is fixed, so a row's on-screen y-offset is a straight formula from the
@@ -201,7 +240,6 @@ private fun CommitNode(
     modifier: Modifier = Modifier,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
-    val tipBranches = MapState.branchTipsBySha.value[commit.sha] ?: emptyList()
 
     Box(
         modifier = modifier
@@ -229,20 +267,6 @@ private fun CommitNode(
             )
         }
 
-        // Hidden while the detail card is showing: the card (up to CardMaxWidth,
-        // leading) and a full row of pills (up to PillMaxWidth each, trailing) can
-        // together exceed LaneWidth, so they'd otherwise risk overlapping.
-        if (tipBranches.isNotEmpty() && !isSelected) {
-            Row(
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(end = PillEndPadding),
-                horizontalArrangement = Arrangement.spacedBy(PillSpacing),
-            ) {
-                tipBranches.forEach { branchName -> BranchPill(branchName, nodeColor(commit)) }
-            }
-        }
-
         CommitContextMenu(
             commit = commit,
             expanded = menuExpanded,
@@ -251,8 +275,7 @@ private fun CommitNode(
     }
 }
 
-// A small labeled pill naming a local branch whose tip is this commit (#272); shown
-// instead of the old per-column branch header now that it labels a node directly.
+// A small labeled pill naming a local branch, rendered in the top pill row (#277).
 @Composable
 private fun BranchPill(branchName: String, color: Color) {
     Box(
