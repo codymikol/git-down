@@ -275,8 +275,9 @@ private fun BranchPill(branchName: String, color: Color) {
 
 // The right-click context menu for a commit node (#253). Its actions are grouped
 // by CommitContextMenu, with a divider drawn between each group. Quick View (#254)
-// launches the quick view for this commit; the remaining behaviours are wired up
-// in follow-up issues, so those items only dismiss for now.
+// launches the quick view for this commit and Diff with HEAD (#280) diffs it
+// against the current HEAD; the remaining behaviours are wired up in follow-up
+// issues, so those items only dismiss for now.
 @Composable
 private fun CommitContextMenu(
     commit: CommitGraphNode,
@@ -296,6 +297,9 @@ private fun CommitContextMenu(
                     onClick = when (action.label) {
                         "Quick View" -> {
                             { GitDownState.openQuickView(commit); onDismiss() }
+                        }
+                        "Diff with HEAD..." -> {
+                            { GitDownState.openDiffWithHead(commit); onDismiss() }
                         }
                         else -> onDismiss
                     },
