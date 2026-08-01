@@ -99,6 +99,11 @@ object GitDownState {
         DiffTree.make(deltas)
     }
 
+    // The path of the file highlighted in the quick view file list (see issue #278),
+    // or null when nothing is explicitly selected - in which case the first file (the
+    // one whose header is sticky at the top of the diff) is treated as the selection.
+    val quickViewSelectedFilePath = mutableStateOf<String?>(null)
+
     // The tab to return to when the quick view is dismissed. Only captured on the way
     // in so reopening the quick view for a different commit keeps the original.
     private var tabBeforeQuickView: Tab = Tab.Map
@@ -228,6 +233,7 @@ object GitDownState {
         if (currentTab.value != Tab.QuickView) tabBeforeQuickView = currentTab.value
         quickViewCommit.value = commit
         quickViewAgainstHead.value = false
+        quickViewSelectedFilePath.value = null
         selectTab(Tab.QuickView)
     }
 
@@ -240,6 +246,7 @@ object GitDownState {
         if (currentTab.value != Tab.QuickView) tabBeforeQuickView = currentTab.value
         quickViewCommit.value = commit
         quickViewAgainstHead.value = true
+        quickViewSelectedFilePath.value = null
         selectTab(Tab.QuickView)
     }
 
@@ -247,7 +254,28 @@ object GitDownState {
     fun closeQuickView() {
         quickViewCommit.value = null
         quickViewAgainstHead.value = false
+        quickViewSelectedFilePath.value = null
         selectTab(tabBeforeQuickView)
+    }
+
+    /** Highlights [path] in the quick view file list (see issue #278). */
+    fun selectQuickViewFile(path: String) {
+        quickViewSelectedFilePath.value = path
+    }
+
+    /**
+     * Moves the quick view file selection by [offset] (see issue #278), clamped to the
+     * commit's file list. With nothing selected the first file - the one sticky at the
+     * top of the diff - is treated as the current selection.
+     */
+    fun selectAdjacentQuickViewFile(offset: Int) {
+        val paths = quickViewDiffTree.value.fileDeltaNodes.map { it.getPath() }
+        if (paths.isEmpty()) return
+
+        val currentIndex = paths.indexOf(quickViewSelectedFilePath.value).coerceAtLeast(0)
+        val nextIndex = (currentIndex + offset).coerceIn(paths.indices)
+
+        quickViewSelectedFilePath.value = paths[nextIndex]
     }
 
     fun selectAdjacentFile(offset: Int) {
