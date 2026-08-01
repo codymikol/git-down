@@ -89,9 +89,17 @@ fun GitDown(applicationScope: ApplicationScope) {
             val shouldCloseQuickView = isDown && tab == Tab.QuickView &&
                 (it.key == Key.Spacebar || it.key == Key.Escape)
 
+            // Up/Down selects the previous/next file in the quick view (#278).
+            val isQuickViewFileArrow = isDown && tab == Tab.QuickView &&
+                (it.key == Key.DirectionUp || it.key == Key.DirectionDown)
+
             when {
                 isFileSelectionArrow -> {
                     GitDownState.selectAdjacentFile(if (it.key == Key.DirectionUp) -1 else 1)
+                    true
+                }
+                isQuickViewFileArrow -> {
+                    GitDownState.selectAdjacentQuickViewFile(if (it.key == Key.DirectionUp) -1 else 1)
                     true
                 }
                 shouldCloseQuickView -> {
