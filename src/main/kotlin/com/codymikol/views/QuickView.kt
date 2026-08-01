@@ -51,6 +51,10 @@ import com.codymikol.data.map.QuickViewCommitDetails
 import com.codymikol.state.GitDownState
 import java.util.Date
 
+// The commit details are capped at this height and scroll past it (see issue #290) so a
+// long commit message never crowds out the file list that fills the space below them.
+private val CommitDetailsMaxHeight = 240.dp
+
 /**
  * The quick view (see issue #254): an ephemeral overlay launched against a single
  * commit. Its commit details sit on the left and the commit's diff (reusing the
@@ -98,21 +102,24 @@ private fun ColumnScope.QuickViewDetailPanel(diffListState: LazyListState) {
 }
 
 /**
- * The list of files changed in the quick view's commit (see issue #278), drawn beneath
- * the commit details behind a top border. Selecting a file highlights it and scrolls the
- * diff so its header is at the top; the highlight also tracks whichever header is sticky.
+ * The list of files changed in the quick view's commit (see issue #278), drawn directly
+ * beneath the commit details behind a thin themed separator and filling the rest of the
+ * panel (see issue #290). Selecting a file highlights it and scrolls the diff so its
+ * header is at the top; the highlight also tracks whichever header is sticky.
  */
 @Composable
-private fun QuickViewFileList(diffListState: LazyListState) {
+private fun ColumnScope.QuickViewFileList(diffListState: LazyListState) {
     val nodes = GitDownState.quickViewDiffTree.value.fileDeltaNodes
     if (nodes.isEmpty()) return
 
     val selectedPath = GitDownState.quickViewSelectedFilePath.value
     val selectedIndex = nodes.indexOfFirst { it.getPath() == selectedPath }.coerceAtLeast(0)
 
-    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color.Black))
+    // A thin themed separator between the commit details above and the file list, rather
+    // than a hard black line (see issue #290).
+    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Colors.LightGrayBackground))
 
-    LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 220.dp)) {
+    LazyColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
         itemsIndexed(nodes) { index, node ->
             QuickViewFileRow(
                 node = node,
@@ -148,13 +155,17 @@ private fun QuickViewFileRow(node: FileDeltaNode, selected: Boolean, onClick: ()
 }
 
 @Composable
-private fun ColumnScope.CommitDetails(commit: CommitGraphNode) {
+private fun CommitDetails(commit: CommitGraphNode) {
     val now = remember(commit.sha) { Date() }
 
+    // Wrap-content (no weight) so the details sit directly under the subheader at the
+    // top of the panel rather than stretching and pushing the file list to the bottom
+    // (see issue #290). Capped and scrollable so a long commit message can never starve
+    // the file list that fills the space below it.
     Column(
         modifier = Modifier
-            .weight(1f)
             .fillMaxWidth()
+            .heightIn(max = CommitDetailsMaxHeight)
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
