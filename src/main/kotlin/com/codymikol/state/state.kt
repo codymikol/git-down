@@ -8,6 +8,7 @@ import com.codymikol.data.file.Status
 import com.codymikol.data.file.WorkingDirectory
 import com.codymikol.data.map.CommitGraphNode
 import com.codymikol.data.stash.StashListItem
+import com.codymikol.extensions.checkoutDetachedHead
 import com.codymikol.extensions.getCommitDiff
 import com.codymikol.extensions.getCommitDiffAgainstHead
 import com.codymikol.extensions.getCurrentRefCommitCount
@@ -248,6 +249,15 @@ object GitDownState {
         quickViewAgainstHead.value = true
         quickViewSelectedFilePath.value = null
         selectTab(Tab.QuickView)
+    }
+
+    /**
+     * Checks [commit] out as a detached HEAD (see issue #279): the working tree is
+     * moved to that commit without creating or moving any branch. Backs the map
+     * view's "Checkout Detached HEAD" action.
+     */
+    suspend fun checkoutDetachedHead(commit: CommitGraphNode) {
+        git.value.checkoutDetachedHead(commit.sha)
     }
 
     /** Closes the quick view, clearing its commit and restoring the prior tab. */
