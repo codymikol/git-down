@@ -257,6 +257,48 @@ class MapStateSpec : DescribeSpec({
             }
         }
 
+        describe("resetForDirectory") {
+
+            it("clears the loaded map when the directory changes") {
+                MapState.reset()
+                MapState.commits.addAll(dummyCommits(3))
+                MapState.selectNode("sha2")
+
+                MapState.resetForDirectory("/some/other/repo")
+
+                MapState.commits.isEmpty() shouldBe true
+                MapState.selectedNodeSha.value shouldBe null
+            }
+
+            it("keeps the selected node when the directory is unchanged (#290)") {
+                MapState.reset()
+                MapState.resetForDirectory("/same/repo")
+                MapState.commits.addAll(dummyCommits(3))
+                MapState.selectNode("sha2")
+
+                MapState.resetForDirectory("/same/repo")
+
+                MapState.commits shouldHaveSize 3
+                MapState.selectedNodeSha.value shouldBe "sha2"
+            }
+
+            it("refreshes again for the same directory after a reset (project re-open)") {
+                MapState.reset()
+                MapState.resetForDirectory("/repo")
+                MapState.commits.addAll(dummyCommits(3))
+                MapState.selectNode("sha2")
+
+                // A project close (returnToProjectSelection) resets the map, so
+                // re-opening the very same repository must reload rather than keep the
+                // stale graph and leak the walker.
+                MapState.reset()
+                MapState.resetForDirectory("/repo")
+
+                MapState.commits.isEmpty() shouldBe true
+                MapState.selectedNodeSha.value shouldBe null
+            }
+        }
+
         describe("branchTipsBySha") {
 
             autoClose(

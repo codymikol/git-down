@@ -25,6 +25,12 @@ object MapState {
     private var walker: CommitHistoryWalker? = null
     private var laneAssigner = LaneAssigner()
 
+    // The git directory whose history is currently loaded, or null before anything has
+    // loaded. Lets resetForDirectory() tell a genuine project switch (which must clear
+    // the map) apart from merely re-entering the Map tab (which must not), so the
+    // selected node survives a round-trip through the quick view (see issue #290).
+    private var loadedDirectory: String? = null
+
     val commits = mutableStateListOf<CommitGraphNode>()
 
     val lanesBySha = mutableStateMapOf<String, Int>()
@@ -133,5 +139,19 @@ object MapState {
         lanesBySha.clear()
         hasMore = true
         selectedNodeSha.value = null
+        loadedDirectory = null
+    }
+
+    /**
+     * Resets the map only when [directory] differs from the one already loaded (see
+     * issue #290). Re-entering the Map tab - for instance on returning from the quick
+     * view - re-runs the Map view's launch effect with the same directory, and must
+     * leave the loaded commits and the selected node untouched; only a real project
+     * switch clears them.
+     */
+    fun resetForDirectory(directory: String) {
+        if (directory == loadedDirectory) return
+        reset()
+        loadedDirectory = directory
     }
 }

@@ -1,6 +1,7 @@
 package com.codymikol.state
 
 import com.codymikol.data.diff.LineType
+import com.codymikol.data.map.CommitGraphNode
 import com.codymikol.extensions.discardAllWorkingDirectory
 import com.codymikol.extensions.stageAll
 import com.codymikol.extensions.stageSelectedLines
@@ -882,6 +883,30 @@ class GitDownStateSpec : DescribeSpec({
 
                     GitDownState.gitDirectory.value shouldBe ""
                     GitDownState.isValidGitDirectory.value shouldBe false
+                }
+
+                it("should reset the map so re-opening the same repo reloads it (#290)") {
+                    MapState.reset()
+                    MapState.resetForDirectory("/repo")
+                    MapState.commits.addAll(
+                        listOf(
+                            CommitGraphNode(
+                                sha = "sha1",
+                                shortSha = "sha1",
+                                shortMessage = "commit 1",
+                                authorName = "author",
+                                authorEmail = "author@example.com",
+                                date = java.util.Date(),
+                                parentShas = emptyList(),
+                            )
+                        )
+                    )
+                    MapState.selectNode("sha1")
+
+                    GitDownState.returnToProjectSelection()
+
+                    MapState.commits.isEmpty() shouldBe true
+                    MapState.selectedNodeSha.value shouldBe null
                 }
 
             }
