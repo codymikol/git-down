@@ -869,5 +869,24 @@ class GitDownStateSpec : DescribeSpec({
 
         }
 
+        describe("returnToProjectSelection") {
+
+            describe("when a project is open") {
+
+                autoClose(createTestRepository().transferIntoGitDownState())
+
+                it("should clear the git directory so the splash screen is shown again") {
+                    GitDownState.isValidGitDirectory.value shouldBe true
+
+                    GitDownState.returnToProjectSelection()
+
+                    GitDownState.gitDirectory.value shouldBe ""
+                    GitDownState.isValidGitDirectory.value shouldBe false
+                }
+
+            }
+
+        }
+
     }
 })
