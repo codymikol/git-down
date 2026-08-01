@@ -61,7 +61,6 @@ private const val ConnectorStrokeWidth = 2f
 private val CardTabSize = 22.dp
 private val CardHoleSize = 8.dp
 private val CardCorner = 10.dp
-private val CardMaxWidth = 150.dp
 
 // Branch-name pills shown on tip commits (#272), colored the same as the node they
 // label so they read as an extension of it rather than an unrelated UI element.
@@ -229,8 +228,8 @@ private fun CommitNode(
             )
         }
 
-        // Hidden while the detail card is showing: the card (up to CardMaxWidth,
-        // leading) and a full row of pills (up to PillMaxWidth each, trailing) can
+        // Hidden while the detail card is showing: the card sizes to its content
+        // (leading) and a full row of pills (up to PillMaxWidth each, trailing) can
         // together exceed LaneWidth, so they'd otherwise risk overlapping.
         if (tipBranches.isNotEmpty() && !isSelected) {
             Row(
@@ -321,7 +320,7 @@ private fun CommitDetailCard(
     val now = remember(commit.sha) { Date() }
 
     Row(
-        modifier = modifier.widthIn(max = CardMaxWidth),
+        modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
