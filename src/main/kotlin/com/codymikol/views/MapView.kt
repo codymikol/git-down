@@ -21,6 +21,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,6 +49,7 @@ import com.codymikol.data.map.MapConnector
 import com.codymikol.services.MapConnectors
 import com.codymikol.state.GitDownState
 import com.codymikol.state.MapState
+import kotlinx.coroutines.launch
 import java.util.Date
 
 private val LaneWidth = 180.dp
@@ -275,15 +277,17 @@ private fun BranchPill(branchName: String, color: Color) {
 
 // The right-click context menu for a commit node (#253). Its actions are grouped
 // by CommitContextMenu, with a divider drawn between each group. Quick View (#254)
-// launches the quick view for this commit and Diff with HEAD (#280) diffs it
-// against the current HEAD; the remaining behaviours are wired up in follow-up
-// issues, so those items only dismiss for now.
+// launches the quick view for this commit, Diff with HEAD (#280) diffs it against
+// the current HEAD, and Checkout Detached HEAD (#279) checks it out detached; the
+// remaining behaviours are wired up in follow-up issues, so those items only
+// dismiss for now.
 @Composable
 private fun CommitContextMenu(
     commit: CommitGraphNode,
     expanded: Boolean,
     onDismiss: () -> Unit,
 ) {
+    val scope = rememberCoroutineScope()
     ThemedDropdownMenu(
         expanded = expanded,
         onDismissRequest = onDismiss,
@@ -300,6 +304,9 @@ private fun CommitContextMenu(
                         }
                         "Diff with HEAD..." -> {
                             { GitDownState.openDiffWithHead(commit); onDismiss() }
+                        }
+                        "Checkout Detached HEAD" -> {
+                            { scope.launch { GitDownState.checkoutDetachedHead(commit) }; onDismiss() }
                         }
                         else -> onDismiss
                     },

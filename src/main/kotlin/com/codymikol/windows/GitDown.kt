@@ -10,6 +10,7 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -50,6 +51,7 @@ import com.codymikol.views.isCommitMessageFocused
 import com.codymikol.views.MapView
 import com.codymikol.views.QuickView
 import com.codymikol.views.StashView
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.koin.java.KoinJavaComponent.inject
 import java.awt.Dimension
@@ -61,6 +63,8 @@ private val windowSizeService: WindowSizeService by inject(WindowSizeService::cl
 fun GitDown(applicationScope: ApplicationScope) {
 
     val defaultWindowSize = windowSizeService.getDefaultWindowSize()
+
+    val scope = rememberCoroutineScope()
 
     Window(
         onKeyEvent = {
@@ -85,6 +89,11 @@ fun GitDown(applicationScope: ApplicationScope) {
             val diffWithHeadTarget = if (isDown && it.key == Key.I && tab == Tab.Map)
                 MapState.selectedNode() else null
 
+            // Enter on the map with a node selected checks that node out as a
+            // detached HEAD (#279).
+            val checkoutDetachedTarget = if (isDown && it.key == Key.Enter && tab == Tab.Map)
+                MapState.selectedNode() else null
+
             // Space or Escape closes the quick view while it is open.
             val shouldCloseQuickView = isDown && tab == Tab.QuickView &&
                 (it.key == Key.Spacebar || it.key == Key.Escape)
@@ -104,6 +113,10 @@ fun GitDown(applicationScope: ApplicationScope) {
                 }
                 diffWithHeadTarget != null -> {
                     GitDownState.openDiffWithHead(diffWithHeadTarget)
+                    true
+                }
+                checkoutDetachedTarget != null -> {
+                    scope.launch { GitDownState.checkoutDetachedHead(checkoutDetachedTarget) }
                     true
                 }
                 else -> false
