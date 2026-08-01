@@ -198,6 +198,15 @@ object GitDownState {
     //todo(mikol): this is not ideal, work out a better way to manage this...
     val lastRequestedUpdateTimestamp = mutableStateOf(System.currentTimeMillis())
 
+    /**
+     * Closes the current project and returns to the splash / project selection
+     * screen (see issue #265). Clearing [gitDirectory] flips [isValidGitDirectory]
+     * back to false, which App observes to swap GitDown out for DirectorySelector.
+     */
+    fun returnToProjectSelection() {
+        gitDirectory.value = ""
+    }
+
     fun selectTab(tab: Tab) {
         currentTab.value = tab
 
