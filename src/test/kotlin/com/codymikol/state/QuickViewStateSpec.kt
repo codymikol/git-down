@@ -123,5 +123,81 @@ class QuickViewStateSpec : DescribeSpec({
                 GitDownState.quickViewDiffTree.value.fileDeltaNodes shouldHaveSize 1
             }
         }
+
+        describe("quick view file selection") {
+
+            beforeContainer { GitDownState.git.value.close() }
+
+            autoClose(
+                createTestRepository()
+                    .addFile("a.txt", "one\n")
+                    .addFile("b.txt", "one\n")
+                    .stageAll()
+                    .commitAll("init")
+                    .appendToFile("a.txt", "two\n")
+                    .appendToFile("b.txt", "two\n")
+                    .stageAll()
+                    .commitAll("edit both")
+                    .transferIntoGitDownState()
+            )
+
+            fun paths() = GitDownState.quickViewDiffTree.value.fileDeltaNodes.map { it.getPath() }
+
+            it("has no file selected when the quick view opens") {
+                val headSha = GitDownState.git.value.repository.resolve("HEAD").name
+                GitDownState.openQuickView(node(sha = headSha))
+
+                GitDownState.quickViewSelectedFilePath.value shouldBe null
+            }
+
+            it("selects a specific file by path") {
+                val headSha = GitDownState.git.value.repository.resolve("HEAD").name
+                GitDownState.openQuickView(node(sha = headSha))
+
+                val target = paths()[1]
+                GitDownState.selectQuickViewFile(target)
+
+                GitDownState.quickViewSelectedFilePath.value shouldBe target
+            }
+
+            it("moves to the next file, treating no selection as the first file") {
+                val headSha = GitDownState.git.value.repository.resolve("HEAD").name
+                GitDownState.openQuickView(node(sha = headSha))
+
+                GitDownState.selectAdjacentQuickViewFile(1)
+
+                GitDownState.quickViewSelectedFilePath.value shouldBe paths()[1]
+            }
+
+            it("moves to the previous file") {
+                val headSha = GitDownState.git.value.repository.resolve("HEAD").name
+                GitDownState.openQuickView(node(sha = headSha))
+                GitDownState.selectQuickViewFile(paths()[1])
+
+                GitDownState.selectAdjacentQuickViewFile(-1)
+
+                GitDownState.quickViewSelectedFilePath.value shouldBe paths()[0]
+            }
+
+            it("clamps at the last file") {
+                val headSha = GitDownState.git.value.repository.resolve("HEAD").name
+                GitDownState.openQuickView(node(sha = headSha))
+                GitDownState.selectQuickViewFile(paths().last())
+
+                GitDownState.selectAdjacentQuickViewFile(1)
+
+                GitDownState.quickViewSelectedFilePath.value shouldBe paths().last()
+            }
+
+            it("clears the selected file when reopening the quick view") {
+                val headSha = GitDownState.git.value.repository.resolve("HEAD").name
+                GitDownState.openQuickView(node(sha = headSha))
+                GitDownState.selectQuickViewFile(paths()[1])
+
+                GitDownState.openQuickView(node(sha = headSha))
+
+                GitDownState.quickViewSelectedFilePath.value shouldBe null
+            }
+        }
     }
 })
