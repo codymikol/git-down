@@ -32,6 +32,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.PointerButton
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -43,36 +44,21 @@ import com.codymikol.components.menu.MenuColors
 import com.codymikol.components.menu.ThemedDropdownMenu
 import com.codymikol.components.menu.ThemedDropdownMenuItem
 import com.codymikol.data.Colors
+import com.codymikol.data.map.BranchTipNode
 import com.codymikol.data.map.CommitCard
 import com.codymikol.data.map.CommitContextMenu as CommitContextMenuModel
 import com.codymikol.data.map.CommitGraphNode
 import com.codymikol.data.map.MapConnector
+import com.codymikol.data.map.MapDimensions
+import com.codymikol.services.BranchTipNodes
+import com.codymikol.services.ConnectorGeometry
 import com.codymikol.services.MapConnectors
 import com.codymikol.services.OrderedBranchTip
 import com.codymikol.state.GitDownState
+import com.codymikol.state.MapDebugState
 import com.codymikol.state.MapState
 import kotlinx.coroutines.launch
 import java.util.Date
-
-private val LaneWidth = 180.dp
-private val NodeRadius = 5.dp
-private val GutterX = 20.dp
-private val RowHeight = 48.dp
-private const val ConnectorStrokeWidth = 2f
-
-// The dog-tag detail card shown when a node is clicked (#252): a rounded-rectangle
-// body with a protruding round tab holding a punched hole, sitting over the node.
-private val CardTabSize = 22.dp
-private val CardHoleSize = 8.dp
-private val CardCorner = 10.dp
-private val CardMaxWidth = 150.dp
-
-// Branch-name pills for each branch tip (#272), pinned to a row at the top of the
-// map (#277) and colored by the same rule as the node they label.
-private val PillCorner = 8.dp
-private val PillFontSize = 10.sp
-private val PillSpacing = 4.dp
-private val PillMaxWidth = 80.dp
 
 @Composable
 @Preview
@@ -96,6 +82,11 @@ private fun Map() {
     val commits = MapState.commits
     val lazyListState = rememberLazyListState()
 
+    // Every "magic number" the map draws with is now parametrized (#291) and adjustable
+    // live through the ctrl+shift+d debug menu, so the whole view reads its dimensions
+    // from this single source and redraws when a slider moves.
+    val dimensions = MapDebugState.dimensions.value
+
     val lastVisibleIndex by remember {
         derivedStateOf { lazyListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1 }
     }
@@ -117,19 +108,32 @@ private fun Map() {
     // its own draw phase, so scrolling never triggers recomposition of this list.
     val connectors by remember { derivedStateOf { MapConnectors.compute(commits, MapState.lanesBySha) } }
 
+    // The branch-tip nodes pinned to the top row of the grid (#291), each in the lane its
+    // commit occupies below, so the lanes visibly start at the top and cascade into the
+    // mainline as history runs downwards.
+    val tipNodes by remember {
+        derivedStateOf { BranchTipNodes.place(MapState.orderedBranchTips.value, MapState.lanesBySha) }
+    }
+
+    // Like connectors, recomputed only on page load - never per scroll frame - so the
+    // Canvas can look a tip's row up without rebuilding this map every draw.
+    val indexBySha by remember {
+        derivedStateOf { commits.withIndex().associate { (index, commit) -> commit.sha to index } }
+    }
+
     Column(modifier = Modifier.fillMaxSize().background(Colors.DarkGrayBackground)) {
         // Branch tips are pinned here at the top of the grid (#277), ordered
         // left-to-right so the mainline everything merges into leads and the side
         // branches follow by how soon they rejoin it - rather than scattered down
         // the history at each tip commit's chronological row.
-        BranchPillRow(MapState.orderedBranchTips.value)
+        BranchPillRow(MapState.orderedBranchTips.value, dimensions)
 
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             // A single overlay pass over the currently-visible rows (#271): an individual
             // commit row's own draw bounds are clipped to that row, so a diagonal line
             // reaching into a neighbouring row/lane can only be drawn here, not per-node.
             Canvas(modifier = Modifier.fillMaxSize()) {
-                drawConnectors(connectors, lazyListState)
+                drawConnectors(connectors, tipNodes, commits, indexBySha, lazyListState, dimensions)
             }
 
             LazyColumn(
@@ -144,9 +148,16 @@ private fun Map() {
                         commit = commit,
                         isSelected = MapState.selectedNodeSha.value == commit.sha,
                         onClick = { MapState.toggleSelectedNode(commit.sha) },
-                        modifier = Modifier.offset(x = LaneWidth * lane).width(LaneWidth),
+                        dimensions = dimensions,
+                        modifier = Modifier.offset(x = dimensions.laneWidth.dp * lane).width(dimensions.laneWidth.dp),
                     )
                 }
+            }
+
+            // The tuning overlay (#291), toggled with ctrl+shift+d, floats over the top
+            // corner of the graph so its sliders don't disturb the map's own layout.
+            if (MapDebugState.isOpen.value) {
+                MapDebugMenu(modifier = Modifier.align(Alignment.TopEnd).padding(8.dp))
             }
         }
     }
@@ -156,7 +167,7 @@ private fun Map() {
 // branch name in merge-proximity order. A tip shared by several branches lays its
 // names out together, and a merge-commit tip is blued to match its node.
 @Composable
-private fun BranchPillRow(tips: List<OrderedBranchTip>) {
+private fun BranchPillRow(tips: List<OrderedBranchTip>, dimensions: MapDimensions) {
     if (tips.isEmpty()) return
 
     Row(
@@ -165,11 +176,11 @@ private fun BranchPillRow(tips: List<OrderedBranchTip>) {
             // Scroll rather than wrap or clip: the tips stay on one top row even when
             // there are more branches than fit across the map.
             .horizontalScroll(rememberScrollState())
-            .padding(horizontal = GutterX, vertical = PillSpacing * 2),
-        horizontalArrangement = Arrangement.spacedBy(PillSpacing),
+            .padding(horizontal = dimensions.gutterX.dp, vertical = dimensions.pillSpacing.dp * 2),
+        horizontalArrangement = Arrangement.spacedBy(dimensions.pillSpacing.dp),
     ) {
         tips.forEach { tip ->
-            tip.branchNames.forEach { branchName -> BranchPill(branchName, tipColor(tip)) }
+            tip.branchNames.forEach { branchName -> BranchPill(branchName, tipColor(tip), dimensions) }
         }
     }
 }
@@ -185,10 +196,20 @@ private fun tipColor(tip: OrderedBranchTip): Color {
 // first visible row - true for every loaded row, not just the ones currently in
 // layoutInfo.visibleItemsInfo, which is what lets a connector reach into a
 // neighbouring row without that row needing to be measured this frame.
-private fun DrawScope.drawConnectors(connectors: List<MapConnector>, lazyListState: LazyListState) {
-    val rowHeightPx = RowHeight.toPx()
-    val gutterXPx = GutterX.toPx()
-    val laneWidthPx = LaneWidth.toPx()
+private fun DrawScope.drawConnectors(
+    connectors: List<MapConnector>,
+    tipNodes: List<BranchTipNode>,
+    commits: List<CommitGraphNode>,
+    indexBySha: Map<String, Int>,
+    lazyListState: LazyListState,
+    dimensions: MapDimensions,
+) {
+    val rowHeightPx = dimensions.rowHeight.dp.toPx()
+    val gutterXPx = dimensions.gutterX.dp.toPx()
+    val laneWidthPx = dimensions.laneWidth.dp.toPx()
+    val strokeWidth = dimensions.connectorStrokeWidth
+    val mainlineGap = dimensions.mainlineGap.dp.toPx()
+    val forkTension = dimensions.forkCurveTension
     val firstIndex = lazyListState.firstVisibleItemIndex
     val firstOffset = lazyListState.firstVisibleItemScrollOffset
 
@@ -197,6 +218,20 @@ private fun DrawScope.drawConnectors(connectors: List<MapConnector>, lazyListSta
 
     val visibleTop = -rowHeightPx
     val visibleBottom = size.height + rowHeightPx
+
+    fun drawConnector(childX: Float, childY: Float, parentX: Float, parentY: Float, color: Color) {
+        // A synthetic bend node (#291): the line runs straight down the child's lane and
+        // stops mainlineGap px above the parent, then a sharp bezier forks across into
+        // the parent's lane. A same-lane connector's points share an x, so this collapses
+        // to the plain vertical it used to be.
+        val geometry = ConnectorGeometry.path(childX, childY, parentX, parentY, mainlineGap, forkTension)
+        val path = Path().apply {
+            moveTo(geometry.start.x, geometry.start.y)
+            lineTo(geometry.bend.x, geometry.bend.y)
+            quadraticTo(geometry.control.x, geometry.control.y, geometry.end.x, geometry.end.y)
+        }
+        drawPath(path, color = color, style = Stroke(width = strokeWidth))
+    }
 
     connectors.forEach { connector ->
         val childY = rowCenterY(connector.childIndex)
@@ -208,12 +243,37 @@ private fun DrawScope.drawConnectors(connectors: List<MapConnector>, lazyListSta
         // merge node so the line reads as distinct from a same-lane continuation,
         // rather than relying on the diagonal angle alone.
         val sameLane = connector.childLane == connector.parentLane
-        drawLine(
+        drawConnector(
+            childX = laneCenterX(connector.childLane),
+            childY = childY,
+            parentX = laneCenterX(connector.parentLane),
+            parentY = parentY,
             color = if (sameLane) Colors.LightGrayText else Colors.FileModified,
-            start = Offset(laneCenterX(connector.childLane), childY),
-            end = Offset(laneCenterX(connector.parentLane), parentY),
-            strokeWidth = ConnectorStrokeWidth,
         )
+    }
+
+    // Draw each branch-tip node pinned to the top row (#291), plus a vertical connector
+    // down its lane to that tip's commit, so every lane visibly starts at the top of the
+    // grid and cascades into the mainline.
+    val topY = rowHeightPx / 2f
+    tipNodes.forEach { tip ->
+        val laneX = laneCenterX(tip.lane)
+        val tipIndex = indexBySha[tip.sha]
+        val commit = tipIndex?.let { commits[it] }
+        val color = commit?.let(::nodeColor) ?: Colors.FileAdded
+
+        if (tipIndex != null) {
+            val commitY = rowCenterY(tipIndex)
+            if (commitY > topY) {
+                drawConnector(laneX, topY, laneX, commitY, Colors.LightGrayText)
+            }
+        }
+
+        val radius = dimensions.nodeRadius.dp.toPx()
+        when (commit?.isMergeCommit) {
+            true -> drawDiamond(center = Offset(laneX, topY), radius = radius, color = color)
+            else -> drawCircle(color = color, radius = radius, center = Offset(laneX, topY))
+        }
     }
 }
 
@@ -241,6 +301,7 @@ private fun CommitNode(
     commit: CommitGraphNode,
     isSelected: Boolean,
     onClick: () -> Unit,
+    dimensions: MapDimensions,
     modifier: Modifier = Modifier,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
@@ -248,7 +309,7 @@ private fun CommitNode(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(RowHeight)
+            .height(dimensions.rowHeight.dp)
             // The selected node draws above its siblings so its card, which is taller
             // than one row, floats over the neighbouring nodes rather than under them.
             .zIndex(if (isSelected) 1f else 0f)
@@ -263,15 +324,16 @@ private fun CommitNode(
                 MapState.selectNode(commit.sha)
                 menuExpanded = true
             }
-            .drawBehind { drawCommitNode(commit) }
+            .drawBehind { drawCommitNode(commit, dimensions) }
     ) {
         if (isSelected) {
             CommitDetailCard(
                 commit = commit,
                 color = nodeColor(commit),
+                dimensions = dimensions,
                 modifier = Modifier
                     .align(Alignment.CenterStart)
-                    .padding(start = GutterX - CardTabSize / 2)
+                    .padding(start = dimensions.gutterX.dp - dimensions.cardTabSize.dp / 2)
             )
         } else if (commit.sha == MapState.headSha.value) {
             // The current HEAD is labelled on its node (#282) so the user can see
@@ -279,9 +341,10 @@ private fun CommitNode(
             // takes the same spot over the node instead.
             HeadLabel(
                 color = nodeColor(commit),
+                dimensions = dimensions,
                 modifier = Modifier
                     .align(Alignment.CenterStart)
-                    .padding(start = GutterX + NodeRadius + PillSpacing)
+                    .padding(start = dimensions.gutterX.dp + dimensions.nodeRadius.dp + dimensions.pillSpacing.dp)
             )
         }
 
@@ -295,18 +358,18 @@ private fun CommitNode(
 
 // A small labeled pill naming a local branch, rendered in the top pill row (#277).
 @Composable
-private fun BranchPill(branchName: String, color: Color) {
+private fun BranchPill(branchName: String, color: Color, dimensions: MapDimensions) {
     Box(
         modifier = Modifier
-            .widthIn(max = PillMaxWidth)
-            .clip(RoundedCornerShape(PillCorner))
+            .widthIn(max = dimensions.pillMaxWidth.dp)
+            .clip(RoundedCornerShape(dimensions.pillCorner.dp))
             .background(color)
             .padding(horizontal = 6.dp, vertical = 2.dp),
     ) {
         Text(
             text = branchName,
             color = Color.White,
-            fontSize = PillFontSize,
+            fontSize = dimensions.pillFontSize.sp,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -318,17 +381,17 @@ private fun BranchPill(branchName: String, color: Color) {
 // the node dot. Mirrors the branch pill: a rounded box in the node's own colour
 // with bold white text, so HEAD reads consistently with the branch tips it labels.
 @Composable
-private fun HeadLabel(color: Color, modifier: Modifier = Modifier) {
+private fun HeadLabel(color: Color, dimensions: MapDimensions, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(PillCorner))
+            .clip(RoundedCornerShape(dimensions.pillCorner.dp))
             .background(color)
             .padding(horizontal = 6.dp, vertical = 2.dp),
     ) {
         Text(
             text = "HEAD",
             color = Color.White,
-            fontSize = PillFontSize,
+            fontSize = dimensions.pillFontSize.sp,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
         )
@@ -383,24 +446,25 @@ private fun CommitContextMenu(
 private fun CommitDetailCard(
     commit: CommitGraphNode,
     color: Color,
+    dimensions: MapDimensions,
     modifier: Modifier = Modifier,
 ) {
     val now = remember(commit.sha) { Date() }
 
     Row(
-        modifier = modifier.widthIn(max = CardMaxWidth),
+        modifier = modifier.widthIn(max = dimensions.cardMaxWidth.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
             modifier = Modifier
-                .size(CardTabSize)
+                .size(dimensions.cardTabSize.dp)
                 .clip(CircleShape)
                 .background(color),
             contentAlignment = Alignment.Center,
         ) {
             Box(
                 modifier = Modifier
-                    .size(CardHoleSize)
+                    .size(dimensions.cardHoleSize.dp)
                     .clip(CircleShape)
                     .background(Colors.DarkGrayBackground)
             )
@@ -409,10 +473,10 @@ private fun CommitDetailCard(
         // Tucked left under the tab so the tab's hole end protrudes past the body.
         Column(
             modifier = Modifier
-                .offset(x = -CardCorner)
-                .clip(RoundedCornerShape(CardCorner))
+                .offset(x = -dimensions.cardCorner.dp)
+                .clip(RoundedCornerShape(dimensions.cardCorner.dp))
                 .background(color)
-                .padding(start = CardCorner + 6.dp, top = 6.dp, end = 10.dp, bottom = 6.dp),
+                .padding(start = dimensions.cardCorner.dp + 6.dp, top = 6.dp, end = 10.dp, bottom = 6.dp),
         ) {
             CardLine(CommitCard.title(commit), FontWeight.Bold)
             CardLine(CommitCard.author(commit), FontWeight.Normal)
@@ -437,13 +501,14 @@ private fun CardLine(text: String, fontWeight: FontWeight) {
 private fun nodeColor(commit: CommitGraphNode): Color =
     if (commit.isMergeCommit) Colors.FileModified else Colors.FileAdded
 
-private fun DrawScope.drawCommitNode(commit: CommitGraphNode) {
-    val x = GutterX.toPx()
+private fun DrawScope.drawCommitNode(commit: CommitGraphNode, dimensions: MapDimensions) {
+    val x = dimensions.gutterX.dp.toPx()
     val centerY = size.height / 2f
+    val radius = dimensions.nodeRadius.dp.toPx()
 
     when (commit.isMergeCommit) {
-        true -> drawDiamond(center = Offset(x, centerY), radius = NodeRadius.toPx(), color = nodeColor(commit))
-        false -> drawCircle(color = nodeColor(commit), radius = NodeRadius.toPx(), center = Offset(x, centerY))
+        true -> drawDiamond(center = Offset(x, centerY), radius = radius, color = nodeColor(commit))
+        false -> drawCircle(color = nodeColor(commit), radius = radius, center = Offset(x, centerY))
     }
 }
 
