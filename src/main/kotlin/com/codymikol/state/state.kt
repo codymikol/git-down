@@ -9,6 +9,7 @@ import com.codymikol.data.file.WorkingDirectory
 import com.codymikol.data.map.CommitGraphNode
 import com.codymikol.data.stash.StashListItem
 import com.codymikol.extensions.getCommitDiff
+import com.codymikol.extensions.getCommitDiffAgainstHead
 import com.codymikol.extensions.getCurrentRefCommitCount
 import com.codymikol.extensions.getStashDiff
 import com.codymikol.extensions.getStashes
@@ -85,8 +86,17 @@ object GitDownState {
     // survives the map scrolling or resetting out from under it.
     val quickViewCommit = mutableStateOf<CommitGraphNode?>(null)
 
+    // True when the quick view diffs its commit against HEAD (Diff with HEAD, see
+    // issue #280) rather than against the commit's own first parent (the plain quick
+    // view, #254). Both reuse the same ephemeral diff view; only the base tree differs.
+    val quickViewAgainstHead = mutableStateOf(false)
+
     val quickViewDiffTree = derivedStateOf {
-        DiffTree.make(quickViewCommit.value?.let { git.value.getCommitDiff(it.sha) } ?: emptyList())
+        val deltas = quickViewCommit.value?.let { commit ->
+            if (quickViewAgainstHead.value) git.value.getCommitDiffAgainstHead(commit.sha)
+            else git.value.getCommitDiff(commit.sha)
+        } ?: emptyList()
+        DiffTree.make(deltas)
     }
 
     // The tab to return to when the quick view is dismissed. Only captured on the way
@@ -208,12 +218,26 @@ object GitDownState {
     fun openQuickView(commit: CommitGraphNode) {
         if (currentTab.value != Tab.QuickView) tabBeforeQuickView = currentTab.value
         quickViewCommit.value = commit
+        quickViewAgainstHead.value = false
+        selectTab(Tab.QuickView)
+    }
+
+    /**
+     * Launches the "Diff with HEAD" view (see issue #280) against [commit]: the same
+     * ephemeral diff view as the quick view, but diffing [commit] against the current
+     * HEAD instead of its own first parent.
+     */
+    fun openDiffWithHead(commit: CommitGraphNode) {
+        if (currentTab.value != Tab.QuickView) tabBeforeQuickView = currentTab.value
+        quickViewCommit.value = commit
+        quickViewAgainstHead.value = true
         selectTab(Tab.QuickView)
     }
 
     /** Closes the quick view, clearing its commit and restoring the prior tab. */
     fun closeQuickView() {
         quickViewCommit.value = null
+        quickViewAgainstHead.value = false
         selectTab(tabBeforeQuickView)
     }
 
