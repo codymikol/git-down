@@ -265,6 +265,16 @@ private fun CommitNode(
                     .align(Alignment.CenterStart)
                     .padding(start = GutterX - CardTabSize / 2)
             )
+        } else if (commit.sha == MapState.headSha.value) {
+            // The current HEAD is labelled on its node (#282) so the user can see
+            // where it sits. Hidden while this node is selected, when its detail card
+            // takes the same spot over the node instead.
+            HeadLabel(
+                color = nodeColor(commit),
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = GutterX + NodeRadius + PillSpacing)
+            )
         }
 
         CommitContextMenu(
@@ -292,6 +302,27 @@ private fun BranchPill(branchName: String, color: Color) {
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+// The "HEAD" label pinned to the current HEAD node (#282), sitting just right of
+// the node dot. Mirrors the branch pill: a rounded box in the node's own colour
+// with bold white text, so HEAD reads consistently with the branch tips it labels.
+@Composable
+private fun HeadLabel(color: Color, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(PillCorner))
+            .background(color)
+            .padding(horizontal = 6.dp, vertical = 2.dp),
+    ) {
+        Text(
+            text = "HEAD",
+            color = Color.White,
+            fontSize = PillFontSize,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
         )
     }
 }
