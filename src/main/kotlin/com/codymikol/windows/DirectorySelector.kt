@@ -267,7 +267,10 @@ fun handleDirectorySelection(dir: String) {
 }
 
 @Composable
-fun ExitButton(applicationScope: ApplicationScope) {
+fun ExitButton(
+    applicationScope: ApplicationScope,
+    onClick: () -> Unit = { applicationScope.exitApplication() }
+) {
 
     val exitButtonSize = 64.dp
 
@@ -284,7 +287,7 @@ fun ExitButton(applicationScope: ApplicationScope) {
     ) {
         Box(modifier = Modifier.fillMaxSize()
             .clickable {
-                applicationScope.exitApplication()
+                onClick()
             }
             .align(Alignment.Center)
             .background(ExitButtonColor)

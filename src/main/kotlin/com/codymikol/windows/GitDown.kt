@@ -110,7 +110,7 @@ fun GitDown(applicationScope: ApplicationScope) {
             }
         },
         onCloseRequest = {
-            GitDownState.gitDirectory.value = ""
+            GitDownState.returnToProjectSelection()
         },
         title = GitDownState.projectName.value,
         icon = painterResource(Res.drawable.icon),
@@ -190,7 +190,10 @@ fun GitDown(applicationScope: ApplicationScope) {
                                 )
                             }
                             Spacer(modifier = Modifier.weight(1f))
-                            ExitButton(applicationScope)
+                            // On the commit / map / stash screens exit returns to the
+                            // splash / project selection screen rather than quitting the
+                            // whole app (see issue #265).
+                            ExitButton(applicationScope) { GitDownState.returnToProjectSelection() }
                         }
                     }
                 }
