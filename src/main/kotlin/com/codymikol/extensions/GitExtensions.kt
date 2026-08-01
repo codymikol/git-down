@@ -29,6 +29,7 @@ import org.eclipse.jgit.lib.FileMode
 import org.eclipse.jgit.lib.Ref
 import org.eclipse.jgit.lib.Repository
 import org.eclipse.jgit.revwalk.RevCommit
+import org.eclipse.jgit.revwalk.RevTree
 import org.eclipse.jgit.revwalk.RevWalk
 import org.eclipse.jgit.treewalk.FileTreeIterator
 import org.eclipse.jgit.treewalk.NameConflictTreeWalk
@@ -91,11 +92,28 @@ fun Git.getCommitDiff(sha: String): List<FileDelta> {
 }
 
 /**
- * The file deltas introduced by [id] relative to its first parent, each carrying
- * pre-formatted diff text. The read-only Stash.File* carriers are reused since a
- * committed diff has no working-tree or index backing to stage against - exactly
- * the shape Status.STASH already models. A parentless (root) commit yields no
- * deltas.
+ * The file deltas that turn HEAD into the commit [sha] resolves to (any ref or
+ * object-id string jgit can resolve): the diff of the selected commit against the
+ * current HEAD, backing the "Diff with HEAD" view (see issue #280). Mirrors the
+ * shape [getCommitDiff] produces so the same read-only diff view renders it. An
+ * unresolvable commit, or a repository with no HEAD, yields an empty diff; a commit
+ * identical to HEAD yields no deltas.
+ */
+fun Git.getCommitDiffAgainstHead(sha: String): List<FileDelta> = try {
+    val targetId = this.repository.resolve(sha)
+    val headId = this.repository.resolve("HEAD")
+    if (targetId == null || headId == null) emptyList()
+    else RevWalk(this.repository).use { walk ->
+        diffTrees(walk.parseCommit(headId).tree, walk.parseCommit(targetId).tree)
+    }
+} catch (e: Exception) {
+    logger.error("An exception was thrown while diffing against HEAD: ${e.message}")
+    emptyList()
+}
+
+/**
+ * The file deltas introduced by [id] relative to its first parent. A parentless
+ * (root) commit yields no deltas.
  */
 private fun Git.diffAgainstFirstParent(id: AnyObjectId): List<FileDelta> = try {
     RevWalk(this.repository).use { walk ->
@@ -103,38 +121,43 @@ private fun Git.diffAgainstFirstParent(id: AnyObjectId): List<FileDelta> = try {
 
         when (commit.parentCount > 0) {
             false -> emptyList()
-            true -> {
-                val parent = walk.parseCommit(commit.getParent(0))
-
-                DiffFormatter(DisabledOutputStream.INSTANCE).use { scanner ->
-                    scanner.setRepository(this.repository)
-                    scanner.scan(parent.tree, commit.tree).map { entry ->
-
-                        val diffText = ByteArrayOutputStream().also { stream ->
-                            DiffFormatter(stream).use { formatter ->
-                                formatter.setRepository(this.repository)
-                                formatter.format(entry)
-                            }
-                        }.toString()
-
-                        val path = Path.of(
-                            if (entry.changeType == DiffEntry.ChangeType.DELETE) entry.oldPath else entry.newPath
-                        )
-
-                        when (entry.changeType) {
-                            DiffEntry.ChangeType.ADD -> Stash.FileAdded(path, diffText)
-                            DiffEntry.ChangeType.DELETE -> Stash.FileDeleted(path, diffText)
-                            else -> Stash.FileModified(path, diffText)
-                        }
-                    }
-                }
-            }
+            true -> diffTrees(walk.parseCommit(commit.getParent(0)).tree, commit.tree)
         }
     }
 } catch (e: Exception) {
     logger.error("An exception was thrown while diffing against the first parent: ${e.message}")
     emptyList()
 }
+
+/**
+ * Scans [baseTree] to [targetTree] and maps each changed entry to a FileDelta
+ * carrying its pre-formatted diff text. The read-only Stash.File* carriers are
+ * reused since a committed diff has no working-tree or index backing to stage
+ * against - exactly the shape Status.STASH already models.
+ */
+private fun Git.diffTrees(baseTree: RevTree, targetTree: RevTree): List<FileDelta> =
+    DiffFormatter(DisabledOutputStream.INSTANCE).use { scanner ->
+        scanner.setRepository(this.repository)
+        scanner.scan(baseTree, targetTree).map { entry ->
+
+            val diffText = ByteArrayOutputStream().also { stream ->
+                DiffFormatter(stream).use { formatter ->
+                    formatter.setRepository(this.repository)
+                    formatter.format(entry)
+                }
+            }.toString()
+
+            val path = Path.of(
+                if (entry.changeType == DiffEntry.ChangeType.DELETE) entry.oldPath else entry.newPath
+            )
+
+            when (entry.changeType) {
+                DiffEntry.ChangeType.ADD -> Stash.FileAdded(path, diffText)
+                DiffEntry.ChangeType.DELETE -> Stash.FileDeleted(path, diffText)
+                else -> Stash.FileModified(path, diffText)
+            }
+        }
+    }
 
 private const val INDEX_LOCK_RETRY_MAX_ATTEMPTS = 6
 private const val INDEX_LOCK_RETRY_INITIAL_DELAY_MS = 100L
