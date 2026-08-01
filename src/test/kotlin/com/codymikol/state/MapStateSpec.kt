@@ -300,6 +300,38 @@ class MapStateSpec : DescribeSpec({
             }
         }
 
+        describe("headSha") {
+
+            autoClose(
+                createTestRepository()
+                    .addFile("a.txt", "a")
+                    .stageAll()
+                    .commitAll("commit 1")
+                    .appendToFile("a.txt", "b")
+                    .stageAll()
+                    .commitAll("commit 2")
+                    .transferIntoGitDownState()
+            )
+
+            it("resolves to the sha of the commit the current HEAD points at") {
+                val tipSha = MapState.branches.value.single().objectId.name
+
+                MapState.headSha.value shouldBe tipSha
+            }
+        }
+
+        describe("headSha with no commits") {
+
+            autoClose(
+                createTestRepository()
+                    .transferIntoGitDownState()
+            )
+
+            it("resolves to null when HEAD points at an unborn branch") {
+                MapState.headSha.value shouldBe null
+            }
+        }
+
         describe("more commits than one page") {
 
             val repo = createTestRepository().addFile("a.txt", "0").stageAll().commitAll("commit 0")

@@ -80,6 +80,17 @@ object MapState {
     }
 
     /**
+     * Sha of the commit the current HEAD points at, or null when the repository has
+     * no commits yet (an unresolvable HEAD). Backs the "HEAD" label drawn on that
+     * node in the map (see issue #282) so the user can see where HEAD sits. Keyed on
+     * GitDownState.git like the other tip state, so it recomputes after a checkout
+     * moves HEAD.
+     */
+    val headSha = derivedStateOf {
+        GitDownState.git.value.repository.resolve("HEAD")?.name
+    }
+
+    /**
      * Every branch tip ordered for the pill row pinned to the top of the map (see
      * issue #277): the default branch first, then each side branch by how soon it
      * merges back into the default tip. Left-to-right this reads as the lanes
