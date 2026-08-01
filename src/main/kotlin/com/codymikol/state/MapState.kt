@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import com.codymikol.data.map.CommitGraphNode
 import com.codymikol.data.map.CommitHistoryWalker
 import com.codymikol.extensions.listLocalBranches
+import com.codymikol.services.BranchTipOrderer
 import com.codymikol.services.LaneAssigner
 
 /**
@@ -75,6 +76,20 @@ object MapState {
         branches.value.groupBy(
             keySelector = { it.objectId.name },
             valueTransform = { it.name.removePrefix("refs/heads/") }
+        )
+    }
+
+    /**
+     * Every branch tip ordered for the pill row pinned to the top of the map (see
+     * issue #277): the default branch first, then each side branch by how soon it
+     * merges back into the default tip. Left-to-right this reads as the lanes
+     * cleanly converging on the mainline.
+     */
+    val orderedBranchTips = derivedStateOf {
+        BranchTipOrderer.order(
+            GitDownState.git.value,
+            GitDownState.git.value.repository.branch,
+            branches.value,
         )
     }
 
