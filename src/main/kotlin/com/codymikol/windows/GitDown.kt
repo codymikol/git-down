@@ -81,6 +81,10 @@ fun GitDown(applicationScope: ApplicationScope) {
             val quickViewTarget = if (isDown && it.key == Key.Spacebar && tab == Tab.Map)
                 MapState.selectedNode() else null
 
+            // "I" on the map with a node selected diffs that node against HEAD (#280).
+            val diffWithHeadTarget = if (isDown && it.key == Key.I && tab == Tab.Map)
+                MapState.selectedNode() else null
+
             // Space or Escape closes the quick view while it is open.
             val shouldCloseQuickView = isDown && tab == Tab.QuickView &&
                 (it.key == Key.Spacebar || it.key == Key.Escape)
@@ -96,6 +100,10 @@ fun GitDown(applicationScope: ApplicationScope) {
                 }
                 quickViewTarget != null -> {
                     GitDownState.openQuickView(quickViewTarget)
+                    true
+                }
+                diffWithHeadTarget != null -> {
+                    GitDownState.openDiffWithHead(diffWithHeadTarget)
                     true
                 }
                 else -> false
