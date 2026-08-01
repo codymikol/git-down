@@ -208,8 +208,13 @@ object GitDownState {
      * Closes the current project and returns to the splash / project selection
      * screen (see issue #265). Clearing [gitDirectory] flips [isValidGitDirectory]
      * back to false, which App observes to swap GitDown out for DirectorySelector.
+     *
+     * Also resets the map: the Map view's launch effect only refreshes when the git
+     * directory changes (see issue #290), so without clearing MapState here, reopening
+     * the same repository would keep the stale commit graph and leak the open walker.
      */
     fun returnToProjectSelection() {
+        MapState.reset()
         gitDirectory.value = ""
     }
 

@@ -5,7 +5,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.PointerMatcher
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
@@ -79,8 +78,11 @@ private val PillMaxWidth = 80.dp
 @Preview
 fun MapView() {
 
+    // Reset only on a genuine project switch, not on every re-entry into the Map tab:
+    // returning from the quick view re-runs this effect with the same directory and must
+    // preserve the loaded commits and the selected node (see issue #290).
     LaunchedEffect(GitDownState.gitDirectory.value) {
-        MapState.reset()
+        MapState.resetForDirectory(GitDownState.gitDirectory.value)
     }
 
     when (MapState.branches.value.isEmpty()) {
@@ -250,7 +252,11 @@ private fun CommitNode(
             // The selected node draws above its siblings so its card, which is taller
             // than one row, floats over the neighbouring nodes rather than under them.
             .zIndex(if (isSelected) 1f else 0f)
-            .clickable { onClick() }
+            // A mouse-only primary click (not .clickable) so the node never takes
+            // keyboard focus: a focused .clickable swallows the Space key and toggles
+            // itself instead of letting the window-level shortcut open the quick view
+            // for the selected node (see issue #290 / #254).
+            .onClick(matcher = PointerMatcher.mouse(PointerButton.Primary)) { onClick() }
             // Right-clicking opens the context menu and always leaves this node
             // selected (see issue #253) - selectNode, not the click toggle.
             .onClick(matcher = PointerMatcher.mouse(PointerButton.Secondary)) {
