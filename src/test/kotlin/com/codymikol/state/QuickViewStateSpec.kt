@@ -57,6 +57,18 @@ class QuickViewStateSpec : DescribeSpec({
             }
         }
 
+        describe("openDiffWithHead") {
+
+            it("stores the commit and switches to the QuickView tab") {
+                GitDownState.selectTab(Tab.Map)
+
+                GitDownState.openDiffWithHead(node(message = "hello"))
+
+                GitDownState.quickViewCommit.value?.shortMessage shouldBe "hello"
+                GitDownState.currentTab.value shouldBe Tab.QuickView
+            }
+        }
+
         describe("quickViewDiffTree") {
 
             beforeContainer { GitDownState.git.value.close() }
@@ -83,6 +95,32 @@ class QuickViewStateSpec : DescribeSpec({
                 GitDownState.closeQuickView()
 
                 GitDownState.quickViewDiffTree.value.fileDeltaNodes shouldHaveSize 0
+            }
+
+            it("diffs against HEAD when opened via openDiffWithHead") {
+                val parentSha = GitDownState.git.value.repository.resolve("HEAD~1").name
+                GitDownState.openDiffWithHead(node(sha = parentSha))
+
+                // HEAD~1 against HEAD still differs by a single file...
+                GitDownState.quickViewDiffTree.value.fileDeltaNodes shouldHaveSize 1
+            }
+
+            it("diffs the parent against HEAD, not the quick view's first-parent diff") {
+                val headSha = GitDownState.git.value.repository.resolve("HEAD").name
+                // ...but the same commit against its own parent (quick view) versus
+                // against HEAD (itself) differ: a quick view of HEAD shows one delta,
+                // a HEAD-vs-HEAD diff shows none.
+                GitDownState.openDiffWithHead(node(sha = headSha))
+
+                GitDownState.quickViewDiffTree.value.fileDeltaNodes shouldHaveSize 0
+            }
+
+            it("returns to the quick view diff after reopening a quick view") {
+                val headSha = GitDownState.git.value.repository.resolve("HEAD").name
+                GitDownState.openDiffWithHead(node(sha = headSha))
+                GitDownState.openQuickView(node(sha = headSha))
+
+                GitDownState.quickViewDiffTree.value.fileDeltaNodes shouldHaveSize 1
             }
         }
     }
