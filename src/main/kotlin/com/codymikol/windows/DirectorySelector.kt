@@ -30,16 +30,15 @@ import com.codymikol.data.recent.RecentProjects
 import com.codymikol.extensions.onFocusLost
 import com.codymikol.gitdown.generated.resources.*
 import com.codymikol.repositories.RecentProjectRepository
+import com.codymikol.services.LinkOpenerService
 import com.codymikol.state.GitDownState
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import org.koin.java.KoinJavaComponent.inject
-import java.awt.Desktop
 import java.awt.Dimension
 import java.awt.FileDialog
 import java.awt.Frame
 import java.io.File
-import java.net.URI
 import javax.swing.JFileChooser
 import javax.swing.JFrame
 
@@ -52,6 +51,8 @@ private val ButtonBackgroundColor = Color(53, 53, 53)
 private val ButtonBorderColor = Color(60, 60, 60)
 
 private val recentProjectsRepository: RecentProjectRepository by inject(RecentProjectRepository::class.java)
+
+private val linkOpenerService: LinkOpenerService by inject(LinkOpenerService::class.java)
 
 @Composable
 fun RecentProjectSelector(x: Int, y: Int, closeHandler: () -> Unit, recent: RecentProjects) {
@@ -325,10 +326,7 @@ private fun InspirationText() {
     }
 }
 
-fun openLink(url: String) {
-    val desktop = Desktop.getDesktop()
-    desktop.browse(URI.create(url))
-}
+fun openLink(url: String) = linkOpenerService.open(url)
 
 @Composable
 private fun FrameWindowScope.Toolbar(applicationScope: ApplicationScope) {
