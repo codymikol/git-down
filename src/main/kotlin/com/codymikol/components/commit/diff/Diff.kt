@@ -44,9 +44,12 @@ private val logger = LoggerFactory.getLogger("com.codymikol.components.commit.di
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun Diff(fileDeltaNodes: List<FileDeltaNode>, showActions: Boolean = true) {
+fun Diff(
+    fileDeltaNodes: List<FileDeltaNode>,
+    showActions: Boolean = true,
+    listState: LazyListState = rememberLazyListState(),
+) {
     val dragState = remember { DragSelectionState() }
-    val listState = rememberLazyListState()
     val diffItems by remember(fileDeltaNodes) {
         derivedStateOf { buildDiffItems(fileDeltaNodes) }
     }
@@ -283,13 +286,13 @@ private class DragSelectionState {
     }
 }
 
-private sealed class DiffItem {
+internal sealed class DiffItem {
     data class FileHeaderItem(val fileDeltaNode: FileDeltaNode) : DiffItem()
     data class HunkHeaderItem(val hunk: Hunk) : DiffItem()
     data class LineItem(val lineNode: LineNode, val parentFileNode: FileDeltaNode) : DiffItem()
 }
 
-private fun buildDiffItems(fileDeltaNodes: List<FileDeltaNode>): List<DiffItem> {
+internal fun buildDiffItems(fileDeltaNodes: List<FileDeltaNode>): List<DiffItem> {
     val items = ArrayList<DiffItem>()
     fileDeltaNodes.forEach { fileDeltaNode ->
         items.add(DiffItem.FileHeaderItem(fileDeltaNode))
