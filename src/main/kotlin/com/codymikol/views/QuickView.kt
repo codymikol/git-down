@@ -3,6 +3,7 @@ package com.codymikol.views
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,15 +13,22 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -29,9 +37,15 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.codymikol.components.ReversedEllipsisText
 import com.codymikol.components.Subheader
+import com.codymikol.components.commit.FileIcon
+import com.codymikol.components.commit.changedFileDisplayText
 import com.codymikol.components.commit.diff.Diff
+import com.codymikol.components.commit.diff.fileHeaderItemIndices
+import com.codymikol.components.commit.diff.stickyFileIndex
 import com.codymikol.data.Colors
+import com.codymikol.data.diff.FileDeltaNode
 import com.codymikol.data.map.CommitGraphNode
 import com.codymikol.data.map.QuickViewCommitDetails
 import com.codymikol.state.GitDownState
@@ -45,6 +59,10 @@ import java.util.Date
 @Composable
 @Preview
 fun QuickView() {
+    // The diff's list state is hoisted here so the left panel's file list can scroll the
+    // right panel to a clicked file and observe which file header is sticky at its top.
+    val diffListState = rememberLazyListState()
+
     Row(modifier = Modifier.fillMaxWidth().fillMaxHeight()) {
         Column(
             modifier = Modifier
@@ -53,7 +71,7 @@ fun QuickView() {
                 .fillMaxHeight()
                 .border(width = 1.dp, color = Color.Black)
         ) {
-            QuickViewDetailPanel()
+            QuickViewDetailPanel(diffListState)
         }
         Column(
             modifier = Modifier
@@ -62,17 +80,70 @@ fun QuickView() {
                 .background(Colors.DarkGrayBackground)
                 .border(width = 1.dp, color = Color.Black)
         ) {
-            QuickViewDiffPanel()
+            QuickViewDiffPanel(diffListState)
         }
     }
 }
 
 @Composable
-private fun ColumnScope.QuickViewDetailPanel() {
+private fun ColumnScope.QuickViewDetailPanel(diffListState: LazyListState) {
     Subheader("Commit")
     when (val commit = GitDownState.quickViewCommit.value) {
         null -> QuickViewEmptyState("No commit selected")
-        else -> CommitDetails(commit)
+        else -> {
+            CommitDetails(commit)
+            QuickViewFileList(diffListState)
+        }
+    }
+}
+
+/**
+ * The list of files changed in the quick view's commit (see issue #278), drawn beneath
+ * the commit details behind a top border. Selecting a file highlights it and scrolls the
+ * diff so its header is at the top; the highlight also tracks whichever header is sticky.
+ */
+@Composable
+private fun QuickViewFileList(diffListState: LazyListState) {
+    val nodes = GitDownState.quickViewDiffTree.value.fileDeltaNodes
+    if (nodes.isEmpty()) return
+
+    val selectedPath = GitDownState.quickViewSelectedFilePath.value
+    val selectedIndex = nodes.indexOfFirst { it.getPath() == selectedPath }.coerceAtLeast(0)
+
+    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color.Black))
+
+    LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 220.dp)) {
+        itemsIndexed(nodes) { index, node ->
+            QuickViewFileRow(
+                node = node,
+                selected = index == selectedIndex,
+                onClick = { GitDownState.selectQuickViewFile(node.getPath()) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun QuickViewFileRow(node: FileDeltaNode, selected: Boolean, onClick: () -> Unit) {
+    val background = if (selected) Color(0, 89, 207) else Color.Transparent
+
+    Row(
+        modifier = Modifier
+            .clickable { onClick() }
+            .fillMaxWidth()
+            .height(18.dp)
+            .background(background),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Spacer(modifier = Modifier.width(12.dp))
+        FileIcon(fileDelta = node.fileDelta)
+        ReversedEllipsisText(
+            text = changedFileDisplayText(node.fileDelta),
+            modifier = Modifier.weight(1f).padding(6.dp, 0.dp, 0.dp, 0.dp),
+            color = Color.White,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Normal
+        )
     }
 }
 
@@ -134,11 +205,48 @@ private fun CommitterAvatar(commit: CommitGraphNode) {
 }
 
 @Composable
-private fun QuickViewDiffPanel() = when (GitDownState.quickViewCommit.value) {
+private fun QuickViewDiffPanel(diffListState: LazyListState) = when (GitDownState.quickViewCommit.value) {
     null -> Column { QuickViewEmptyState("No commit selected") }
-    else -> when (GitDownState.quickViewDiffTree.value.fileDeltaNodes.isNotEmpty()) {
-        true -> Diff(GitDownState.quickViewDiffTree.value.fileDeltaNodes, showActions = false)
-        false -> Column { QuickViewEmptyState("No changes in commit") }
+    else -> {
+        val nodes = GitDownState.quickViewDiffTree.value.fileDeltaNodes
+        when (nodes.isNotEmpty()) {
+            true -> {
+                QuickViewDiffSync(nodes, diffListState)
+                Diff(nodes, showActions = false, listState = diffListState)
+            }
+            false -> Column { QuickViewEmptyState("No changes in commit") }
+        }
+    }
+}
+
+/**
+ * Keeps the quick view file selection (see issue #278) and the diff scroll position in
+ * sync: scrolling updates the selection to whichever file header is sticky at the top,
+ * and selecting a different file scrolls its header to the top.
+ */
+@Composable
+private fun QuickViewDiffSync(nodes: List<FileDeltaNode>, diffListState: LazyListState) {
+    // Scroll -> selection: the sticky top header is the highlighted file.
+    LaunchedEffect(nodes, diffListState) {
+        val headerIndices = fileHeaderItemIndices(nodes)
+        snapshotFlow { diffListState.firstVisibleItemIndex }.collect { firstVisible ->
+            val stickyIndex = stickyFileIndex(firstVisible, headerIndices)
+            if (stickyIndex < 0) return@collect
+            val path = nodes[stickyIndex].getPath()
+            if (GitDownState.quickViewSelectedFilePath.value != path) GitDownState.selectQuickViewFile(path)
+        }
+    }
+
+    // Selection -> scroll: only when the selected file is not already the sticky one, so
+    // selection updates that come from a manual scroll do not fight the user's scroll.
+    val selectedPath = GitDownState.quickViewSelectedFilePath.value
+    LaunchedEffect(selectedPath, nodes) {
+        if (selectedPath == null) return@LaunchedEffect
+        val selectedIndex = nodes.indexOfFirst { it.getPath() == selectedPath }
+        if (selectedIndex < 0) return@LaunchedEffect
+        val headerIndices = fileHeaderItemIndices(nodes)
+        val stickyIndex = stickyFileIndex(diffListState.firstVisibleItemIndex, headerIndices)
+        if (selectedIndex != stickyIndex) diffListState.scrollToItem(headerIndices[selectedIndex])
     }
 }
 
