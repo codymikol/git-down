@@ -8,20 +8,27 @@ import com.codymikol.data.map.MapConnector
  * one connector per edge whose parent has already been loaded (and lane-assigned).
  * A parent that pagination hasn't reached yet is simply skipped - the connector
  * appears on its own once loadMore() reaches it, since compute() is re-run off the
- * same commits/lanesBySha it reads from.
+ * same commits/lanesBySha/rowsBySha it reads from.
+ *
+ * Endpoints are the commits' packed rows (see issue #305 / [LanePacker]), so each
+ * connector reaches the node where it sits after its lane is packed tight to the
+ * top - showing which node a commit forks off of when the parent lane runs longer.
  */
 object MapConnectors {
 
-    fun compute(commits: List<CommitGraphNode>, lanesBySha: Map<String, Int>): List<MapConnector> {
-        val indexBySha = commits.withIndex().associate { (index, commit) -> commit.sha to index }
-
-        return commits.flatMapIndexed { childIndex, commit ->
-            val childLane = lanesBySha[commit.sha] ?: return@flatMapIndexed emptyList()
+    fun compute(
+        commits: List<CommitGraphNode>,
+        lanesBySha: Map<String, Int>,
+        rowsBySha: Map<String, Int>,
+    ): List<MapConnector> {
+        return commits.flatMap { commit ->
+            val childLane = lanesBySha[commit.sha] ?: return@flatMap emptyList()
+            val childRow = rowsBySha[commit.sha] ?: return@flatMap emptyList()
 
             commit.parentShas.mapNotNull { parentSha ->
-                val parentIndex = indexBySha[parentSha] ?: return@mapNotNull null
+                val parentRow = rowsBySha[parentSha] ?: return@mapNotNull null
                 val parentLane = lanesBySha[parentSha] ?: return@mapNotNull null
-                MapConnector(childIndex, childLane, parentIndex, parentLane)
+                MapConnector(childRow, childLane, parentRow, parentLane)
             }
         }
     }

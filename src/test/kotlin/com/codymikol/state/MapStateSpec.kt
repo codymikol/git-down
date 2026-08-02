@@ -60,6 +60,12 @@ class MapStateSpec : DescribeSpec({
                 MapState.commits.map { MapState.lanesBySha[it.sha] } shouldBe listOf(0, 0, 0, 0)
             }
 
+            it("should pack every commit down consecutive rows of its lane (#305)") {
+                MapState.loadMore()
+
+                MapState.commits.map { MapState.rowBySha[it.sha] } shouldBe listOf(0, 1, 2, 3)
+            }
+
             it("should clear loaded state on reset") {
                 MapState.loadMore()
 
@@ -67,6 +73,7 @@ class MapStateSpec : DescribeSpec({
 
                 MapState.commits.isEmpty() shouldBe true
                 MapState.lanesBySha.isEmpty() shouldBe true
+                MapState.rowBySha.isEmpty() shouldBe true
                 MapState.hasMore shouldBe true
             }
         }
@@ -125,6 +132,14 @@ class MapStateSpec : DescribeSpec({
                 mainlineLanes.toSet() shouldBe setOf(0)
                 sideLane shouldBe 1
             }
+
+            it("should pack the lone side-branch commit to the top of its own lane (#305)") {
+                MapState.loadMore()
+
+                val featureSha = MapState.commits.single { it.shortMessage == "feature work" }.sha
+
+                MapState.rowBySha[featureSha] shouldBe 0
+            }
         }
 
         describe("shouldLoadMore") {
@@ -162,6 +177,22 @@ class MapStateSpec : DescribeSpec({
                 MapState.reset()
 
                 MapState.shouldLoadMore(0) shouldBe true
+            }
+
+            it("should page off packed rows, not raw commit count, when lanes diverge (#305)") {
+                // 30 commits packed two-abreast fill only 15 rows, so the map bottom
+                // is row 14 - a near-bottom row must trigger paging even though it is
+                // far from commits.size.
+                MapState.reset()
+                MapState.commits.addAll(dummyCommits(30))
+                MapState.commits.forEachIndexed { i, c ->
+                    MapState.lanesBySha[c.sha] = i % 2
+                    MapState.rowBySha[c.sha] = i / 2
+                }
+
+                MapState.rowCount shouldBe 15
+                MapState.shouldLoadMore(12) shouldBe true
+                MapState.shouldLoadMore(9) shouldBe false
             }
         }
 
