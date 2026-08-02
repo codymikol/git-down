@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isAltPressed
 import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
@@ -68,6 +69,23 @@ fun GitDown(applicationScope: ApplicationScope) {
     val scope = rememberCoroutineScope()
 
     Window(
+        // Tab / Shift+Tab cycles focus through the commit view's three areas
+        // (#298). Handled in the preview phase so it fires even while the commit
+        // message text field holds focus, where it would otherwise be consumed
+        // for default focus traversal.
+        onPreviewKeyEvent = {
+            val isCommitTabCycle = it.type == KeyEventType.KeyDown &&
+                it.key == Key.Tab &&
+                !it.isCtrlPressed && !it.isAltPressed &&
+                GitDownState.currentTab.value == Tab.Commit
+
+            if (isCommitTabCycle) {
+                GitDownState.cycleCommitFocus(forward = !it.isShiftPressed)
+                true
+            } else {
+                false
+            }
+        },
         onKeyEvent = {
             Keys.isShiftPressed.value = it.isShiftPressed
             Keys.isCtrlPressed.value = it.isCtrlPressed
