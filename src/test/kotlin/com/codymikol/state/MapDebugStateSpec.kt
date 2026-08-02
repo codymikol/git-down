@@ -36,6 +36,23 @@ class MapDebugStateSpec : DescribeSpec({
                 MapDimensions()
         }
 
+        it("prints every current debug value to the console") {
+            val slider = MapDimensions.sliders.first { it.label == "forkCurveTension" }
+            MapDebugState.set(slider, 0.5f)
+
+            val original = System.out
+            val captured = java.io.ByteArrayOutputStream()
+            System.setOut(java.io.PrintStream(captured, true))
+            try {
+                MapDebugState.printToConsole()
+            } finally {
+                System.setOut(original)
+            }
+
+            captured.toString().trimEnd() shouldBe
+                MapDimensions.summarize(MapDebugState.dimensions.value)
+        }
+
         it("resets the dimensions back to their defaults") {
             val slider = MapDimensions.sliders.first { it.label == "laneWidth" }
             MapDebugState.set(slider, 300f)

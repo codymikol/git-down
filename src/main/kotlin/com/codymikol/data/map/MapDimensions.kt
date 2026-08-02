@@ -41,6 +41,22 @@ data class MapDimensions(
     )
 
     companion object {
+        /**
+         * Renders a slider value the way the debug menu shows it: at most two decimals,
+         * dropping a trailing ".0" so whole numbers read as plain integers.
+         */
+        fun format(value: Float): String {
+            val rounded = Math.round(value * 100f) / 100f
+            return if (rounded % 1f == 0f) rounded.toInt().toString() else rounded.toString()
+        }
+
+        /**
+         * A newline-separated dump of every debug key and its current value, in slider
+         * order, for the debug menu's "print to console" button (#309).
+         */
+        fun summarize(dimensions: MapDimensions): String =
+            sliders.joinToString("\n") { "${it.label}: ${format(it.get(dimensions))}" }
+
         val sliders: List<Slider> = listOf(
             Slider("laneWidth", 60f, 320f, { it.laneWidth }, { d, v -> d.copy(laneWidth = v) }),
             Slider("nodeRadius", 2f, 16f, { it.nodeRadius }, { d, v -> d.copy(nodeRadius = v) }),

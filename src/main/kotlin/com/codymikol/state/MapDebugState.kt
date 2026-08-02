@@ -23,6 +23,11 @@ object MapDebugState {
         dimensions.value = slider.set(dimensions.value, value)
     }
 
+    /** Dumps every current debug key and value to the console (#309), one per line. */
+    fun printToConsole() {
+        println(MapDimensions.summarize(dimensions.value))
+    }
+
     fun reset() {
         dimensions.value = MapDimensions()
         isOpen.value = false
