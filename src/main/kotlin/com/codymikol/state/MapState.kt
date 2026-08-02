@@ -8,6 +8,7 @@ import com.codymikol.data.map.CommitGraphNode
 import com.codymikol.data.map.CommitHistoryWalker
 import com.codymikol.extensions.listLocalBranches
 import com.codymikol.services.BranchTipOrderer
+import com.codymikol.services.LanePacker
 import com.codymikol.services.LaneAssigner
 import kotlin.math.abs
 
@@ -36,7 +37,25 @@ object MapState {
 
     val lanesBySha = mutableStateMapOf<String, Int>()
 
+    /**
+     * Each loaded commit's packed row within its lane (see issue #305): a lane's own
+     * commits stack down consecutive rows from the top rather than sitting at their
+     * global row in the merged walk, so every lane reads tight to the top of the map.
+     * Recomputed from lanesBySha by [LanePacker] each time a page loads.
+     */
+    val rowBySha = mutableStateMapOf<String, Int>()
+
     var hasMore = true
+
+    /**
+     * How many rows the packed map occupies (see issue #305): the length of the
+     * longest lane, since every lane packs tight to the top. This - not the raw
+     * loaded-commit count - is the map's vertical extent, so paging and scrolling
+     * measure against it. Falls back to the commit count before any lane has been
+     * packed (e.g. in tests that seed commits without rows).
+     */
+    val rowCount: Int
+        get() = rowBySha.values.maxOrNull()?.plus(1) ?: commits.size
 
     /**
      * Sha of the commit node whose detail card is currently shown, or null when no
@@ -161,17 +180,24 @@ object MapState {
 
         page.forEach { lanesBySha[it.sha] = laneAssigner.assign(it) }
         commits.addAll(page)
+
+        // Repack from the full loaded list so a page's commits stack onto the rows
+        // their lanes already reached, keeping each lane tight to the top (#305).
+        rowBySha.clear()
+        rowBySha.putAll(LanePacker.pack(commits, lanesBySha))
+
         hasMore = walker.hasMore
     }
 
     /**
      * lastVisibleIndex must be the last (bottom-most) visible row, not the first -
-     * the first visible index stays well short of commits.size whenever more than
+     * the first visible index stays well short of rowCount whenever more than
      * LOAD_MORE_THRESHOLD rows fit in the viewport, so it would never trigger paging.
+     * Both it and [rowCount] are in packed-row space (see issue #305).
      */
     fun shouldLoadMore(lastVisibleIndex: Int): Boolean {
         if (!hasMore) return false
-        return lastVisibleIndex >= commits.size - LOAD_MORE_THRESHOLD
+        return lastVisibleIndex >= rowCount - LOAD_MORE_THRESHOLD
     }
 
     fun reset() {
@@ -180,6 +206,7 @@ object MapState {
         laneAssigner = LaneAssigner()
         commits.clear()
         lanesBySha.clear()
+        rowBySha.clear()
         hasMore = true
         selectedNodeSha.value = null
         loadedDirectory = null
