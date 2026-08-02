@@ -108,6 +108,12 @@ fun GitDown(applicationScope: ApplicationScope) {
             val isQuickViewFileArrow = isDown && tab == Tab.QuickView &&
                 (it.key == Key.DirectionUp || it.key == Key.DirectionDown)
 
+            // Arrow keys walk the map grid (#295): up/down step through the commit rows,
+            // left/right step to the adjacent lane.
+            val isMapNavArrow = isDown && tab == Tab.Map &&
+                (it.key == Key.DirectionUp || it.key == Key.DirectionDown ||
+                    it.key == Key.DirectionLeft || it.key == Key.DirectionRight)
+
             when {
                 isMapDebugToggle -> {
                     MapDebugState.toggle()
@@ -119,6 +125,15 @@ fun GitDown(applicationScope: ApplicationScope) {
                 }
                 isQuickViewFileArrow -> {
                     GitDownState.selectAdjacentQuickViewFile(if (it.key == Key.DirectionUp) -1 else 1)
+                    true
+                }
+                isMapNavArrow -> {
+                    when (it.key) {
+                        Key.DirectionUp -> MapState.selectAdjacentNode(-1, 0)
+                        Key.DirectionDown -> MapState.selectAdjacentNode(1, 0)
+                        Key.DirectionLeft -> MapState.selectAdjacentNode(0, -1)
+                        Key.DirectionRight -> MapState.selectAdjacentNode(0, 1)
+                    }
                     true
                 }
                 shouldCloseQuickView -> {
