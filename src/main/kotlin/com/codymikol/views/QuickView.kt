@@ -43,6 +43,7 @@ import com.codymikol.components.commit.FileIcon
 import com.codymikol.components.commit.changedFileDisplayText
 import com.codymikol.components.commit.diff.Diff
 import com.codymikol.components.commit.diff.fileHeaderItemIndices
+import com.codymikol.components.commit.diff.fileSelectionForScroll
 import com.codymikol.components.commit.diff.stickyFileIndex
 import com.codymikol.data.Colors
 import com.codymikol.data.diff.FileDeltaNode
@@ -237,15 +238,19 @@ private fun QuickViewDiffPanel(diffListState: LazyListState) = when (GitDownStat
  */
 @Composable
 private fun QuickViewDiffSync(nodes: List<FileDeltaNode>, diffListState: LazyListState) {
-    // Scroll -> selection: the sticky top header is the highlighted file.
+    // Scroll -> selection: the sticky top header is the highlighted file, except that a
+    // selection the user placed on a trailing file too short to reach the top stands once
+    // the list is scrolled to its end (see issue #308) rather than snapping back up.
     LaunchedEffect(nodes, diffListState) {
         val headerIndices = fileHeaderItemIndices(nodes)
-        snapshotFlow { diffListState.firstVisibleItemIndex }.collect { firstVisible ->
-            val stickyIndex = stickyFileIndex(firstVisible, headerIndices)
-            if (stickyIndex < 0) return@collect
-            val path = nodes[stickyIndex].getPath()
-            if (GitDownState.quickViewSelectedFilePath.value != path) GitDownState.selectQuickViewFile(path)
-        }
+        snapshotFlow { diffListState.firstVisibleItemIndex to !diffListState.canScrollForward }
+            .collect { (firstVisible, atEnd) ->
+                val selectedPath = GitDownState.quickViewSelectedFilePath.value
+                val selectedIndex = nodes.indexOfFirst { it.getPath() == selectedPath }
+                val targetIndex = fileSelectionForScroll(firstVisible, headerIndices, selectedIndex, atEnd)
+                if (targetIndex < 0 || targetIndex == selectedIndex) return@collect
+                GitDownState.selectQuickViewFile(nodes[targetIndex].getPath())
+            }
     }
 
     // Selection -> scroll: only when the selected file is not already the sticky one, so

@@ -26,3 +26,28 @@ fun fileHeaderItemIndices(fileDeltaNodes: List<FileDeltaNode>): List<Int> {
  */
 fun stickyFileIndex(firstVisibleItemIndex: Int, fileHeaderIndices: List<Int>): Int =
     fileHeaderIndices.indexOfLast { it <= firstVisibleItemIndex }
+
+/**
+ * The file selection a scroll position should produce in the quick view (see issue
+ * #278), given the file the user currently has selected ([selectedIndex], or a value
+ * outside the file range when nothing is selected) and whether the diff is scrolled to
+ * its very end ([atEnd]).
+ *
+ * Normally this follows the sticky top header. But the last files in a diff can be too
+ * short for their headers to ever reach the top, so once the list is at its end a scroll
+ * reports an earlier file as sticky. Snapping the selection back to that sticky file would
+ * fight a selection the user just placed on one of those trailing files (see issue #308),
+ * so at the end we keep any selection sitting on or below the sticky file instead.
+ * [fileHeaderIndices] is the output of [fileHeaderItemIndices].
+ */
+fun fileSelectionForScroll(
+    firstVisibleItemIndex: Int,
+    fileHeaderIndices: List<Int>,
+    selectedIndex: Int,
+    atEnd: Boolean,
+): Int {
+    val stickyIndex = stickyFileIndex(firstVisibleItemIndex, fileHeaderIndices)
+    if (stickyIndex < 0) return selectedIndex
+    if (atEnd && selectedIndex in (stickyIndex + 1)..fileHeaderIndices.lastIndex) return selectedIndex
+    return stickyIndex
+}
