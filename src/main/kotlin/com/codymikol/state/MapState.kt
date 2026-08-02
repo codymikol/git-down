@@ -9,6 +9,7 @@ import com.codymikol.data.map.CommitHistoryWalker
 import com.codymikol.extensions.listLocalBranches
 import com.codymikol.services.BranchTipOrderer
 import com.codymikol.services.LaneAssigner
+import kotlin.math.abs
 
 /**
  * Backs the Map view. Every local branch tip is walked in one merged RevWalk (see
@@ -56,6 +57,48 @@ object MapState {
      */
     fun selectNode(sha: String) {
         selectedNodeSha.value = sha
+    }
+
+    /**
+     * Moves the map selection one step across the commit grid (see issue #295), so the
+     * whole map is reachable from the keyboard.
+     *
+     * [rowOffset] walks the ordered commit list up (-1) or down (+1), clamped to the
+     * loaded window - a vertical step follows the commit order regardless of lane.
+     * [laneOffset] steps to the adjacent lane (-1 left, +1 right) by selecting the
+     * commit in that lane nearest the current row, preferring the earlier (upward) row
+     * on a tie, and does nothing when that lane holds no loaded commit - lanes are
+     * sparse, so not every lane exists at every row.
+     *
+     * With nothing selected (or the selected node scrolled out of the loaded window) the
+     * first loaded commit becomes the selection, giving the arrow keys a starting point.
+     */
+    fun selectAdjacentNode(rowOffset: Int, laneOffset: Int) {
+        if (commits.isEmpty()) return
+
+        val currentIndex = commits.indexOfFirst { it.sha == selectedNodeSha.value }
+        if (currentIndex < 0) {
+            selectedNodeSha.value = commits.first().sha
+            return
+        }
+
+        if (rowOffset != 0) {
+            val nextIndex = (currentIndex + rowOffset).coerceIn(commits.indices)
+            selectedNodeSha.value = commits[nextIndex].sha
+            return
+        }
+
+        if (laneOffset != 0) {
+            val currentLane = lanesBySha[selectedNodeSha.value] ?: return
+            val targetLane = currentLane + laneOffset
+
+            val nearest = commits.withIndex()
+                .filter { lanesBySha[it.value.sha] == targetLane }
+                .minByOrNull { abs(it.index - currentIndex) }
+                ?: return
+
+            selectedNodeSha.value = nearest.value.sha
+        }
     }
 
     /**

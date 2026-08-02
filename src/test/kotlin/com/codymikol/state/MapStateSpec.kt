@@ -257,6 +257,123 @@ class MapStateSpec : DescribeSpec({
             }
         }
 
+        describe("adjacent node traversal") {
+
+            // A four-commit grid two lanes wide: rows 0/2 sit in lane 0, rows 1/3 in
+            // lane 1, so both a same-lane and a cross-lane neighbour exist to move to.
+            fun loadTwoLaneGrid() {
+                MapState.reset()
+                MapState.commits.addAll(dummyCommits(4))
+                listOf("sha1" to 0, "sha2" to 1, "sha3" to 0, "sha4" to 1)
+                    .forEach { (sha, lane) -> MapState.lanesBySha[sha] = lane }
+            }
+
+            it("selects the first commit when an arrow is pressed with no selection") {
+                MapState.reset()
+                MapState.commits.addAll(dummyCommits(3))
+
+                MapState.selectAdjacentNode(1, 0)
+
+                MapState.selectedNodeSha.value shouldBe "sha1"
+            }
+
+            it("does nothing when no commits are loaded") {
+                MapState.reset()
+
+                MapState.selectAdjacentNode(1, 0)
+
+                MapState.selectedNodeSha.value shouldBe null
+            }
+
+            it("moves the selection down to the next commit") {
+                MapState.reset()
+                MapState.commits.addAll(dummyCommits(3))
+                MapState.selectNode("sha1")
+
+                MapState.selectAdjacentNode(1, 0)
+
+                MapState.selectedNodeSha.value shouldBe "sha2"
+            }
+
+            it("moves the selection up to the previous commit") {
+                MapState.reset()
+                MapState.commits.addAll(dummyCommits(3))
+                MapState.selectNode("sha2")
+
+                MapState.selectAdjacentNode(-1, 0)
+
+                MapState.selectedNodeSha.value shouldBe "sha1"
+            }
+
+            it("clamps at the last commit when moving down past the end") {
+                MapState.reset()
+                MapState.commits.addAll(dummyCommits(3))
+                MapState.selectNode("sha3")
+
+                MapState.selectAdjacentNode(1, 0)
+
+                MapState.selectedNodeSha.value shouldBe "sha3"
+            }
+
+            it("clamps at the first commit when moving up past the start") {
+                MapState.reset()
+                MapState.commits.addAll(dummyCommits(3))
+                MapState.selectNode("sha1")
+
+                MapState.selectAdjacentNode(-1, 0)
+
+                MapState.selectedNodeSha.value shouldBe "sha1"
+            }
+
+            it("re-anchors to the first commit when the selection is not loaded") {
+                MapState.reset()
+                MapState.commits.addAll(dummyCommits(3))
+                MapState.selectNode("sha-missing")
+
+                MapState.selectAdjacentNode(1, 0)
+
+                MapState.selectedNodeSha.value shouldBe "sha1"
+            }
+
+            it("moves right to the nearest commit in the next lane") {
+                loadTwoLaneGrid()
+                MapState.selectNode("sha1")
+
+                MapState.selectAdjacentNode(0, 1)
+
+                MapState.selectedNodeSha.value shouldBe "sha2"
+            }
+
+            it("moves left to the nearest commit in the previous lane") {
+                loadTwoLaneGrid()
+                MapState.selectNode("sha2")
+
+                MapState.selectAdjacentNode(0, -1)
+
+                MapState.selectedNodeSha.value shouldBe "sha1"
+            }
+
+            it("prefers the earlier row when two lane neighbours are equidistant") {
+                // sha3 sits at row 2 in lane 0; lane 1's sha2 (row 1) and sha4 (row 3)
+                // are both one row away, so the upward neighbour wins the tie.
+                loadTwoLaneGrid()
+                MapState.selectNode("sha3")
+
+                MapState.selectAdjacentNode(0, 1)
+
+                MapState.selectedNodeSha.value shouldBe "sha2"
+            }
+
+            it("does nothing when the target lane holds no loaded commit") {
+                loadTwoLaneGrid()
+                MapState.selectNode("sha4")
+
+                MapState.selectAdjacentNode(0, 1)
+
+                MapState.selectedNodeSha.value shouldBe "sha4"
+            }
+        }
+
         describe("resetForDirectory") {
 
             it("clears the loaded map when the directory changes") {
