@@ -61,4 +61,40 @@ class DiffFileIndexSpec : DescribeSpec({
             stickyFileIndex(20, headerIndices) shouldBe 2
         }
     }
+
+    describe("fileSelectionForScroll") {
+
+        val headerIndices = listOf(0, 5, 12)
+
+        it("follows the sticky file while the list can still scroll") {
+            fileSelectionForScroll(5, headerIndices, selectedIndex = 0, atEnd = false) shouldBe 1
+        }
+
+        it("overrides a below-sticky selection while the list can still scroll") {
+            fileSelectionForScroll(5, headerIndices, selectedIndex = 2, atEnd = false) shouldBe 1
+        }
+
+        it("keeps a selection the user placed on the last file at the end of the list") {
+            // The last file's header can't reach the top, so scroll reports the
+            // second-to-last file as sticky; the user's last-file selection stands
+            // (see issue #308).
+            fileSelectionForScroll(6, headerIndices, selectedIndex = 2, atEnd = true) shouldBe 2
+        }
+
+        it("keeps a selection on any file below the sticky one at the end") {
+            fileSelectionForScroll(0, headerIndices, selectedIndex = 1, atEnd = true) shouldBe 1
+        }
+
+        it("snaps to the sticky file when scrolled to the end past the selection") {
+            fileSelectionForScroll(12, headerIndices, selectedIndex = 0, atEnd = true) shouldBe 2
+        }
+
+        it("follows the sticky file when nothing is selected") {
+            fileSelectionForScroll(6, headerIndices, selectedIndex = -1, atEnd = true) shouldBe 1
+        }
+
+        it("keeps the current selection when there are no files") {
+            fileSelectionForScroll(0, emptyList(), selectedIndex = 3, atEnd = true) shouldBe 3
+        }
+    }
 })
