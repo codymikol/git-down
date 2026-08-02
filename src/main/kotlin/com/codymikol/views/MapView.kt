@@ -27,6 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -37,6 +38,7 @@ import androidx.compose.ui.input.pointer.PointerButton
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -51,6 +53,7 @@ import com.codymikol.data.map.CommitGraphNode
 import com.codymikol.data.map.MapConnector
 import com.codymikol.data.map.MapDimensions
 import com.codymikol.services.BranchTipNodes
+import com.codymikol.services.CommitCardPlacement
 import com.codymikol.services.ConnectorGeometry
 import com.codymikol.services.MapConnectors
 import com.codymikol.services.OrderedBranchTip
@@ -141,7 +144,11 @@ private fun Map() {
         // the history at each tip commit's chronological row.
         BranchPillRow(MapState.orderedBranchTips.value, dimensions)
 
-        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+        // clipToBounds so the selected node's overlay card (taller than one row) can't
+        // bleed up over the branch-pill header when its row scrolls to the top edge - the
+        // in-lane card it replaces was contained by the LazyColumn (#297). Horizontal
+        // spill stays free: the box is full-width, which is the whole point of the overlay.
+        Box(modifier = Modifier.weight(1f).fillMaxWidth().clipToBounds()) {
             // A single overlay pass over the currently-visible rows (#271): an individual
             // commit row's own draw bounds are clipped to that row, so a diagonal line
             // reaching into a neighbouring row/lane can only be drawn here, not per-node.
@@ -166,6 +173,12 @@ private fun Map() {
                     )
                 }
             }
+
+            // The selected node's detail card is drawn here, over the whole map body,
+            // rather than inside its own CommitNode (#297): a card rendered in the node is
+            // clipped to that node's single-lane width, cutting off a long commit line.
+            // As a sibling of the lanes it can spill rightwards over the lanes beside it.
+            SelectedCommitCard(commits, indexBySha, lazyListState, dimensions)
 
             // The tuning overlay (#291), toggled with ctrl+shift+d, floats over the top
             // corner of the graph so its sliders don't disturb the map's own layout.
@@ -323,9 +336,6 @@ private fun CommitNode(
         modifier = modifier
             .fillMaxWidth()
             .height(dimensions.rowHeight.dp)
-            // The selected node draws above its siblings so its card, which is taller
-            // than one row, floats over the neighbouring nodes rather than under them.
-            .zIndex(if (isSelected) 1f else 0f)
             // A mouse-only primary click (not .clickable) so the node never takes
             // keyboard focus: a focused .clickable swallows the Space key and toggles
             // itself instead of letting the window-level shortcut open the quick view
@@ -339,19 +349,10 @@ private fun CommitNode(
             }
             .drawBehind { drawCommitNode(commit, dimensions) }
     ) {
-        if (isSelected) {
-            CommitDetailCard(
-                commit = commit,
-                color = nodeColor(commit),
-                dimensions = dimensions,
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .padding(start = dimensions.gutterX.dp - dimensions.cardTabSize.dp / 2)
-            )
-        } else if (commit.sha == MapState.headSha.value) {
+        if (!isSelected && commit.sha == MapState.headSha.value) {
             // The current HEAD is labelled on its node (#282) so the user can see
             // where it sits. Hidden while this node is selected, when its detail card
-            // takes the same spot over the node instead.
+            // (drawn as a map-wide overlay, see SelectedCommitCard) takes the same spot.
             HeadLabel(
                 color = nodeColor(commit),
                 dimensions = dimensions,
@@ -452,6 +453,53 @@ private fun CommitContextMenu(
     }
 }
 
+// The selected node's detail card, drawn as an overlay over the whole map body rather
+// than inside the node's own lane (#297). A card rendered inside the CommitNode is
+// clipped to that one lane's width and cuts off a long commit line; positioned here it
+// is bounded only by the map, so it spills rightwards over the neighbouring lanes.
+//
+// The card follows the list as it scrolls: its position is a pure formula over the
+// selected row's index and lane plus the list's current first-visible index/offset
+// (CommitCardPlacement), read live so the overlay tracks the node under it. A selection
+// scrolled out of the loaded window simply draws nothing.
+@Composable
+private fun SelectedCommitCard(
+    commits: List<CommitGraphNode>,
+    indexBySha: Map<String, Int>,
+    lazyListState: LazyListState,
+    dimensions: MapDimensions,
+) {
+    val selectedSha = MapState.selectedNodeSha.value ?: return
+    val index = indexBySha[selectedSha] ?: return
+
+    val commit = commits[index]
+    val lane = MapState.lanesBySha[selectedSha] ?: 0
+
+    Box(
+        modifier = Modifier
+            // Positioned in the layout phase, not composition: reading the list's scroll
+            // inside offset {} lets the card track scrolling without recomposing every
+            // frame, the same reason the connector Canvas reads lazyListState in its draw
+            // phase (see the derivedState note in Map()).
+            .offset {
+                val placement = CommitCardPlacement.place(
+                    selectedIndex = index,
+                    lane = lane,
+                    firstVisibleIndex = lazyListState.firstVisibleItemIndex,
+                    firstVisibleOffset = lazyListState.firstVisibleItemScrollOffset.toDp().value,
+                    dimensions = dimensions,
+                )
+                IntOffset(placement.x.dp.roundToPx(), placement.y.dp.roundToPx())
+            }
+            .height(dimensions.rowHeight.dp)
+            // Above the lanes so the card floats over the nodes to its right, not under.
+            .zIndex(1f),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        CommitDetailCard(commit = commit, color = nodeColor(commit), dimensions = dimensions)
+    }
+}
+
 // The floating dog-tag card: a round tab holding a punched hole sits over the node
 // and sticks out a little farther than the rounded-rectangle body, which extends to
 // the right with the commit's details. Coloured the same as the node it describes.
@@ -465,7 +513,7 @@ private fun CommitDetailCard(
     val now = remember(commit.sha) { Date() }
 
     Row(
-        modifier = modifier.widthIn(max = dimensions.cardMaxWidth.dp),
+        modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
