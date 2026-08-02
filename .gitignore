@@ -4,3 +4,5 @@
 /out
 harness.env
 logs/
+
+/result
