@@ -14,6 +14,7 @@ import com.codymikol.extensions.getCommitDiffAgainstHead
 import com.codymikol.extensions.getCurrentRefCommitCount
 import com.codymikol.extensions.getStashDiff
 import com.codymikol.extensions.getStashes
+import com.codymikol.extensions.rewriteCommitMessage
 import com.codymikol.tabs.Tab
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder
@@ -86,6 +87,11 @@ object GitDownState {
     // the quick view is closed. Held here rather than read from MapState so the view
     // survives the map scrolling or resetting out from under it.
     val quickViewCommit = mutableStateOf<CommitGraphNode?>(null)
+
+    // The commit whose message the "Edit Message..." modal (see issue #299) is open
+    // for, or null when the modal is closed. The map view renders the modal while this
+    // is non-null and pre-populates it from the commit's full message.
+    val editMessageCommit = mutableStateOf<CommitGraphNode?>(null)
 
     // True when the quick view diffs its commit against HEAD (Diff with HEAD, see
     // issue #280) rather than against the commit's own first parent (the plain quick
@@ -263,6 +269,26 @@ object GitDownState {
      */
     suspend fun checkoutDetachedHead(commit: CommitGraphNode) {
         git.value.checkoutDetachedHead(commit.sha)
+    }
+
+    /** Opens the "Edit Message..." modal (see issue #299) for [commit]. */
+    fun openEditMessage(commit: CommitGraphNode) {
+        editMessageCommit.value = commit
+    }
+
+    /** Dismisses the "Edit Message..." modal (see issue #299) without any change. */
+    fun closeEditMessage() {
+        editMessageCommit.value = null
+    }
+
+    /**
+     * Rewrites [commit]'s message to [newMessage] (see issue #299), replaying it and
+     * its descendants so the change lands in history, then closes the modal. Backs the
+     * modal's Accept button.
+     */
+    suspend fun editCommitMessage(commit: CommitGraphNode, newMessage: String) {
+        git.value.rewriteCommitMessage(commit.sha, newMessage)
+        editMessageCommit.value = null
     }
 
     /** Closes the quick view, clearing its commit and restoring the prior tab. */
