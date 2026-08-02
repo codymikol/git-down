@@ -7,9 +7,12 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.Button
+import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Slider
 import androidx.compose.material.SliderDefaults
@@ -59,7 +62,7 @@ fun MapDebugMenu(modifier: Modifier = Modifier) {
                 val value = slider.get(dimensions)
 
                 Text(
-                    text = "${slider.label}: ${formatValue(value)}",
+                    text = "${slider.label}: ${MapDimensions.format(value)}",
                     color = Colors.LightGrayText,
                     fontSize = 10.sp,
                 )
@@ -75,10 +78,17 @@ fun MapDebugMenu(modifier: Modifier = Modifier) {
                 )
             }
         }
-    }
-}
 
-private fun formatValue(value: Float): String {
-    val rounded = Math.round(value * 100f) / 100f
-    return if (rounded % 1f == 0f) rounded.toInt().toString() else rounded.toString()
+        Button(
+            onClick = { MapDebugState.printToConsole() },
+            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+            colors = ButtonDefaults.buttonColors(backgroundColor = Colors.FileAdded),
+        ) {
+            Text(
+                text = "Print to console",
+                color = Color.White,
+                fontSize = 11.sp,
+            )
+        }
+    }
 }
