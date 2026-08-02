@@ -709,6 +709,145 @@ class GitDownStateSpec : DescribeSpec({
 
         }
 
+        describe("cycleCommitFocus") {
+
+            describe("when both the working directory and index have files") {
+
+                autoClose(
+                    createTestRepository()
+                        .addFile("staged.txt", "S")
+                        .stageAll()
+                        .addFile("unstaged.txt", "U")
+                        .transferIntoGitDownState()
+                )
+
+                val workingFile = GitDownState.workingDirectory.value.first()
+                val indexFile = GitDownState.index.value.first()
+
+                it("should cycle forward WorkingDirectory -> Index -> Message -> WorkingDirectory") {
+                    GitDownState.commitFocus.value = CommitFocus.WorkingDirectory
+
+                    GitDownState.cycleCommitFocus(forward = true)
+                    GitDownState.commitFocus.value shouldBe CommitFocus.Index
+
+                    GitDownState.cycleCommitFocus(forward = true)
+                    GitDownState.commitFocus.value shouldBe CommitFocus.Message
+
+                    GitDownState.cycleCommitFocus(forward = true)
+                    GitDownState.commitFocus.value shouldBe CommitFocus.WorkingDirectory
+                }
+
+                it("should cycle backward Message -> Index -> WorkingDirectory -> Message") {
+                    GitDownState.commitFocus.value = CommitFocus.Message
+
+                    GitDownState.cycleCommitFocus(forward = false)
+                    GitDownState.commitFocus.value shouldBe CommitFocus.Index
+
+                    GitDownState.cycleCommitFocus(forward = false)
+                    GitDownState.commitFocus.value shouldBe CommitFocus.WorkingDirectory
+
+                    GitDownState.cycleCommitFocus(forward = false)
+                    GitDownState.commitFocus.value shouldBe CommitFocus.Message
+                }
+
+                it("should select the first working directory file when focusing that pane") {
+                    GitDownState.commitFocus.value = CommitFocus.Message
+                    GitDownState.selectedFiles.clear()
+
+                    GitDownState.cycleCommitFocus(forward = false)
+                    GitDownState.cycleCommitFocus(forward = false)
+
+                    GitDownState.commitFocus.value shouldBe CommitFocus.WorkingDirectory
+                    GitDownState.selectedFiles.toList() shouldBe listOf(workingFile)
+                }
+
+                it("should select the first index file when focusing that pane") {
+                    GitDownState.commitFocus.value = CommitFocus.WorkingDirectory
+                    GitDownState.selectedFiles.clear()
+
+                    GitDownState.cycleCommitFocus(forward = true)
+
+                    GitDownState.commitFocus.value shouldBe CommitFocus.Index
+                    GitDownState.selectedFiles.toList() shouldBe listOf(indexFile)
+                }
+
+            }
+
+            describe("when the working directory is empty") {
+
+                autoClose(
+                    createTestRepository()
+                        .addFile("staged.txt", "S")
+                        .stageAll()
+                        .transferIntoGitDownState()
+                )
+
+                it("should skip the empty working directory pane going forward") {
+                    GitDownState.commitFocus.value = CommitFocus.Index
+
+                    GitDownState.cycleCommitFocus(forward = true)
+                    GitDownState.commitFocus.value shouldBe CommitFocus.Message
+
+                    GitDownState.cycleCommitFocus(forward = true)
+                    GitDownState.commitFocus.value shouldBe CommitFocus.Index
+                }
+
+                it("should skip the empty working directory pane going backward") {
+                    GitDownState.commitFocus.value = CommitFocus.Index
+
+                    GitDownState.cycleCommitFocus(forward = false)
+                    GitDownState.commitFocus.value shouldBe CommitFocus.Message
+
+                    GitDownState.cycleCommitFocus(forward = false)
+                    GitDownState.commitFocus.value shouldBe CommitFocus.Index
+                }
+
+            }
+
+            describe("when the index is empty") {
+
+                autoClose(
+                    createTestRepository()
+                        .addFile("unstaged.txt", "U")
+                        .transferIntoGitDownState()
+                )
+
+                it("should skip the empty index pane going forward") {
+                    GitDownState.commitFocus.value = CommitFocus.WorkingDirectory
+
+                    GitDownState.cycleCommitFocus(forward = true)
+                    GitDownState.commitFocus.value shouldBe CommitFocus.Message
+
+                    GitDownState.cycleCommitFocus(forward = true)
+                    GitDownState.commitFocus.value shouldBe CommitFocus.WorkingDirectory
+                }
+
+            }
+
+            describe("when both file panes are empty") {
+
+                autoClose(
+                    createTestRepository()
+                        .addFile("foo.txt", "one\n")
+                        .stageAll()
+                        .commitAll("init")
+                        .transferIntoGitDownState()
+                )
+
+                it("should stay on the Message pane") {
+                    GitDownState.commitFocus.value = CommitFocus.Message
+
+                    GitDownState.cycleCommitFocus(forward = true)
+                    GitDownState.commitFocus.value shouldBe CommitFocus.Message
+
+                    GitDownState.cycleCommitFocus(forward = false)
+                    GitDownState.commitFocus.value shouldBe CommitFocus.Message
+                }
+
+            }
+
+        }
+
         describe("selectTab") {
 
             describe("when switching to the Stash tab and stashes exist") {
