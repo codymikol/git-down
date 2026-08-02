@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.input.pointer.PointerButton
 import androidx.compose.ui.unit.dp
 import com.codymikol.data.Colors
 import com.codymikol.gitdown.generated.resources.Res
@@ -71,6 +72,7 @@ private fun getTabButtonShape(location: TabButtonLocation): AbsoluteRoundedCorne
         )
     }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun tabButton(
     location: TabButtonLocation,
@@ -83,7 +85,11 @@ fun tabButton(
         modifier = Modifier
             .width(38.dp)
             .height(28.dp)
-            .clickable { GitDownState.selectTab(tab) }
+            // A mouse-only primary click (not .clickable) so the tab button never takes
+            // keyboard focus: a focused .clickable swallows keys like Space and fires the
+            // button instead of letting the window-level map shortcut open the quick view
+            // (see issue #306, same trap fixed for the commit node in #290/#254).
+            .onClick(matcher = PointerMatcher.mouse(PointerButton.Primary)) { GitDownState.selectTab(tab) }
             .clip(getTabButtonShape(location))
     ) {
         Box(
