@@ -24,11 +24,15 @@ import org.eclipse.jgit.dircache.DirCacheEntry
 import org.eclipse.jgit.dircache.DirCacheIterator
 import org.eclipse.jgit.errors.LockFailedException
 import org.eclipse.jgit.lib.AnyObjectId
+import org.eclipse.jgit.lib.CommitBuilder
+import org.eclipse.jgit.lib.Constants
 import org.eclipse.jgit.lib.Constants.OBJ_BLOB
 import org.eclipse.jgit.lib.FileMode
+import org.eclipse.jgit.lib.ObjectId
 import org.eclipse.jgit.lib.Ref
 import org.eclipse.jgit.lib.Repository
 import org.eclipse.jgit.revwalk.RevCommit
+import org.eclipse.jgit.revwalk.RevSort
 import org.eclipse.jgit.revwalk.RevTree
 import org.eclipse.jgit.revwalk.RevWalk
 import org.eclipse.jgit.treewalk.FileTreeIterator
@@ -615,6 +619,68 @@ suspend fun Git.amendAll(message: String) = command {
         .call()
         .also { logger.info("Amending index") }
         .unit()
+}
+
+/**
+ * Rewrites the message of the commit [sha] resolves to (see issue #299), backing the
+ * map view's "Edit Message..." action. The target commit and every descendant of it
+ * reachable from the current branch are replayed onto rebuilt copies: each rebuilt
+ * commit keeps its original tree, author and committer, so only the target's message
+ * changes and no file content moves. Because a commit's id is a hash of its message
+ * and parents, the target and all of its descendants get fresh ids, so the current
+ * branch (and thus HEAD) is force-updated to the rewritten tip. The working tree is
+ * left untouched since every rebuilt commit reuses its original tree.
+ */
+suspend fun Git.rewriteCommitMessage(sha: String, newMessage: String): Git = command {
+    val repo = repository
+    val targetId = repo.resolve(sha)
+        ?: throw IllegalArgumentException("Cannot resolve commit $sha")
+    val headId = repo.resolve(Constants.HEAD)
+        ?: throw IllegalStateException("Cannot rewrite a message with no HEAD")
+
+    RevWalk(repo).use { walk ->
+        val head = walk.parseCommit(headId)
+        val target = walk.parseCommit(targetId)
+
+        walk.markStart(head)
+        // Leave everything reachable from the target's parents untouched; the walk then
+        // yields exactly the target plus every descendant of it on HEAD's side.
+        target.parents.forEach { walk.markUninteresting(walk.parseCommit(it.id)) }
+        // Reverse-topological order yields parents before children, so each commit's new
+        // parent ids are already known by the time it is rebuilt.
+        walk.sort(RevSort.TOPO, true)
+        walk.sort(RevSort.REVERSE, true)
+        val toReplay = walk.toList()
+
+        val rewritten = HashMap<ObjectId, ObjectId>()
+
+        repo.newObjectInserter().use { inserter ->
+            toReplay.forEach { original ->
+                val builder = CommitBuilder().apply {
+                    setTreeId(original.tree.id)
+                    setParentIds(original.parents.map { rewritten[it.id] ?: it.id })
+                    setAuthor(original.authorIdent)
+                    setCommitter(original.committerIdent)
+                    setEncoding(original.encoding)
+                    setMessage(if (original.id == target.id) newMessage else original.fullMessage)
+                }
+                rewritten[original.id] = inserter.insert(builder)
+            }
+            inserter.flush()
+        }
+
+        val newHead = rewritten[head.id] ?: head.id
+
+        // Updating HEAD (rather than repo.fullBranch) moves the underlying branch when
+        // HEAD is attached and moves HEAD itself when it is detached, so a detached-HEAD
+        // edit still lands rather than leaving the rewritten commits dangling.
+        repo.updateRef(Constants.HEAD).apply {
+            setNewObjectId(newHead)
+            setForceUpdate(true)
+        }.update()
+
+        logger.info("Rewrote message of $sha; HEAD now at ${newHead.name}")
+    }
 }
 
 suspend fun Git.applyStash(stash: StashListItem) = command {
