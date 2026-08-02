@@ -848,6 +848,143 @@ class GitDownStateSpec : DescribeSpec({
 
         }
 
+        describe("selectAdjacentStash") {
+
+            describe("when there are multiple stashes") {
+
+                autoClose(
+                    createTestRepository()
+                        .addFile("foo.txt", "one\n")
+                        .stageAll()
+                        .commitAll("init")
+                        .appendToFile("foo.txt", "two\n")
+                        .stashCreate("first")
+                        .appendToFile("foo.txt", "three\n")
+                        .stashCreate("second")
+                        .appendToFile("foo.txt", "four\n")
+                        .stashCreate("third")
+                        .transferIntoGitDownState()
+                )
+
+                val stashes = GitDownState.stashes.value
+
+                it("should select the next stash when moving down") {
+                    GitDownState.selectedStash.value = stashes[0]
+
+                    GitDownState.selectAdjacentStash(1)
+
+                    GitDownState.selectedStash.value shouldBe stashes[1]
+                }
+
+                it("should select the previous stash when moving up") {
+                    GitDownState.selectedStash.value = stashes[1]
+
+                    GitDownState.selectAdjacentStash(-1)
+
+                    GitDownState.selectedStash.value shouldBe stashes[0]
+                }
+
+                it("should stay on the first stash when moving up from the top") {
+                    GitDownState.selectedStash.value = stashes[0]
+
+                    GitDownState.selectAdjacentStash(-1)
+
+                    GitDownState.selectedStash.value shouldBe stashes[0]
+                }
+
+                it("should stay on the last stash when moving down from the bottom") {
+                    GitDownState.selectedStash.value = stashes.last()
+
+                    GitDownState.selectAdjacentStash(1)
+
+                    GitDownState.selectedStash.value shouldBe stashes.last()
+                }
+
+                it("should select the first stash when moving down from no selection") {
+                    GitDownState.selectedStash.value = null
+
+                    GitDownState.selectAdjacentStash(1)
+
+                    GitDownState.selectedStash.value shouldBe stashes[0]
+                }
+
+                it("should select the first stash when moving up from no selection") {
+                    GitDownState.selectedStash.value = null
+
+                    GitDownState.selectAdjacentStash(-1)
+
+                    GitDownState.selectedStash.value shouldBe stashes[0]
+                }
+
+            }
+
+            describe("when there are no stashes") {
+
+                autoClose(
+                    createTestRepository()
+                        .addFile("foo.txt", "Foo")
+                        .transferIntoGitDownState()
+                )
+
+                it("should leave no stash selected") {
+                    GitDownState.selectedStash.value = null
+
+                    GitDownState.selectAdjacentStash(1)
+
+                    GitDownState.selectedStash.value shouldBe null
+                }
+
+            }
+
+        }
+
+        describe("promptApplyStash") {
+
+            describe("when a stash is selected") {
+
+                autoClose(
+                    createTestRepository()
+                        .addFile("foo.txt", "one\n")
+                        .stageAll()
+                        .commitAll("init")
+                        .appendToFile("foo.txt", "two\n")
+                        .stashCreate("my stash")
+                        .transferIntoGitDownState()
+                )
+
+                it("should mark the apply confirmation visible") {
+                    GitDownState.selectedStash.value = GitDownState.stashes.value.first()
+                    GitDownState.isConfirmingApplyStash.value = false
+
+                    GitDownState.promptApplyStash()
+
+                    GitDownState.isConfirmingApplyStash.value shouldBe true
+                    GitDownState.isStashDialogOpen.value shouldBe true
+                }
+
+            }
+
+            describe("when no stash is selected") {
+
+                autoClose(
+                    createTestRepository()
+                        .addFile("foo.txt", "Foo")
+                        .transferIntoGitDownState()
+                )
+
+                it("should leave the apply confirmation hidden") {
+                    GitDownState.selectedStash.value = null
+                    GitDownState.isConfirmingApplyStash.value = false
+
+                    GitDownState.promptApplyStash()
+
+                    GitDownState.isConfirmingApplyStash.value shouldBe false
+                }
+
+            }
+
+        }
+
         describe("selectTab") {
 
             describe("when switching to the Stash tab and stashes exist") {
@@ -906,6 +1043,16 @@ class GitDownStateSpec : DescribeSpec({
 
                     GitDownState.currentTab.value shouldBe Tab.Commit
                     GitDownState.selectedStash.value shouldBe null
+                }
+
+                it("should abandon any open stash dialog") {
+                    GitDownState.isSavingStash.value = true
+                    GitDownState.isConfirmingDropStash.value = true
+                    GitDownState.isConfirmingApplyStash.value = true
+
+                    GitDownState.selectTab(Tab.Commit)
+
+                    GitDownState.isStashDialogOpen.value shouldBe false
                 }
 
             }
@@ -1046,6 +1193,16 @@ class GitDownStateSpec : DescribeSpec({
 
                     MapState.commits.isEmpty() shouldBe true
                     MapState.selectedNodeSha.value shouldBe null
+                }
+
+                it("should abandon any open stash dialog (#296)") {
+                    GitDownState.isSavingStash.value = true
+                    GitDownState.isConfirmingDropStash.value = true
+                    GitDownState.isConfirmingApplyStash.value = true
+
+                    GitDownState.returnToProjectSelection()
+
+                    GitDownState.isStashDialogOpen.value shouldBe false
                 }
 
             }
