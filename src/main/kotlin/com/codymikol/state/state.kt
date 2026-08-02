@@ -21,6 +21,13 @@ import java.io.File
 import java.nio.file.Path
 
 
+/**
+ * The three areas the commit view cycles focus through with Tab / Shift+Tab
+ * (see issue #298), in forward order: the Working Directory file list, the
+ * Index file list, then the commit message input.
+ */
+enum class CommitFocus { WorkingDirectory, Index, Message }
+
 object GitDownState {
 
     val currentTab: MutableState<Tab> = mutableStateOf(Tab.Commit)
@@ -291,6 +298,54 @@ object GitDownState {
         val nextIndex = (currentIndex + offset).coerceIn(paths.indices)
 
         quickViewSelectedFilePath.value = paths[nextIndex]
+    }
+
+    /**
+     * Which of the commit view's three areas currently holds focus for Tab
+     * cycling (see issue #298).
+     */
+    val commitFocus: MutableState<CommitFocus> = mutableStateOf(CommitFocus.WorkingDirectory)
+
+    private fun isCommitPaneAvailable(pane: CommitFocus) = when (pane) {
+        CommitFocus.WorkingDirectory -> !workingDirectoryIsEmpty.value
+        CommitFocus.Index -> !indexIsEmpty.value
+        CommitFocus.Message -> true
+    }
+
+    /**
+     * Moves focus to [pane], selecting its first file when the pane is a file
+     * list so cycling into it lands on a concrete selection (see issue #298).
+     */
+    private fun focusCommitPane(pane: CommitFocus) {
+        commitFocus.value = pane
+        when (pane) {
+            CommitFocus.WorkingDirectory -> workingDirectory.value.firstOrNull()
+            CommitFocus.Index -> index.value.firstOrNull()
+            CommitFocus.Message -> null
+        }?.let {
+            selectedFiles.clear()
+            selectedFiles.add(it)
+        }
+    }
+
+    /**
+     * Cycles commit view focus through Working Directory -> Index -> Message
+     * (or the reverse when [forward] is false), wrapping at the ends and
+     * skipping empty file panes since there is nothing to select in them
+     * (see issue #298). The message pane is always available.
+     */
+    fun cycleCommitFocus(forward: Boolean) {
+        val order = listOf(CommitFocus.WorkingDirectory, CommitFocus.Index, CommitFocus.Message)
+        val step = if (forward) 1 else -1
+        var idx = order.indexOf(commitFocus.value).coerceAtLeast(0)
+        repeat(order.size) {
+            idx = ((idx + step) % order.size + order.size) % order.size
+            val candidate = order[idx]
+            if (isCommitPaneAvailable(candidate)) {
+                focusCommitPane(candidate)
+                return
+            }
+        }
     }
 
     fun selectAdjacentFile(offset: Int) {
