@@ -9,8 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -36,9 +34,13 @@ fun applyStashConfirmationMessage(description: String): String =
 @Preview
 fun StashBottomToolbar() {
     val scope = rememberCoroutineScope()
-    var isSavingStash by remember { mutableStateOf(false) }
-    var isConfirmingDrop by remember { mutableStateOf(false) }
-    var isConfirmingApply by remember { mutableStateOf(false) }
+
+    // All three dialog flags live in GitDownState so the key shortcuts (see issue #296)
+    // can open the same apply dialog as the "Apply" button and stand down while any of
+    // these dialogs is open.
+    var isSavingStash by GitDownState.isSavingStash
+    var isConfirmingDrop by GitDownState.isConfirmingDropStash
+    var isConfirmingApply by GitDownState.isConfirmingApplyStash
 
     val selectedStash = GitDownState.selectedStash.value
 
