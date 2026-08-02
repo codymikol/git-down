@@ -13,7 +13,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -40,6 +43,7 @@ import com.codymikol.data.diff.*
 import com.codymikol.data.file.FileDelta
 import com.codymikol.data.file.Status
 import com.codymikol.extensions.*
+import com.codymikol.state.CommitFocus
 import com.codymikol.state.GitDownState
 import com.codymikol.state.Keys
 import com.codymikol.typography.GitDownTypography
@@ -120,11 +124,28 @@ fun DrawScope.drawCommitGuideline(xOffset: Float, lineHeight: Float, spaceHeight
 
 @Composable
 private fun CommitMessageInput() {
-    var textFieldValue by remember { mutableStateOf(TextFieldValue(commitMessage.value)) }
+    val focusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+
+    // Start the caret at the end so cycling into an unfocused message pane lands
+    // at the end of the text (#298); once focused the field tracks its own caret.
+    var textFieldValue by remember {
+        mutableStateOf(TextFieldValue(commitMessage.value, TextRange(commitMessage.value.length)))
+    }
 
     // commitMessage can be mutated externally (amend, post-commit clear); resync when it drifts.
     if (textFieldValue.text != commitMessage.value) {
         textFieldValue = TextFieldValue(commitMessage.value, TextRange(commitMessage.value.length))
+    }
+
+    // Tab cycling (#298) drives focus through commitFocus: grab focus when the
+    // message pane becomes active, release it when a file pane takes over.
+    LaunchedEffect(GitDownState.commitFocus.value) {
+        if (GitDownState.commitFocus.value == CommitFocus.Message) {
+            focusRequester.requestFocus()
+        } else if (isCommitMessageFocused.value) {
+            focusManager.clearFocus()
+        }
     }
 
     BasicTextField(
@@ -134,6 +155,7 @@ private fun CommitMessageInput() {
             .fillMaxSize()
             .padding(top = 8.dp, start = 8.dp, bottom = 0.dp, end = 8.dp)
             .background(Colors.DarkGrayBackground)
+            .focusRequester(focusRequester)
             .onFocusChanged { isCommitMessageFocused.value = it.isFocused }
             .onPreviewKeyEvent { event ->
                 val isShiftEnter = event.type == KeyEventType.KeyDown &&
