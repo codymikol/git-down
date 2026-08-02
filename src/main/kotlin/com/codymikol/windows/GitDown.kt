@@ -42,6 +42,7 @@ import com.codymikol.gitdown.generated.resources.map
 import com.codymikol.gitdown.generated.resources.map_white
 import com.codymikol.gitdown.generated.resources.stash
 import com.codymikol.gitdown.generated.resources.stash_white
+import com.codymikol.services.StashService
 import com.codymikol.services.WindowSizeService
 import com.codymikol.state.GitDownState
 import com.codymikol.state.Keys
@@ -59,6 +60,7 @@ import org.koin.java.KoinJavaComponent.inject
 import java.awt.Dimension
 
 private val windowSizeService: WindowSizeService by inject(WindowSizeService::class.java)
+private val stashService: StashService by inject(StashService::class.java)
 
 @Preview
 @Composable
@@ -132,6 +134,23 @@ fun GitDown(applicationScope: ApplicationScope) {
                 (it.key == Key.DirectionUp || it.key == Key.DirectionDown ||
                     it.key == Key.DirectionLeft || it.key == Key.DirectionRight)
 
+            // Stash shortcuts (#296) stand down while any stash dialog is open, so a
+            // keystroke can't mutate the selection or silently drop a stash from under
+            // an open save/apply/drop dialog.
+            val isStashTab = tab == Tab.Stash && !GitDownState.isStashDialogOpen.value
+
+            // Up/Down selects the previous/next stash on the stash view (#296).
+            val isStashArrow = isDown && isStashTab &&
+                (it.key == Key.DirectionUp || it.key == Key.DirectionDown)
+
+            // Delete drops the selected stash on the stash view (#296).
+            val stashDeleteTarget = if (isDown && it.key == Key.Delete && isStashTab)
+                GitDownState.selectedStash.value else null
+
+            // Enter prompts to confirm applying the selected stash (#296).
+            val shouldPromptApplyStash = isDown && isStashTab &&
+                it.key == Key.Enter && GitDownState.selectedStash.value != null
+
             when {
                 isMapDebugToggle -> {
                     MapDebugState.toggle()
@@ -152,6 +171,18 @@ fun GitDown(applicationScope: ApplicationScope) {
                         Key.DirectionLeft -> MapState.selectAdjacentNode(0, -1)
                         Key.DirectionRight -> MapState.selectAdjacentNode(0, 1)
                     }
+                    true
+                }
+                isStashArrow -> {
+                    GitDownState.selectAdjacentStash(if (it.key == Key.DirectionUp) -1 else 1)
+                    true
+                }
+                stashDeleteTarget != null -> {
+                    scope.launch { stashService.dropStash(stashDeleteTarget) }
+                    true
+                }
+                shouldPromptApplyStash -> {
+                    GitDownState.promptApplyStash()
                     true
                 }
                 shouldCloseQuickView -> {
