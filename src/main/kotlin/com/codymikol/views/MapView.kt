@@ -91,6 +91,19 @@ private fun Map() {
         derivedStateOf { lazyListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1 }
     }
 
+    // Keep the keyboard-driven selection (#295) on screen: when arrow keys move it out
+    // of the visible rows, scroll it into view (aligned to the top). Keyed on the
+    // selected sha alone - the effect only scrolls, never mutates the selection, so it
+    // can't relaunch itself the way keying on a mutated value once did (see #256).
+    val selectedSha = MapState.selectedNodeSha.value
+    LaunchedEffect(selectedSha) {
+        if (selectedSha == null) return@LaunchedEffect
+        val index = commits.indexOfFirst { it.sha == selectedSha }
+        if (index < 0) return@LaunchedEffect
+        val isVisible = lazyListState.layoutInfo.visibleItemsInfo.any { it.index == index }
+        if (!isVisible) lazyListState.animateScrollToItem(index)
+    }
+
     // shouldLoadMore() is true before anything has loaded, so this effect also covers
     // the very first page - no separate initial-load effect needed. It's keyed on the
     // scroll-derived lastVisibleIndex, never on commits.size or hasMore, which
