@@ -90,6 +90,21 @@ object GitDownState {
 
     val selectedStash = mutableStateOf<StashListItem?>(null)
 
+    // Visibility of the stash view's three modal dialogs. Held here rather than as
+    // local StashBottomToolbar state so the Enter shortcut can open the same apply
+    // dialog the toolbar's "Apply" button opens (see issue #296), and so the key
+    // handler can tell when a dialog is open and stand its shortcuts down.
+    val isSavingStash = mutableStateOf(false)
+    val isConfirmingDropStash = mutableStateOf(false)
+    val isConfirmingApplyStash = mutableStateOf(false)
+
+    // True while any stash dialog is open. The stash view key shortcuts (see issue
+    // #296) suppress themselves while it is true so a keystroke can't mutate or drop
+    // the selected stash from under an open dialog.
+    val isStashDialogOpen = derivedStateOf {
+        isSavingStash.value || isConfirmingDropStash.value || isConfirmingApplyStash.value
+    }
+
     // The commit the quick view (see issue #254) is launched against, or null when
     // the quick view is closed. Held here rather than read from MapState so the view
     // survives the map scrolling or resetting out from under it.
@@ -228,7 +243,18 @@ object GitDownState {
      */
     fun returnToProjectSelection() {
         MapState.reset()
+        // These flags now outlive the StashBottomToolbar composable (they moved to this
+        // singleton for issue #296), so a project switch has to abandon any open stash
+        // dialog itself or a stale one would reappear on the next repo (see issue #296).
+        closeStashDialogs()
         gitDirectory.value = ""
+    }
+
+    // Hides all three stash view dialogs (see issue #296).
+    private fun closeStashDialogs() {
+        isSavingStash.value = false
+        isConfirmingDropStash.value = false
+        isConfirmingApplyStash.value = false
     }
 
     fun selectTab(tab: Tab) {
@@ -236,6 +262,10 @@ object GitDownState {
 
         if (tab == Tab.Stash) {
             selectedStash.value = stashes.value.firstOrNull()
+        } else {
+            // Leaving the stash view abandons any open stash dialog (see issue #296) so
+            // one doesn't silently reappear the next time the stash view is shown.
+            closeStashDialogs()
         }
 
         if (tab == Tab.Commit && selectedFiles.isEmpty()) {
@@ -372,6 +402,31 @@ object GitDownState {
                 return
             }
         }
+    }
+
+    /**
+     * Moves the stash selection by [offset] (see issue #296), clamped to the stash
+     * list. With nothing selected (or a stale selection no longer in the list) both
+     * Up and Down land on the first stash. No-op when there are no stashes.
+     */
+    fun selectAdjacentStash(offset: Int) {
+        val stashList = stashes.value
+        if (stashList.isEmpty()) return
+
+        // indexOf returns -1 when nothing is selected: Down (+1) then lands on the
+        // first stash, and Up (-1) clamps up to it too - so either arrow enters the list.
+        val currentIndex = stashList.indexOf(selectedStash.value)
+        val nextIndex = (currentIndex + offset).coerceIn(stashList.indices)
+
+        selectedStash.value = stashList[nextIndex]
+    }
+
+    /**
+     * Opens the apply-stash confirmation prompt (Enter on the stash view, see issue
+     * #296) when a stash is selected; otherwise does nothing.
+     */
+    fun promptApplyStash() {
+        if (selectedStash.value != null) isConfirmingApplyStash.value = true
     }
 
     fun selectAdjacentFile(offset: Int) {
