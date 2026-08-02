@@ -97,16 +97,18 @@ private fun Map() {
     }
 
     // Keep the keyboard-driven selection (#295) on screen: when arrow keys move it out
-    // of the visible rows, scroll it into view (aligned to the top). Keyed on the
-    // selected sha alone - the effect only scrolls, never mutates the selection, so it
-    // can't relaunch itself the way keying on a mutated value once did (see #256).
+    // of the visible rows, scroll it into view (aligned to the top). Scrolls by the
+    // node's packed row (#305) - the LazyColumn's item index is a packed row, not a list
+    // index, so the row the node actually sits in is what must be brought into view.
+    // Keyed on the selected sha alone - the effect only scrolls, never mutates the
+    // selection, so it can't relaunch itself the way keying on a mutated value once did
+    // (see #256).
     val selectedSha = MapState.selectedNodeSha.value
     LaunchedEffect(selectedSha) {
         if (selectedSha == null) return@LaunchedEffect
-        val index = commits.indexOfFirst { it.sha == selectedSha }
-        if (index < 0) return@LaunchedEffect
-        val isVisible = lazyListState.layoutInfo.visibleItemsInfo.any { it.index == index }
-        if (!isVisible) lazyListState.animateScrollToItem(index)
+        val row = MapState.rowBySha[selectedSha] ?: return@LaunchedEffect
+        val isVisible = lazyListState.layoutInfo.visibleItemsInfo.any { it.index == row }
+        if (!isVisible) lazyListState.animateScrollToItem(row)
     }
 
     // shouldLoadMore() is true before anything has loaded, so this effect also covers
@@ -124,7 +126,9 @@ private fun Map() {
     // Recomputed only when commits/lanesBySha themselves change (i.e. on page load),
     // not on every scroll frame - the Canvas below reads lazyListState directly during
     // its own draw phase, so scrolling never triggers recomposition of this list.
-    val connectors by remember { derivedStateOf { MapConnectors.compute(commits, MapState.lanesBySha) } }
+    val connectors by remember {
+        derivedStateOf { MapConnectors.compute(commits, MapState.lanesBySha, MapState.rowBySha) }
+    }
 
     // The branch-tip nodes pinned to the top row of the grid (#291), each in the lane its
     // commit occupies below, so the lanes visibly start at the top and cascade into the
@@ -137,6 +141,20 @@ private fun Map() {
     // Canvas can look a tip's row up without rebuilding this map every draw.
     val indexBySha by remember {
         derivedStateOf { commits.withIndex().associate { (index, commit) -> commit.sha to index } }
+    }
+
+    // The commits sitting on each packed row (#305), indexed by row, so the LazyColumn
+    // can lay one item per row and draw every lane's node for that row inside it. Each
+    // lane packs tight to the top, so the longest lane fills rows 0..rowCount-1 with no
+    // gaps - the list has exactly MapState.rowCount items.
+    val commitsByRow by remember {
+        derivedStateOf {
+            val rows = List(MapState.rowCount) { mutableListOf<CommitGraphNode>() }
+            commits.forEach { commit ->
+                MapState.rowBySha[commit.sha]?.let { row -> rows[row].add(commit) }
+            }
+            rows
+        }
     }
 
     Column(modifier = Modifier.fillMaxSize().background(Colors.DarkGrayBackground)) {
@@ -155,24 +173,34 @@ private fun Map() {
             // commit row's own draw bounds are clipped to that row, so a diagonal line
             // reaching into a neighbouring row/lane can only be drawn here, not per-node.
             Canvas(modifier = Modifier.fillMaxSize()) {
-                drawConnectors(connectors, tipNodes, commits, indexBySha, lazyListState, dimensions)
+                drawConnectors(connectors, tipNodes, commits, indexBySha, MapState.rowBySha, lazyListState, dimensions)
             }
 
             LazyColumn(
                 state = lazyListState,
                 modifier = Modifier.fillMaxSize(),
             ) {
-                items(commits.size, key = { commits[it].sha }) { index ->
-                    val commit = commits[index]
-                    val lane = MapState.lanesBySha[commit.sha] ?: 0
+                // One item per packed row (#305): every lane that has a commit on this
+                // row draws its node here, offset into its own lane. The item index is
+                // the packed row, so the LazyColumn's scroll and the connector Canvas
+                // (which measures off firstVisibleItemIndex) share one row coordinate
+                // frame - a node never drifts away from the lines that reach it.
+                items(commitsByRow.size, key = { it }) { row ->
+                    Box(modifier = Modifier.fillMaxWidth().height(dimensions.rowHeight.dp)) {
+                        commitsByRow[row].forEach { commit ->
+                            val lane = MapState.lanesBySha[commit.sha] ?: 0
 
-                    CommitNode(
-                        commit = commit,
-                        isSelected = MapState.selectedNodeSha.value == commit.sha,
-                        onClick = { MapState.toggleSelectedNode(commit.sha) },
-                        dimensions = dimensions,
-                        modifier = Modifier.offset(x = dimensions.laneWidth.dp * lane).width(dimensions.laneWidth.dp),
-                    )
+                            CommitNode(
+                                commit = commit,
+                                isSelected = MapState.selectedNodeSha.value == commit.sha,
+                                onClick = { MapState.toggleSelectedNode(commit.sha) },
+                                dimensions = dimensions,
+                                modifier = Modifier
+                                    .offset(x = dimensions.laneWidth.dp * lane)
+                                    .width(dimensions.laneWidth.dp),
+                            )
+                        }
+                    }
                 }
             }
 
@@ -242,6 +270,7 @@ private fun DrawScope.drawConnectors(
     tipNodes: List<BranchTipNode>,
     commits: List<CommitGraphNode>,
     indexBySha: Map<String, Int>,
+    rowBySha: Map<String, Int>,
     lazyListState: LazyListState,
     dimensions: MapDimensions,
 ) {
@@ -254,7 +283,10 @@ private fun DrawScope.drawConnectors(
     val firstIndex = lazyListState.firstVisibleItemIndex
     val firstOffset = lazyListState.firstVisibleItemScrollOffset
 
-    fun rowCenterY(index: Int) = (index - firstIndex) * rowHeightPx - firstOffset + rowHeightPx / 2f
+    // Takes a packed row (#305). The LazyColumn lays one item per packed row, so
+    // firstIndex/firstOffset - the list's own scroll - are already in row space, and
+    // this lands a connector exactly on the node drawn in that row.
+    fun rowCenterY(row: Int) = (row - firstIndex) * rowHeightPx - firstOffset + rowHeightPx / 2f
     fun laneCenterX(lane: Int) = gutterXPx + lane * laneWidthPx
 
     val visibleTop = -rowHeightPx
@@ -275,8 +307,8 @@ private fun DrawScope.drawConnectors(
     }
 
     connectors.forEach { connector ->
-        val childY = rowCenterY(connector.childIndex)
-        val parentY = rowCenterY(connector.parentIndex)
+        val childY = rowCenterY(connector.childRow)
+        val parentY = rowCenterY(connector.parentRow)
         if (childY < visibleTop && parentY < visibleTop) return@forEach
         if (childY > visibleBottom && parentY > visibleBottom) return@forEach
 
@@ -299,12 +331,12 @@ private fun DrawScope.drawConnectors(
     val topY = rowHeightPx / 2f
     tipNodes.forEach { tip ->
         val laneX = laneCenterX(tip.lane)
-        val tipIndex = indexBySha[tip.sha]
-        val commit = tipIndex?.let { commits[it] }
+        val commit = indexBySha[tip.sha]?.let { commits[it] }
         val color = commit?.let(::nodeColor) ?: Colors.FileAdded
+        val tipRow = rowBySha[tip.sha]
 
-        if (tipIndex != null) {
-            val commitY = rowCenterY(tipIndex)
+        if (tipRow != null) {
+            val commitY = rowCenterY(tipRow)
             if (commitY > topY) {
                 drawConnector(laneX, topY, laneX, commitY, Colors.LightGrayText)
             }
@@ -492,6 +524,9 @@ private fun SelectedCommitCard(
 
     val commit = commits[index]
     val lane = MapState.lanesBySha[selectedSha] ?: 0
+    // The card tracks the node at its packed row (#305), the same row the node was
+    // lifted to, so it floats over the node rather than its vacated list slot.
+    val row = MapState.rowBySha[selectedSha] ?: index
 
     Box(
         modifier = Modifier
@@ -501,7 +536,7 @@ private fun SelectedCommitCard(
             // phase (see the derivedState note in Map()).
             .offset {
                 val placement = CommitCardPlacement.place(
-                    selectedIndex = index,
+                    selectedIndex = row,
                     lane = lane,
                     firstVisibleIndex = lazyListState.firstVisibleItemIndex,
                     firstVisibleOffset = lazyListState.firstVisibleItemScrollOffset.toDp().value,
