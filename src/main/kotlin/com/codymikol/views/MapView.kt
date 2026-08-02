@@ -40,6 +40,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import com.codymikol.components.map.EditMessageDialog
 import com.codymikol.components.menu.MenuColors
 import com.codymikol.components.menu.ThemedDropdownMenu
 import com.codymikol.components.menu.ThemedDropdownMenuItem
@@ -81,6 +82,7 @@ fun MapView() {
 private fun Map() {
     val commits = MapState.commits
     val lazyListState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
 
     // Every "magic number" the map draws with is now parametrized (#291) and adjustable
     // live through the ctrl+shift+d debug menu, so the whole view reads its dimensions
@@ -158,6 +160,19 @@ private fun Map() {
             // corner of the graph so its sliders don't disturb the map's own layout.
             if (MapDebugState.isOpen.value) {
                 MapDebugMenu(modifier = Modifier.align(Alignment.TopEnd).padding(8.dp))
+            }
+
+            // The "Edit Message..." modal (#299) floats over the map while a commit is
+            // being edited, pre-populated with that commit's full message. Accept rewrites
+            // the commit through history and closes the modal; Cancel just dismisses.
+            GitDownState.editMessageCommit.value?.let { commit ->
+                EditMessageDialog(
+                    initialMessage = commit.fullMessage,
+                    onDismiss = { GitDownState.closeEditMessage() },
+                    onConfirm = { message ->
+                        scope.launch { GitDownState.editCommitMessage(commit, message) }
+                    },
+                )
             }
         }
     }
@@ -430,6 +445,9 @@ private fun CommitContextMenu(
                         }
                         "Checkout Detached HEAD" -> {
                             { scope.launch { GitDownState.checkoutDetachedHead(commit) }; onDismiss() }
+                        }
+                        "Edit Message..." -> {
+                            { GitDownState.openEditMessage(commit); onDismiss() }
                         }
                         else -> onDismiss
                     },
