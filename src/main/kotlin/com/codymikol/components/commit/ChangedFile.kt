@@ -13,7 +13,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.codymikol.components.ReversedEllipsisText
 import com.codymikol.data.file.FileDelta
+import com.codymikol.data.file.Status
 import com.codymikol.data.file.WorkingDirectory
+import com.codymikol.state.CommitFocus
 import com.codymikol.state.GitDownState
 import com.codymikol.state.Keys
 import java.nio.file.Path
@@ -32,6 +34,12 @@ fun ChangedFile(fileDelta: FileDelta) {
         .clickable {
             if (!Keys.isShiftPressed.value) GitDownState.selectedFiles.clear()
             GitDownState.selectedFiles.add(fileDelta)
+            // Keep Tab cycling (#298) anchored to the pane the user clicked into.
+            when (fileDelta.type) {
+                Status.WORKING_DIRECTORY -> GitDownState.commitFocus.value = CommitFocus.WorkingDirectory
+                Status.INDEX -> GitDownState.commitFocus.value = CommitFocus.Index
+                Status.STASH -> Unit
+            }
         }
         .fillMaxWidth()
         .height(18.dp)
