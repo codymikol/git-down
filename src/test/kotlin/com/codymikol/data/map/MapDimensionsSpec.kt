@@ -1,10 +1,28 @@
 package com.codymikol.data.map
 
 import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 
 class MapDimensionsSpec : DescribeSpec({
+
+    describe("branch-title dimensions") {
+
+        it("exposes a titlePadding slider defaulting to 14") {
+            val slider = MapDimensions.sliders.firstOrNull { it.label == "titlePadding" }
+
+            slider.shouldNotBeNull()
+            slider.get(MapDimensions()) shouldBe 14f
+        }
+
+        it("exposes a titleMaxWidth slider") {
+            val slider = MapDimensions.sliders.firstOrNull { it.label == "titleMaxWidth" }
+
+            slider.shouldNotBeNull()
+            slider.get(MapDimensions()) shouldBe MapDimensions().titleMaxWidth
+        }
+    }
 
     describe("MapDimensions.summarize") {
 
