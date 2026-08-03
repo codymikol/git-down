@@ -110,6 +110,22 @@ class LaneAssignerSpec : DescribeSpec({
                 lanes shouldBe listOf(0, 1, 0, 1, 0)
             }
 
+            it("should give each branch tip its own lane even when one tip is an ancestor of another") {
+                // main -> C -> B (old's tip) -> A; old points at B, an ancestor
+                // of main's tip C. Without a per-tip reservation both tips
+                // collapse onto lane 0 and old vanishes from the map (#315).
+                val assigner = LaneAssigner(tipLanes = mapOf("C" to 0, "B" to 1))
+                val commits = listOf(
+                    node("C", "B"),
+                    node("B", "A"),
+                    node("A"),
+                )
+
+                val lanes = assigner.assign(commits)
+
+                lanes shouldBe listOf(0, 1, 1)
+            }
+
             it("should assign identical lanes whether a page is walked in one call or split across two") {
                 val commits = listOf(
                     node("M", "main1", "side1"),
@@ -126,6 +142,26 @@ class LaneAssignerSpec : DescribeSpec({
                     assigner.assign(commits.subList(0, 3)) + assigner.assign(commits.subList(3, commits.size))
                 }
 
+                paged shouldBe oneCall
+            }
+
+            it("should reserve a tip's lane across a page split so a later-paged ancestor tip still gets it") {
+                // old's tip B pages in on the second call, after main's tip C on
+                // the first; its reserved lane must survive the split unchanged.
+                val tipLanes = mapOf("C" to 0, "B" to 1)
+                val commits = listOf(
+                    node("C", "B"),
+                    node("B", "A"),
+                    node("A"),
+                )
+
+                val oneCall = LaneAssigner(tipLanes).assign(commits)
+
+                val paged = LaneAssigner(tipLanes).let { assigner ->
+                    assigner.assign(commits.subList(0, 1)) + assigner.assign(commits.subList(1, commits.size))
+                }
+
+                oneCall shouldBe listOf(0, 1, 1)
                 paged shouldBe oneCall
             }
         }
