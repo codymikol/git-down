@@ -5,8 +5,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.PointerMatcher
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -48,16 +46,17 @@ import com.codymikol.components.menu.ThemedDropdownMenu
 import com.codymikol.components.menu.ThemedDropdownMenuItem
 import com.codymikol.data.Colors
 import com.codymikol.data.map.BranchTipNode
+import com.codymikol.data.map.BranchTitle
 import com.codymikol.data.map.CommitCard
 import com.codymikol.data.map.CommitContextMenu as CommitContextMenuModel
 import com.codymikol.data.map.CommitGraphNode
 import com.codymikol.data.map.MapConnector
 import com.codymikol.data.map.MapDimensions
 import com.codymikol.services.BranchTipNodes
+import com.codymikol.services.BranchTitles
 import com.codymikol.services.CommitCardPlacement
 import com.codymikol.services.ConnectorGeometry
 import com.codymikol.services.MapConnectors
-import com.codymikol.services.OrderedBranchTip
 import com.codymikol.state.GitDownState
 import com.codymikol.state.MapDebugState
 import com.codymikol.state.MapState
@@ -137,6 +136,12 @@ private fun Map() {
         derivedStateOf { BranchTipNodes.place(MapState.orderedBranchTips.value, MapState.lanesBySha) }
     }
 
+    // The branch titles pinned above each lane's tip node (#307), carrying the name(s) of
+    // the branch(es) at that tip. Recomputed with the tips/lanes, never per scroll frame.
+    val titles by remember {
+        derivedStateOf { BranchTitles.place(MapState.orderedBranchTips.value, MapState.lanesBySha) }
+    }
+
     // Like connectors, recomputed only on page load - never per scroll frame - so the
     // Canvas can look a tip's row up without rebuilding this map every draw.
     val indexBySha by remember {
@@ -157,18 +162,20 @@ private fun Map() {
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize().background(Colors.DarkGrayBackground)) {
-        // Branch tips are pinned here at the top of the grid (#277), ordered
-        // left-to-right so the mainline everything merges into leads and the side
-        // branches follow by how soon they rejoin it - rather than scattered down
-        // the history at each tip commit's chronological row.
-        BranchPillRow(MapState.orderedBranchTips.value, dimensions)
+    // clipToBounds so the selected node's overlay card (taller than one row) can't bleed
+    // above the title band when its row scrolls to the top edge - the in-lane card it
+    // replaces was contained by the LazyColumn (#297). Horizontal spill stays free: the
+    // box is full-width, which is the whole point of the overlay.
+    Box(modifier = Modifier.fillMaxSize().background(Colors.DarkGrayBackground).clipToBounds()) {
+        // The band reserved above the graph so branch titles fit above the top row's nodes
+        // (#307). Node centres sit half a row below the band, giving each title titlePadding
+        // of clearance above the node it labels.
+        val titleBand = dimensions.titlePadding + dimensions.rowHeight / 2f
 
-        // clipToBounds so the selected node's overlay card (taller than one row) can't
-        // bleed up over the branch-pill header when its row scrolls to the top edge - the
-        // in-lane card it replaces was contained by the LazyColumn (#297). Horizontal
-        // spill stays free: the box is full-width, which is the whole point of the overlay.
-        Box(modifier = Modifier.weight(1f).fillMaxWidth().clipToBounds()) {
+        // The graph body is pushed down by the title band so the Canvas, list and detail
+        // card share one origin that already accounts for the titles above - a node stays
+        // lined up with the connectors that reach it, just lower on the screen (#307).
+        Box(modifier = Modifier.fillMaxSize().padding(top = titleBand.dp)) {
             // A single overlay pass over the currently-visible rows (#271): an individual
             // commit row's own draw bounds are clipped to that row, so a diagonal line
             // reaching into a neighbouring row/lane can only be drawn here, not per-node.
@@ -209,56 +216,64 @@ private fun Map() {
             // clipped to that node's single-lane width, cutting off a long commit line.
             // As a sibling of the lanes it can spill rightwards over the lanes beside it.
             SelectedCommitCard(commits, indexBySha, lazyListState, dimensions)
+        }
 
-            // The tuning overlay (#291), toggled with ctrl+shift+d, floats over the top
-            // corner of the graph so its sliders don't disturb the map's own layout.
-            if (MapDebugState.isOpen.value) {
-                MapDebugMenu(modifier = Modifier.align(Alignment.TopEnd).padding(8.dp))
-            }
+        // Branch titles pinned above their lane's tip node (#307): they belong to the map
+        // body rather than a separate floating banner, so a title's first character sits
+        // directly above its node and the lot scrolls off with the map's horizontal reach.
+        BranchTitleBand(titles, dimensions, titleBand)
 
-            // The "Edit Message..." modal (#299) floats over the map while a commit is
-            // being edited, pre-populated with that commit's full message. Accept rewrites
-            // the commit through history and closes the modal; Cancel just dismisses.
-            GitDownState.editMessageCommit.value?.let { commit ->
-                EditMessageDialog(
-                    initialMessage = commit.fullMessage,
-                    onDismiss = { GitDownState.closeEditMessage() },
-                    onConfirm = { message ->
-                        scope.launch { GitDownState.editCommitMessage(commit, message) }
-                    },
-                )
-            }
+        // The tuning overlay (#291), toggled with ctrl+shift+d, floats over the top
+        // corner of the graph so its sliders don't disturb the map's own layout.
+        if (MapDebugState.isOpen.value) {
+            MapDebugMenu(modifier = Modifier.align(Alignment.TopEnd).padding(8.dp))
+        }
+
+        // The "Edit Message..." modal (#299) floats over the map while a commit is
+        // being edited, pre-populated with that commit's full message. Accept rewrites
+        // the commit through history and closes the modal; Cancel just dismisses.
+        GitDownState.editMessageCommit.value?.let { commit ->
+            EditMessageDialog(
+                initialMessage = commit.fullMessage,
+                onDismiss = { GitDownState.closeEditMessage() },
+                onConfirm = { message ->
+                    scope.launch { GitDownState.editCommitMessage(commit, message) }
+                },
+            )
         }
     }
 }
 
-// The row of branch-name pills pinned to the top of the map (#277), one pill per
-// branch name in merge-proximity order. A tip shared by several branches lays its
-// names out together, and a merge-commit tip is blued to match its node.
+// The branch titles pinned above the lanes (#307). Each title's first character sits
+// directly above its lane's tip node - x is the node's own lane centre - and its bottom
+// is titlePadding above that node. The titles are children of the map body (not a
+// separate floating banner) and truncate with an ellipsis past titleMaxWidth.
 @Composable
-private fun BranchPillRow(tips: List<OrderedBranchTip>, dimensions: MapDimensions) {
-    if (tips.isEmpty()) return
+private fun BranchTitleBand(titles: List<BranchTitle>, dimensions: MapDimensions, titleBand: Float) {
+    // The graph is offset down by titleBand, so a top-row node's centre sits half a row
+    // below the band. Bottom-aligning a title to the node's top edge minus titlePadding
+    // hangs it exactly titlePadding above the node it labels.
+    val nodeCenterY = titleBand + dimensions.rowHeight / 2f
+    val titleBottom = nodeCenterY - dimensions.nodeRadius - dimensions.titlePadding
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            // Scroll rather than wrap or clip: the tips stay on one top row even when
-            // there are more branches than fit across the map.
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = dimensions.gutterX.dp, vertical = dimensions.pillSpacing.dp * 2),
-        horizontalArrangement = Arrangement.spacedBy(dimensions.pillSpacing.dp),
-    ) {
-        tips.forEach { tip ->
-            tip.branchNames.forEach { branchName -> BranchPill(branchName, tipColor(tip), dimensions) }
+    titles.forEach { title ->
+        Box(
+            modifier = Modifier
+                .offset(x = (dimensions.gutterX + dimensions.laneWidth * title.lane).dp)
+                .height(titleBottom.dp)
+                .widthIn(max = dimensions.titleMaxWidth.dp),
+            contentAlignment = Alignment.BottomStart,
+        ) {
+            Text(
+                text = title.branchNames.joinToString(", "),
+                color = Colors.LightGrayText,
+                fontSize = dimensions.pillFontSize.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
-}
-
-// A tip pill takes the same colour rule as its node (nodeColor). The tip may not be
-// among the loaded commits yet, in which case it defaults to the non-merge colour.
-private fun tipColor(tip: OrderedBranchTip): Color {
-    val commit = MapState.commits.firstOrNull { it.sha == tip.sha } ?: return Colors.FileAdded
-    return nodeColor(commit)
 }
 
 // Row height is fixed, so a row's on-screen y-offset is a straight formula from the
@@ -413,27 +428,6 @@ private fun CommitNode(
             commit = commit,
             expanded = menuExpanded,
             onDismiss = { menuExpanded = false },
-        )
-    }
-}
-
-// A small labeled pill naming a local branch, rendered in the top pill row (#277).
-@Composable
-private fun BranchPill(branchName: String, color: Color, dimensions: MapDimensions) {
-    Box(
-        modifier = Modifier
-            .widthIn(max = dimensions.pillMaxWidth.dp)
-            .clip(RoundedCornerShape(dimensions.pillCorner.dp))
-            .background(color)
-            .padding(horizontal = 6.dp, vertical = 2.dp),
-    ) {
-        Text(
-            text = branchName,
-            color = Color.White,
-            fontSize = dimensions.pillFontSize.sp,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
         )
     }
 }
