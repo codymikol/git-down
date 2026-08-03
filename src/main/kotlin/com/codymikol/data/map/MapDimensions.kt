@@ -18,7 +18,11 @@ data class MapDimensions(
     val pillCorner: Float = 8f,
     val pillFontSize: Float = 10f,
     val pillSpacing: Float = 4f,
-    val pillMaxWidth: Float = 80f,
+    // #307: branch titles are pinned above their lane's tip node. titlePadding is the
+    // vertical gap between a title and the node it labels; titleMaxWidth caps a title's
+    // width before it truncates with an ellipsis. Both are live-tunable like the rest.
+    val titlePadding: Float = 14f,
+    val titleMaxWidth: Float = 160f,
     // #291: how far above a node the incoming vertical connector stops, so the final
     // bezier fork slants down into the node rather than meeting it dead vertical.
     val mainlineGap: Float = 24f,
@@ -69,7 +73,8 @@ data class MapDimensions(
             Slider("pillCorner", 2f, 20f, { it.pillCorner }, { d, v -> d.copy(pillCorner = v) }),
             Slider("pillFontSize", 6f, 20f, { it.pillFontSize }, { d, v -> d.copy(pillFontSize = v) }),
             Slider("pillSpacing", 1f, 16f, { it.pillSpacing }, { d, v -> d.copy(pillSpacing = v) }),
-            Slider("pillMaxWidth", 40f, 200f, { it.pillMaxWidth }, { d, v -> d.copy(pillMaxWidth = v) }),
+            Slider("titlePadding", 0f, 48f, { it.titlePadding }, { d, v -> d.copy(titlePadding = v) }),
+            Slider("titleMaxWidth", 40f, 400f, { it.titleMaxWidth }, { d, v -> d.copy(titleMaxWidth = v) }),
             Slider("mainlineGap", 0f, 64f, { it.mainlineGap }, { d, v -> d.copy(mainlineGap = v) }),
             Slider("forkCurveTension", 0f, 1f, { it.forkCurveTension }, { d, v -> d.copy(forkCurveTension = v) }),
         )
