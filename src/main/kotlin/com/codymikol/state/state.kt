@@ -190,9 +190,7 @@ object GitDownState {
     }
 
     val indexFilesModified = derivedStateOf {
-        uncommittedChanges.value.filter {
-            !modified.value.contains(it) && !added.value.contains(it) && !missing.value.contains(it) && !removed.value.contains(it)
-        }
+        changed.value
             .map { Index.FileModified(Path.of(it)) }
             .toSet()
     }

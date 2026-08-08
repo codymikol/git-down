@@ -734,6 +734,7 @@ fun Git.scanForChanges() = try {
 
     GitDownState.removed.assignWhenDifferent(newStatus.removed)
     GitDownState.added.assignWhenDifferent(newStatus.added)
+    GitDownState.changed.assignWhenDifferent(newStatus.changed)
     GitDownState.missing.assignWhenDifferent(newStatus.missing)
     GitDownState.conflicting.assignWhenDifferent(newStatus.conflicting)
     GitDownState.modified.assignWhenDifferent(newStatus.modified)
