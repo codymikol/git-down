@@ -401,6 +401,94 @@ class GitDownStateSpec : DescribeSpec({
 
             }
 
+            describe("Partially staging a mixed hunk of an existing file") {
+
+                autoClose(
+                    createTestRepository()
+                        .addFile("init.txt", "init")
+                        .stageAll()
+                        .commitAll("init")
+                        .addFile("foo.txt", "a\nb\nc\nd\ne\nf\ng\nh\ni\nj\nk\nl\n")
+                        .stageAll()
+                        .commitAll("base")
+                        .addFile("foo.txt", "a\nb\nc\nx\ny\nz\ng\nh\ni\nj\nk\nl\n")
+                        .transferIntoGitDownState()
+                )
+
+                val workingFileDelta = GitDownState.workingDirectory.value
+                    .first { it.getPath() == "foo.txt" }
+
+                GitDownState.selectedFiles.clear()
+                GitDownState.selectedFiles.add(workingFileDelta)
+
+                val workingNode = GitDownState.diffTree.value.fileDeltaNodes.single()
+                val workingLines = workingNode.hunkNodes.flatMap { it.lineNodes }
+
+                val removedLines = workingLines
+                    .filter { it.line.type == LineType.Removed }
+
+                check(removedLines.isNotEmpty()) { "Expected removed lines in working hunk" }
+
+                // Stage only the deletions, leaving the additions unstaged so the
+                // file still differs from both HEAD (staged change) and the
+                // working tree (unstaged change).
+                GitDownState.git.value.stageSelectedLines(removedLines)
+
+                it("should show the file in the index panel") {
+                    GitDownState.index.value
+                        .any { it.getPath() == "foo.txt" } shouldBe true
+                }
+
+                it("should still show the file in the working directory panel") {
+                    GitDownState.workingDirectory.value
+                        .any { it.getPath() == "foo.txt" } shouldBe true
+                }
+
+            }
+
+            describe("Partially staging only the additions of a mixed hunk") {
+
+                autoClose(
+                    createTestRepository()
+                        .addFile("init.txt", "init")
+                        .stageAll()
+                        .commitAll("init")
+                        .addFile("foo.txt", "a\nb\nc\nd\ne\nf\ng\nh\ni\nj\nk\nl\n")
+                        .stageAll()
+                        .commitAll("base")
+                        .addFile("foo.txt", "a\nb\nc\nx\ny\nz\ng\nh\ni\nj\nk\nl\n")
+                        .transferIntoGitDownState()
+                )
+
+                val workingFileDelta = GitDownState.workingDirectory.value
+                    .first { it.getPath() == "foo.txt" }
+
+                GitDownState.selectedFiles.clear()
+                GitDownState.selectedFiles.add(workingFileDelta)
+
+                val workingNode = GitDownState.diffTree.value.fileDeltaNodes.single()
+                val workingLines = workingNode.hunkNodes.flatMap { it.lineNodes }
+
+                val addedLines = workingLines
+                    .filter { it.line.type == LineType.Added }
+
+                check(addedLines.isNotEmpty()) { "Expected added lines in working hunk" }
+
+                // Stage only the additions, leaving the deletions unstaged.
+                GitDownState.git.value.stageSelectedLines(addedLines)
+
+                it("should show the file in the index panel") {
+                    GitDownState.index.value
+                        .any { it.getPath() == "foo.txt" } shouldBe true
+                }
+
+                it("should still show the file in the working directory panel") {
+                    GitDownState.workingDirectory.value
+                        .any { it.getPath() == "foo.txt" } shouldBe true
+                }
+
+            }
+
             describe("Staging two added lines from ten added lines") {
 
                 autoClose(
