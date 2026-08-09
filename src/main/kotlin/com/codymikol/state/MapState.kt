@@ -25,7 +25,7 @@ object MapState {
     const val LOAD_MORE_THRESHOLD = 5
 
     private var walker: CommitHistoryWalker? = null
-    private var laneAssigner = LaneAssigner()
+    private var laneAssigner: LaneAssigner? = null
 
     // The git directory whose history is currently loaded, or null before anything has
     // loaded. Lets resetForDirectory() tell a genuine project switch (which must clear
@@ -176,9 +176,13 @@ object MapState {
         if (!hasMore) return
 
         val walker = walker ?: CommitHistoryWalker(GitDownState.git.value, branches.value).also { walker = it }
+        // Reserve one lane per ordered branch tip (default first), so every branch
+        // keeps its own column even when one tip is an ancestor of another (#315).
+        // Built lazily alongside the walker so orderedBranchTips has resolved.
+        val assigner = laneAssigner ?: LaneAssigner(tipLanes()).also { laneAssigner = it }
         val page = walker.nextPage(PAGE_SIZE)
 
-        page.forEach { lanesBySha[it.sha] = laneAssigner.assign(it) }
+        page.forEach { lanesBySha[it.sha] = assigner.assign(it) }
         commits.addAll(page)
 
         // Repack from the full loaded list so a page's commits stack onto the rows
@@ -188,6 +192,15 @@ object MapState {
 
         hasMore = walker.hasMore
     }
+
+    /**
+     * Each ordered branch tip's reserved lane, keyed by its commit sha (#315): the
+     * tip's index in [orderedBranchTips] is its column, so lane 0 is the default
+     * branch and each side branch follows left-to-right. Feeds [LaneAssigner] so a
+     * tip never collapses onto a descendant tip's lane.
+     */
+    private fun tipLanes(): Map<String, Int> =
+        orderedBranchTips.value.withIndex().associate { (index, tip) -> tip.sha to index }
 
     /**
      * lastVisibleIndex must be the last (bottom-most) visible row, not the first -
@@ -203,7 +216,7 @@ object MapState {
     fun reset() {
         walker?.close()
         walker = null
-        laneAssigner = LaneAssigner()
+        laneAssigner = null
         commits.clear()
         lanesBySha.clear()
         rowBySha.clear()

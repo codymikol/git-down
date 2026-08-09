@@ -4,16 +4,24 @@ import com.codymikol.data.map.CommitGraphNode
 
 /**
  * Assigns each commit in a newest-to-oldest (reverse topological) walk to a
- * lane/column number, GitUp-style: a lane tracks an ancestry lineage, not a
- * branch. Stateful and streaming so callers can feed it paginated batches -
- * see issue #269 - and get the same lane numbers as a single call over the
- * whole history.
+ * lane/column number, GitUp-style: a lane tracks an ancestry lineage. Stateful
+ * and streaming so callers can feed it paginated batches - see issue #269 - and
+ * get the same lane numbers as a single call over the whole history.
+ *
+ * [tipLanes] pins a branch tip's commit to a reserved lane so every branch is
+ * represented by its own lane even when one tip is an ancestor of another (see
+ * issue #315): a tip whose commit would otherwise inherit a descendant's lineage
+ * lane is forced onto its own reserved column instead, so no two branch tips
+ * ever collapse onto the same lane. [allocateLane] counts above the reserved range,
+ * so an unrelated lineage can't squat on a tip's column before the walk reaches that
+ * tip - a reserved lane only rejoins the free pool once its own tip has been placed.
+ * An empty map restores the plain lineage behaviour.
  */
-class LaneAssigner {
+class LaneAssigner(private val tipLanes: Map<String, Int> = emptyMap()) {
 
     private val laneAwaitingSha = mutableMapOf<String, MutableList<Int>>()
     private val freeLanes = sortedSetOf<Int>()
-    private var laneCount = 0
+    private var laneCount = tipLanes.values.maxOrNull()?.plus(1) ?: 0
 
     /**
      * Assigns lanes to [commits], which must already be in reverse
@@ -29,7 +37,10 @@ class LaneAssigner {
      */
     fun assign(commit: CommitGraphNode): Int {
         val waitingLanes = laneAwaitingSha.remove(commit.sha)
-        val lane = waitingLanes?.min() ?: allocateLane()
+        // A branch tip always claims its reserved lane, overriding any lineage
+        // lane a descendant was awaiting it on, so every branch keeps its own
+        // column (#315); those orphaned awaiting lanes fall back into the pool.
+        val lane = tipLanes[commit.sha] ?: waitingLanes?.min() ?: allocateLane()
         waitingLanes?.filter { it != lane }?.forEach { freeLanes.add(it) }
 
         val parents = commit.parentShas

@@ -43,18 +43,6 @@ class BranchTitlesSpec : DescribeSpec({
                     BranchTitle(0, listOf("main")),
                 )
             }
-
-            it("keeps only the first tip when two share a lane, preserving mainline priority") {
-                val tips = listOf(
-                    OrderedBranchTip("A", listOf("main")),
-                    OrderedBranchTip("B", listOf("foo")),
-                )
-                val lanesBySha = mapOf("A" to 0, "B" to 0)
-
-                BranchTitles.place(tips, lanesBySha) shouldBe listOf(
-                    BranchTitle(0, listOf("main")),
-                )
-            }
         }
     }
 })

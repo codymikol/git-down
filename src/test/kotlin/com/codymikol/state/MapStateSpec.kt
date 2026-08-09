@@ -2,10 +2,12 @@ package com.codymikol.state
 
 import com.codymikol.data.map.CommitGraphNode
 import com.codymikol.repository.TestRepository.Companion.createTestRepository
+import com.codymikol.services.BranchTipNodes
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import java.util.Date
 
 class MapStateSpec : DescribeSpec({
@@ -98,6 +100,51 @@ class MapStateSpec : DescribeSpec({
                 MapState.loadMore()
 
                 MapState.commits.map { it.shortMessage } shouldBe listOf("commit 2", "commit 1")
+            }
+        }
+
+        describe("two branches where one tip is an ancestor of the other") {
+
+            // main -> commit 3; "old" is created at commit 2 and never advances, so
+            // old's tip is a plain ancestor of main's tip. Every branch must still
+            // get its own lane rather than collapsing onto main's (#315).
+            autoClose(
+                createTestRepository()
+                    .addFile("a.txt", "a")
+                    .stageAll()
+                    .commitAll("commit 1")
+                    .appendToFile("a.txt", "b")
+                    .stageAll()
+                    .commitAll("commit 2")
+                    .createBranch("old")
+                    .appendToFile("a.txt", "c")
+                    .stageAll()
+                    .commitAll("commit 3")
+                    .transferIntoGitDownState()
+            )
+
+            it("gives each branch tip its own lane") {
+                MapState.branches.value shouldHaveSize 2
+
+                MapState.loadMore()
+
+                val tipLanes = MapState.branches.value
+                    .map { MapState.lanesBySha[it.objectId.name] }
+
+                tipLanes.forEach { it shouldNotBe null }
+                tipLanes.toSet() shouldHaveSize 2
+            }
+
+            it("places a top node for every branch, dropping none") {
+                MapState.loadMore()
+
+                val nodes = BranchTipNodes.place(
+                    MapState.orderedBranchTips.value,
+                    MapState.lanesBySha,
+                )
+
+                nodes shouldHaveSize 2
+                nodes.map { it.lane }.toSet() shouldHaveSize 2
             }
         }
 
