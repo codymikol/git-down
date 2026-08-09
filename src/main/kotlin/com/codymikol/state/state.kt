@@ -81,11 +81,15 @@ object GitDownState {
     }
 
     val commitCount = derivedStateOf {
-        git.value.getCurrentRefCommitCount()
+        if (isValidGitDirectory.value) git.value.getCurrentRefCommitCount() else 0
     }
 
     val stashes = derivedStateOf {
-        git.value.getStashes().map { StashListItem.make(repo.value, it) }
+        if (isValidGitDirectory.value) {
+            git.value.getStashes().map { StashListItem.make(repo.value, it) }
+        } else {
+            emptyList()
+        }
     }
 
     val selectedStash = mutableStateOf<StashListItem?>(null)
@@ -149,8 +153,13 @@ object GitDownState {
         (git.value.repository?.refDatabase?.refs?.getOrNull(0)?.isSymbolic?.not()) ?: false
     }
 
+    // Null while no valid repository is open. Closing a project clears
+    // gitDirectory, which flips isValidGitDirectory to false; without this guard
+    // the still-mounted GitDown subtree recomputes status against the now-bare
+    // repository during the close recompose and JGit throws NoWorkTreeException
+    // (see issue #319). The two index derivedStates below tolerate the null.
     val status = derivedStateOf {
-        git.value.status().call()
+        if (isValidGitDirectory.value) git.value.status().call() else null
     }
 
     val removed = mutableStateOf(emptySet<String>())
@@ -196,13 +205,13 @@ object GitDownState {
     }
 
     val indexFilesAdded = derivedStateOf {
-        status.value.added
+        status.value?.added.orEmpty()
             .map { Index.FileAdded(Path.of(it)) }
             .toSet()
     }
 
     val indexFilesDeleted = derivedStateOf {
-        status.value.removed
+        status.value?.removed.orEmpty()
             .map { Index.FileDeleted(Path.of(it)) }
             .toSet()
     }
