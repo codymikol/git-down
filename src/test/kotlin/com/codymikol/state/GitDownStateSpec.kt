@@ -8,6 +8,7 @@ import com.codymikol.extensions.stageSelectedLines
 import com.codymikol.extensions.stageLinesForAddedFile
 import com.codymikol.repository.TestRepository.Companion.createTestRepository
 import com.codymikol.tabs.Tab
+import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
@@ -1291,6 +1292,18 @@ class GitDownStateSpec : DescribeSpec({
                     GitDownState.returnToProjectSelection()
 
                     GitDownState.isStashDialogOpen.value shouldBe false
+                }
+
+                it("should not throw when repo-dependent state recomputes after close (#319)") {
+                    GitDownState.returnToProjectSelection()
+
+                    shouldNotThrowAny {
+                        GitDownState.status.value
+                        GitDownState.commitCount.value
+                        GitDownState.stashes.value
+                        GitDownState.indexFilesAdded.value
+                        GitDownState.indexFilesDeleted.value
+                    }
                 }
 
             }
